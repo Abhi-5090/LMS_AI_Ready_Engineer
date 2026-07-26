@@ -29,6 +29,13 @@ const COMPLEXITY_TONE = { easy: 'success', medium: 'warning', hard: 'danger' };
 const COMPLEXITY_OPTIONS = Object.values(QuestionComplexity).map((v) => ({ value: v, label: COMPLEXITY_LABEL[v] }));
 // Easy → Medium → Hard for the sortable Complexity column.
 const COMPLEXITY_RANK = { easy: 0, medium: 1, hard: 2 };
+// Compact badge labels for the type column (full name shown on hover).
+const TYPE_ABBR = {
+  [QuestionType.MCQ]: 'MCQ',
+  [QuestionType.SCENARIO]: 'SB',
+  [QuestionType.PROMPT_WRITING]: 'RW',
+  [QuestionType.CODING]: 'RE',
+};
 
 export function QuestionBankPage() {
   const role = useAuth((s) => s.user?.role);
@@ -174,11 +181,13 @@ export function QuestionBankPage() {
             />
           ) : (
             <div className="table-wrap">
-              <table className="table">
+              <table className="table qb-table">
                 <thead>
                   <tr>
-                    <th>#</th><th>Question</th><th>Type</th>
-                    <th>
+                    <th className="qb-c">S.No</th>
+                    <th>Question</th>
+                    <th className="qb-c">Type</th>
+                    <th className="qb-c">
                       <button type="button" className="th-sort" onClick={cycleComplexitySort} title="Sort by complexity (easy → hard, then hard → easy, then off)">
                         Complexity
                         {complexitySort === 'asc' ? <ArrowUp size={13} />
@@ -186,21 +195,24 @@ export function QuestionBankPage() {
                           : <ArrowDownUp size={13} className="th-sort__idle" />}
                       </button>
                     </th>
-                    <th>Topic</th><th>Answer</th><th>Pts</th><th />
+                    <th className="qb-c">Topic</th>
+                    <th>Answer</th>
+                    <th className="qb-c">Pts</th>
+                    <th />
                   </tr>
                 </thead>
                 <tbody>
                   {displayed.map((q, i) => (
                     <tr key={q.id}>
-                      <td>{i + 1}</td>
+                      <td className="qb-c">{i + 1}</td>
                       <td style={{ maxWidth: '24rem' }}>{q.prompt}</td>
-                      <td><Badge tone="neutral">{QUESTION_TYPE_LABEL[q.type]}</Badge></td>
-                      <td><Badge tone={COMPLEXITY_TONE[q.complexity] ?? 'neutral'}>{COMPLEXITY_LABEL[q.complexity] ?? q.complexity ?? '—'}</Badge></td>
-                      <td>{q.topicTitle ? <Badge tone="primary">{q.topicTitle}</Badge> : <span className="lms-muted">General</span>}</td>
+                      <td className="qb-c"><span className="qb-chip qb-chip--type" title={QUESTION_TYPE_LABEL[q.type]}>{TYPE_ABBR[q.type] ?? q.type}</span></td>
+                      <td className="qb-c"><span className={`qb-chip qb-chip--${q.complexity}`}>{COMPLEXITY_LABEL[q.complexity] ?? q.complexity ?? '—'}</span></td>
+                      <td className="qb-c">{q.topicTitle ? <span className="qb-chip qb-chip--topic">{q.topicTitle}</span> : <span className="lms-muted">General</span>}</td>
                       <td className="lms-muted">
                         {q.type === QuestionType.MCQ && q.options?.[q.correctOption] != null ? q.options[q.correctOption] : '—'}
                       </td>
-                      <td>{q.points}</td>
+                      <td className="qb-c">{q.points}</td>
                       <td>
                         <div className="list-actions">
                           <Button size="sm" variant="ghost" onClick={() => setEditing(q)}><Pencil size={14} /></Button>
