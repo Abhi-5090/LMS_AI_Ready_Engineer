@@ -85,13 +85,9 @@ function StudentAssessments() {
                       {g.code && <div className="lms-muted" style={{ fontSize: 'var(--font-size-sm)' }}>{g.code}</div>}
                     </div>
                   </div>
-                </div>
-                <div className="module-card__meta">
-                  <Badge tone="neutral">{g.items.length} assessment{g.items.length === 1 ? '' : 's'}</Badge>
-                </div>
-                <div className="list-actions">
+                  {/* Unlocked-tests CTA sits in the top-right corner of the card. */}
                   {unlocked > 0 ? (
-                    <Button onClick={(e) => { e.stopPropagation(); setModuleId(g.id); }}>
+                    <Button size="sm" onClick={(e) => { e.stopPropagation(); setModuleId(g.id); }}>
                       {unlocked} unlocked test{unlocked === 1 ? '' : 's'} →
                     </Button>
                   ) : pending > 0 ? (
@@ -99,6 +95,9 @@ function StudentAssessments() {
                   ) : (
                     <Badge tone="success">All done</Badge>
                   )}
+                </div>
+                <div className="module-card__meta">
+                  <Badge tone="neutral">{g.items.length} assessment{g.items.length === 1 ? '' : 's'}</Badge>
                 </div>
               </Card>
             );
