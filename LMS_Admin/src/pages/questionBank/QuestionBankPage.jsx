@@ -193,7 +193,7 @@ export function QuestionBankPage() {
               }
             />
           ) : (
-            <div className="table-wrap">
+            <div className="table-wrap qb-scroll">
               <table className="table qb-table">
                 <thead>
                   <tr>

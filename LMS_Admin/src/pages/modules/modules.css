@@ -384,6 +384,11 @@
 .th-sort:hover { color: var(--color-primary); }
 .th-sort__idle { opacity: 0.4; }
 
+/* Question-bank table: the body scrolls inside a fixed height (~5 rows visible)
+   with a sticky header, so the page itself stays put. */
+.qb-scroll { max-height: 22rem; overflow-y: auto; }
+.qb-table thead th { position: sticky; top: 0; z-index: 2; }
+
 /* Question-bank table: everything centered + clean, compact, borderless chips. */
 .qb-table th, .qb-table td { vertical-align: middle; text-align: center; }
 .qb-table td .list-actions { justify-content: center; } /* center the action buttons too */

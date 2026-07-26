@@ -171,7 +171,7 @@ export function QuestionBankPage() {
               action={<Button onClick={() => setEditing({})}><Plus size={15} style={{ marginRight: 6 }} /> Add question</Button>}
             />
           ) : (
-            <div className="table-wrap">
+            <div className="table-wrap qb-scroll">
               <table className="table qb-table">
                 <thead>
                   <tr>
