@@ -591,7 +591,7 @@
 .result-answers-cta { display: flex; flex-direction: column; justify-content: space-between; }
 /* Locked-answers: just the essentials — title, "score recorded", countdown, unlock time. */
 .result-locked { display: flex; flex-direction: column; }
-.result-locked__body { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-2); margin-top: auto; }
+.result-locked__body { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: var(--space-2); }
 
 /* Row 2: leaderboard — a short card. Static top-6 staircase (col1=#1, col2=#2/#3,
    col3=#4/#5/#6) on the left; ranks 7+ in a scrollable table on the right. */
@@ -629,10 +629,12 @@
 
 /* Ranks 7+ — a header row then a scrollable list: number · name · % · time. */
 .lb-rest { flex: 1; min-width: 0; display: flex; flex-direction: column; border-left: 1px solid var(--color-border); padding-left: var(--space-4); }
-.lb-rest__head, .lb-lrow { display: grid; grid-template-columns: 2.2rem 1fr 4rem 5rem; align-items: center; gap: var(--space-2); padding: var(--space-1) var(--space-2); }
-.lb-rest__head { font-size: var(--font-size-xs); font-weight: var(--font-weight-semibold); color: var(--color-text-secondary); text-transform: uppercase; letter-spacing: 0.04em; border-bottom: 1px solid var(--color-border); }
+.lb-rest__head, .lb-lrow { display: grid; grid-template-columns: 3rem 1fr 5.5rem 5rem; align-items: center; gap: var(--space-2); padding: var(--space-2); }
+.lb-rest__head { font-size: var(--font-size-sm); font-weight: var(--font-weight-semibold); color: var(--color-text-secondary); border-bottom: 1px solid var(--color-border); }
 .lb-rest__head span:nth-child(3), .lb-rest__head span:nth-child(4),
 .lb-lscore, .lb-ltime { text-align: right; }
+/* Serial number: plain text, not a circular badge. */
+.lb-rank--n { width: auto; height: auto; display: inline-block; place-items: initial; background: none; border: none; border-radius: 0; color: var(--color-text-secondary); font-size: var(--font-size-sm); font-weight: var(--font-weight-semibold); }
 .lb-rest__list { flex: 1; min-height: 0; max-height: 13rem; overflow-y: auto; }
 .lb-rest__empty { color: var(--color-text-muted); font-size: var(--font-size-sm); padding: var(--space-3) var(--space-2); }
 .lb-lrow--me { background: color-mix(in srgb, var(--color-primary) 12%, transparent); border-radius: var(--radius-md); }

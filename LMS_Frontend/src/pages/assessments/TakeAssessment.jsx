@@ -277,7 +277,7 @@ function AnswersModal({ a, submission, onClose }) {
                       <div className="ans-side__label">Your answer</div>
                       <ul className="ans-opts">
                         {q.options?.map((opt, oi) => (
-                          <li key={oi} className={optClass(false, oi === picked)}>
+                          <li key={oi} className={optClass(oi === picked && oi === q.correctOption, oi === picked)}>
                             <span>{opt}</span>
                             {oi === picked && <span className="ans-opts__tag">you</span>}
                           </li>
@@ -378,7 +378,7 @@ function Leaderboard({ id }) {
           {/* Ranks 7+ — a scrollable table: number · name · percentage · time. */}
           <div className="lb-rest">
             <div className="lb-rest__head">
-              <span>#</span><span>Name</span><span>%</span><span>Time</span>
+              <span>S.No</span><span>Name</span><span>Percentage</span><span>Time</span>
             </div>
             <div className="lb-rest__list">
               {rest.length === 0 ? (
@@ -387,7 +387,7 @@ function Leaderboard({ id }) {
                 <div className={`lb-lrow${e.isMe ? ' lb-lrow--me' : ''}`} key={e.rank}>
                   <span className="lb-rank lb-rank--n">{e.rank}</span>
                   <span className="lb-name">{e.name}{e.isMe ? ' (you)' : ''}</span>
-                  <span className="lb-lscore" style={{ color: e.passed ? 'var(--color-success)' : 'var(--color-text-secondary)' }}>{e.score}%</span>
+                  <span className="lb-lscore" style={{ color: e.passed ? 'var(--color-success)' : 'var(--color-text-secondary)' }}>{e.score}</span>
                   <span className="lb-ltime">{timeTaken(e.timeTakenMs)}</span>
                 </div>
               ))}
