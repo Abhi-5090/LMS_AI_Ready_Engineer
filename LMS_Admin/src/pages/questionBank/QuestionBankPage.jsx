@@ -36,6 +36,13 @@ const TYPE_ABBR = {
   [QuestionType.PROMPT_WRITING]: 'PW',
   [QuestionType.CODING]: 'RE',
 };
+// Sort order for the Type column: MCQ → Scenario → Prompt Writing → Repo Evaluation.
+const TYPE_RANK = {
+  [QuestionType.MCQ]: 0,
+  [QuestionType.SCENARIO]: 1,
+  [QuestionType.PROMPT_WRITING]: 2,
+  [QuestionType.CODING]: 3,
+};
 
 export function QuestionBankPage() {
   const role = useAuth((s) => s.user?.role);
@@ -46,10 +53,13 @@ export function QuestionBankPage() {
   const [moduleId, setModuleId] = useState('');
   const [topicFilter, setTopicFilter] = useState(''); // '' = all topics, or a topicId
   const [typeFilter, setTypeFilter] = useState(''); // '' = all types, or a QuestionType
-  const [complexitySort, setComplexitySort] = useState(null); // null | 'asc' | 'desc'
+  const [sort, setSort] = useState(null); // null | { key:'type'|'complexity'|'topic', dir:'asc'|'desc' }
   const { data: items, isLoading } = useQuestionBank({ module: moduleId });
-  // Cycle the Complexity column: unsorted → ascending → descending → unsorted.
-  const cycleComplexitySort = () => setComplexitySort((s) => (s === null ? 'asc' : s === 'asc' ? 'desc' : null));
+  // One sortable column at a time; each header cycles off → ascending → descending → off.
+  const cycleSort = (key) => setSort((s) => (s?.key !== key ? { key, dir: 'asc' } : s.dir === 'asc' ? { key, dir: 'desc' } : null));
+  const sortArrow = (key) => (sort?.key === key
+    ? (sort.dir === 'asc' ? <ArrowUp size={13} /> : <ArrowDown size={13} />)
+    : <ArrowDownUp size={13} className="th-sort__idle" />);
 
   const moduleObj = useMemo(() => (modules ?? []).find((m) => m.id === moduleId), [modules, moduleId]);
   const topics = moduleObj?.topics ?? [];
@@ -82,12 +92,15 @@ export function QuestionBankPage() {
     if (typeFilter && q.type !== typeFilter) return false; // "All types" = everything
     return true;
   });
-  // Apply the Complexity column sort (stable — equal ranks keep their order).
-  const displayed = complexitySort
-    ? [...filtered].sort((a, b) => {
-        const d = (COMPLEXITY_RANK[a.complexity] ?? 1) - (COMPLEXITY_RANK[b.complexity] ?? 1);
-        return complexitySort === 'asc' ? d : -d;
-      })
+  // Sort by the active column (stable — equal ranks keep their original order).
+  const topicOrder = new Map(topics.map((t, i) => [String(t.id), i]));
+  const rankOf = (q) => {
+    if (sort?.key === 'type') return TYPE_RANK[q.type] ?? 99;
+    if (sort?.key === 'topic') return q.topic ? (topicOrder.get(String(q.topic)) ?? 998) : 999; // General last
+    return COMPLEXITY_RANK[q.complexity] ?? 1;
+  };
+  const displayed = sort
+    ? [...filtered].sort((a, b) => { const d = rankOf(a) - rankOf(b); return sort.dir === 'asc' ? d : -d; })
     : filtered;
 
   return (
@@ -186,16 +199,21 @@ export function QuestionBankPage() {
                   <tr>
                     <th className="qb-c">S.No</th>
                     <th>Question</th>
-                    <th className="qb-c">Type</th>
                     <th className="qb-c">
-                      <button type="button" className="th-sort" onClick={cycleComplexitySort} title="Sort by complexity (easy → hard, then hard → easy, then off)">
-                        Complexity
-                        {complexitySort === 'asc' ? <ArrowUp size={13} />
-                          : complexitySort === 'desc' ? <ArrowDown size={13} />
-                          : <ArrowDownUp size={13} className="th-sort__idle" />}
+                      <button type="button" className="th-sort" onClick={() => cycleSort('type')} title="Sort by type (MCQ → SB → PW → RE, then reverse, then off)">
+                        Type {sortArrow('type')}
                       </button>
                     </th>
-                    <th className="qb-c">Topic</th>
+                    <th className="qb-c">
+                      <button type="button" className="th-sort" onClick={() => cycleSort('complexity')} title="Sort by complexity (easy → hard, then hard → easy, then off)">
+                        Complexity {sortArrow('complexity')}
+                      </button>
+                    </th>
+                    <th className="qb-c">
+                      <button type="button" className="th-sort" onClick={() => cycleSort('topic')} title="Sort by topic order (then reverse, then off)">
+                        Topic {sortArrow('topic')}
+                      </button>
+                    </th>
                     <th>Answer</th>
                     <th className="qb-c">Pts</th>
                     <th />
