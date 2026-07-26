@@ -32,13 +32,15 @@ export function QuestionBankPage() {
   const { data: modules } = useModules();
   const [moduleId, setModuleId] = useState('');
   const [topicFilter, setTopicFilter] = useState(''); // '' = all topics, or a topicId
+  const [typeFilter, setTypeFilter] = useState(''); // '' = all types, or a QuestionType
   const [complexityFilter, setComplexityFilter] = useState(''); // '' = all
   const { data: items, isLoading, isError, error, refetch } = useQuestionBank({ module: moduleId, complexity: complexityFilter });
 
   const moduleObj = useMemo(() => (modules ?? []).find((m) => m.id === moduleId), [modules, moduleId]);
   const topics = moduleObj?.topics ?? [];
 
-  const [editing, setEditing] = useState(null); // question item or {} for new
+  const [editing, setEditing] = useState(null); // an existing question being edited
+  const [adding, setAdding] = useState(false); // inline add-question form (animated)
   const [importing, setImporting] = useState(false);
   const [managing, setManaging] = useState(false); // uploads + duplicates manager
   const del = useDeleteBankQuestion();
@@ -54,8 +56,9 @@ export function QuestionBankPage() {
   }
 
   const filtered = (items ?? []).filter((q) => {
-    if (!topicFilter) return true; // "All topics" — every question in the module
-    return q.topic === topicFilter;
+    if (topicFilter && q.topic !== topicFilter) return false; // "All topics" = everything
+    if (typeFilter && q.type !== typeFilter) return false; // "All types" = everything
+    return true;
   });
 
   return (
@@ -89,6 +92,15 @@ export function QuestionBankPage() {
           </div>
         )}
         {moduleId && (
+          <div style={{ flex: '1 1 10rem', minWidth: 0, maxWidth: '13rem' }}>
+            <Select
+              value={typeFilter}
+              onChange={(e) => setTypeFilter(e.target.value)}
+              options={[{ value: '', label: 'All types' }, ...QUESTION_TYPE_OPTIONS]}
+            />
+          </div>
+        )}
+        {moduleId && (
           <div style={{ flex: '1 1 9rem', minWidth: 0, maxWidth: '12rem' }}>
             <Select
               value={complexityFilter}
@@ -105,12 +117,38 @@ export function QuestionBankPage() {
             <Button variant="outline" onClick={() => setManaging(true)}>
               <Boxes size={15} style={{ marginRight: 6 }} /> Uploads &amp; duplicates
             </Button>
-            <Button onClick={() => setEditing({})}>
-              <Plus size={15} style={{ marginRight: 6 }} /> Add question
-            </Button>
           </div>
         )}
       </div>
+
+      {/* Add question — its own full-width row; the form animates open in place. */}
+      {moduleId && (
+        <>
+          <Button
+            className="qbank-add-btn"
+            variant={adding ? 'outline' : 'primary'}
+            onClick={() => { setAdding((v) => !v); if (editing) setEditing(null); }}
+          >
+            <Plus size={16} style={{ marginRight: 6 }} /> {adding ? 'Close' : 'Add question'}
+          </Button>
+          <div className={`qbank-add-panel${adding ? ' qbank-add-panel--open' : ''}`} aria-hidden={!adding}>
+            <div>
+              <div className="qbank-add-panel__inner">
+                <Card>
+                  <BankQuestionForm
+                    key={adding ? 'add-open' : 'add-closed'}
+                    moduleId={moduleId}
+                    topics={topics}
+                    question={null}
+                    onDone={() => setAdding(false)}
+                    onCancel={() => setAdding(false)}
+                  />
+                </Card>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
 
       {!moduleId ? (
         <EmptyState
@@ -135,7 +173,7 @@ export function QuestionBankPage() {
               icon={<FileQuestion size={26} />}
               title="No questions yet"
               description="No questions yet. Add one, or import an Excel file."
-              action={<Button onClick={() => setEditing({})}><Plus size={15} style={{ marginRight: 6 }} /> Add question</Button>}
+              action={<Button onClick={() => setAdding(true)}><Plus size={15} style={{ marginRight: 6 }} /> Add question</Button>}
             />
           ) : (
             <div className="table-wrap">
@@ -180,7 +218,7 @@ export function QuestionBankPage() {
         <BankQuestionModal
           moduleId={moduleId}
           topics={topics}
-          question={editing.id ? editing : null}
+          question={editing}
           onClose={() => setEditing(null)}
         />
       )}
@@ -350,7 +388,7 @@ function DuplicatesTab({ moduleId }) {
 
 const BLANK_Q = { type: QuestionType.MCQ, complexity: QuestionComplexity.MEDIUM, prompt: '', options: ['', ''], correctOption: 0, referenceAnswer: '', points: 1, topic: '' };
 
-function BankQuestionModal({ moduleId, topics, question, onClose }) {
+function BankQuestionForm({ moduleId, topics, question, onDone, onCancel }) {
   const isEdit = Boolean(question);
   const [form, setForm] = useState(BLANK_Q);
   const [err, setErr] = useState('');
@@ -401,25 +439,14 @@ function BankQuestionModal({ moduleId, topics, question, onClose }) {
     try {
       if (isEdit) await update.mutateAsync({ id: question.id, ...payload });
       else await add.mutateAsync({ module: moduleId, ...payload });
-      onClose();
+      onDone();
     } catch (e2) {
       setErr(apiErrorMessage(e2));
     }
   }
 
   return (
-    <Modal
-      open
-      title={isEdit ? 'Edit question' : 'Add question'}
-      onClose={onClose}
-      footer={
-        <>
-          <Button variant="outline" onClick={onClose}>Cancel</Button>
-          <Button form="bank-q-form" type="submit" loading={add.isPending || update.isPending}>Save</Button>
-        </>
-      }
-    >
-      <form id="bank-q-form" onSubmit={save} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+    <form onSubmit={save} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
         <div style={{ display: 'flex', gap: 'var(--space-3)', flexWrap: 'wrap' }}>
           <div style={{ flex: '1 1 12rem' }}>
             <Select label="Type" value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })} options={QUESTION_TYPE_OPTIONS} />
@@ -471,7 +498,19 @@ function BankQuestionModal({ moduleId, topics, question, onClose }) {
         )}
         <Input label="Points" type="number" min="1" max="100" value={form.points} onChange={(e) => setForm({ ...form, points: e.target.value })} />
         {err && <span className="field__error">{err}</span>}
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--space-2)' }}>
+          <Button type="button" variant="outline" onClick={onCancel}>Cancel</Button>
+          <Button type="submit" loading={add.isPending || update.isPending}>{isEdit ? 'Save' : 'Add question'}</Button>
+        </div>
       </form>
+  );
+}
+
+/** Edit an existing question in a modal. Adding uses the inline animated form. */
+function BankQuestionModal({ moduleId, topics, question, onClose }) {
+  return (
+    <Modal open title="Edit question" onClose={onClose}>
+      <BankQuestionForm moduleId={moduleId} topics={topics} question={question} onDone={onClose} onCancel={onClose} />
     </Modal>
   );
 }
