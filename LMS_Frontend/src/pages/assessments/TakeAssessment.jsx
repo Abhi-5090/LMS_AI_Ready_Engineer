@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Link, useParams } from 'react-router-dom';
-import { Check, CheckCircle2, Crown, Eye, Github, ListChecks, Lock, Medal, ShieldAlert, Trophy, X } from 'lucide-react';
+import { Check, CheckCircle2, Eye, Github, ListChecks, Lock, ShieldAlert, Trophy, X } from 'lucide-react';
 import { QuestionType } from '@/shared';
 import { Badge, Button, Card, CardHeader, EmptyState, ErrorState, Modal, Skeleton, SkeletonText, Spinner, Textarea, useConfirm } from '@/components/ui';
 import { PageHeader } from '@/components/PageHeader';
@@ -331,14 +331,12 @@ function timeTaken(ms) {
   return m > 0 ? `${m}m ${String(s % 60).padStart(2, '0')}s` : `${s}s`;
 }
 
-/** A single podium place (top 3): rank medal, name, percentage and time taken. */
+/** One of the six static top places: circled rank, name, percentage and time. */
 function PodiumPlace({ e }) {
   if (!e) return <div className="lb-place lb-place--empty" />;
-  const Icon = e.rank === 1 ? Crown : Medal;
   return (
-    <div className={`lb-place lb-place--${e.rank}${e.isMe ? ' lb-place--me' : ''}`} title={`${e.name} — ${e.score}%`}>
-      <div className="lb-place__medal"><Icon size={e.rank === 1 ? 24 : 19} /></div>
-      <div className="lb-place__avatar">{(e.name || '?').trim().charAt(0).toUpperCase()}</div>
+    <div className={`lb-place${e.rank <= 3 ? ` lb-place--${e.rank}` : ''}${e.isMe ? ' lb-place--me' : ''}`} title={`${e.name} — ${e.score}%`}>
+      <div className="lb-place__rank">{e.rank}</div>
       <div className="lb-place__name">{e.name}{e.isMe ? ' (you)' : ''}</div>
       <div className="lb-place__meta">
         <span className="lb-place__score" style={{ color: e.passed ? 'var(--color-success)' : 'var(--color-text-secondary)' }}>{e.score}%</span>
@@ -351,8 +349,9 @@ function PodiumPlace({ e }) {
 function Leaderboard({ id }) {
   const { data, isLoading } = useLeaderboard(id);
   const entries = data?.entries ?? [];
-  const top3 = entries.slice(0, 3);
-  const rest = entries.slice(3);
+  const top6 = entries.slice(0, 6);
+  const rest = entries.slice(6);
+  const at = (n) => top6[n]; // rank n+1 (may be undefined for small batches)
 
   return (
     <Card className="lb-card">
@@ -370,34 +369,30 @@ function Leaderboard({ id }) {
         <EmptyState icon={<Trophy size={26} />} title="No results yet" description="No graded results in your batch yet." />
       ) : (
         <div className="lb-board">
-          {/* Podium: 1st centered on top, 2nd + 3rd below — stays put while the rest scroll. */}
-          <div className="lb-podium">
-            <div className="lb-podium__top"><PodiumPlace e={top3[0]} /></div>
-            {(top3[1] || top3[2]) && (
-              <div className="lb-podium__row2">
-                <PodiumPlace e={top3[1]} />
-                <PodiumPlace e={top3[2]} />
-              </div>
-            )}
+          {/* Static top-6 staircase: col1 = #1, col2 = #2/#3, col3 = #4/#5/#6. */}
+          <div className="lb-stairs">
+            <div className="lb-col"><PodiumPlace e={at(0)} /></div>
+            <div className="lb-col"><PodiumPlace e={at(1)} /><PodiumPlace e={at(2)} /></div>
+            <div className="lb-col"><PodiumPlace e={at(3)} /><PodiumPlace e={at(4)} /><PodiumPlace e={at(5)} /></div>
           </div>
-          {/* Ranks 4+ — scrollable list with Name / Percentage / Time columns. */}
-          {rest.length > 0 && (
-            <div className="lb-rest">
-              <div className="lb-rest__head">
-                <span>#</span><span>Name</span><span>Percentage</span><span>Time taken</span>
-              </div>
-              <div className="lb-rest__list">
-                {rest.map((e) => (
-                  <div className={`lb-lrow${e.isMe ? ' lb-lrow--me' : ''}`} key={e.rank}>
-                    <span className="lb-rank lb-rank--n">{e.rank}</span>
-                    <span className="lb-name">{e.name}{e.isMe ? ' (you)' : ''}</span>
-                    <span className="lb-lscore" style={{ color: e.passed ? 'var(--color-success)' : 'var(--color-text-secondary)' }}>{e.score}%</span>
-                    <span className="lb-ltime">{timeTaken(e.timeTakenMs)}</span>
-                  </div>
-                ))}
-              </div>
+          {/* Ranks 7+ — a scrollable table: number · name · percentage · time. */}
+          <div className="lb-rest">
+            <div className="lb-rest__head">
+              <span>#</span><span>Name</span><span>%</span><span>Time</span>
             </div>
-          )}
+            <div className="lb-rest__list">
+              {rest.length === 0 ? (
+                <div className="lb-rest__empty">No more participants yet.</div>
+              ) : rest.map((e) => (
+                <div className={`lb-lrow${e.isMe ? ' lb-lrow--me' : ''}`} key={e.rank}>
+                  <span className="lb-rank lb-rank--n">{e.rank}</span>
+                  <span className="lb-name">{e.name}{e.isMe ? ' (you)' : ''}</span>
+                  <span className="lb-lscore" style={{ color: e.passed ? 'var(--color-success)' : 'var(--color-text-secondary)' }}>{e.score}%</span>
+                  <span className="lb-ltime">{timeTaken(e.timeTakenMs)}</span>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       )}
     </Card>
