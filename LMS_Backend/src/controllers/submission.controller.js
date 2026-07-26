@@ -366,7 +366,7 @@ export async function exportSubmissionsCsv(req, res) {
 
 /**
  * Ranked leaderboard for an assessment, scoped to the requesting student's batch
- * (highest score first, earliest submission breaks ties). Trainers/admins may
+ * (highest score first, fastest attempt breaks ties). Trainers/admins may
  * pass ?batch=<id> to scope; without it they see everyone who took it.
  */
 export async function leaderboard(req, res) {
@@ -392,15 +392,24 @@ export async function leaderboard(req, res) {
     .limit(100) // leaderboard shows the top ranks; full count is reported separately
     .populate('student', 'name');
 
-  const entries = subs.map((s, i) => ({
-    rank: i + 1,
-    name: s.student?.name ?? 'Student',
-    score: s.score ?? 0,
-    passed: s.passed === true,
-    isMe: Boolean(s.student && s.student._id.toString() === userId),
-    // How long the attempt took (start → submit), for the leaderboard's Time column.
-    timeTakenMs: s.startedAt && s.submittedAt ? Math.max(0, new Date(s.submittedAt) - new Date(s.startedAt)) : null,
-  }));
+  const entries = subs
+    .map((s) => ({
+      name: s.student?.name ?? 'Student',
+      score: s.score ?? 0,
+      passed: s.passed === true,
+      isMe: Boolean(s.student && s.student._id.toString() === userId),
+      // How long the attempt took (start → submit), for the leaderboard's Time column.
+      timeTakenMs: s.startedAt && s.submittedAt ? Math.max(0, new Date(s.submittedAt) - new Date(s.startedAt)) : null,
+    }))
+    // Rank by score (highest first); ties broken by the faster attempt (least
+    // time taken wins). Attempts with no recorded duration sort to the bottom.
+    .sort((a, b) => {
+      if (b.score !== a.score) return b.score - a.score;
+      const at = a.timeTakenMs ?? Infinity;
+      const bt = b.timeTakenMs ?? Infinity;
+      return at - bt;
+    })
+    .map((e, i) => ({ rank: i + 1, ...e }));
 
   // True participant count (not capped by the top-100 entries limit).
   const participants = await Submission.countDocuments(filter);
