@@ -337,7 +337,7 @@ function AdminModuleTemplates({ moduleId, moduleObj, onBack }) {
           <Input label="Passing score % (optional)" type="number" min="0" max="100" value={form.passingScore} onChange={(e) => setForm({ ...form, passingScore: e.target.value })} placeholder="Defaults to 70" />
 
           <p className="lms-muted tmpl-grid__full" style={{ fontSize: 'var(--font-size-xs)', margin: 0 }}>
-            After creating, add the questions from this module's question bank{form.type === AssessmentType.PRACTICE ? ' (exactly 10 for a practice test)' : ''}. Trainers assign this test — they can't change the questions or duration.
+            After creating, add as many questions as you need from this module's question bank. Trainers assign this test — they can't change the questions or duration.
           </p>
           {err && <span className="field__error tmpl-grid__full">{err}</span>}
         </form>

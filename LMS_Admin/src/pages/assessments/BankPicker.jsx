@@ -1,14 +1,13 @@
 import { useState } from 'react';
 import { Database, Shuffle } from 'lucide-react';
-import { AssessmentType, QuestionType } from '@/shared';
-import { Badge, Button, EmptyState, Input, SkeletonText } from '@/components/ui';
+import { Badge, Button, EmptyState, Input, Select, SkeletonText } from '@/components/ui';
 import { apiErrorMessage } from '@/lib/api';
 import { useQuestionBank } from '@/lib/questionBank';
 import { useAddQuestionsFromBank } from '@/lib/assessments';
-import { QUESTION_TYPE_LABEL } from './assessmentsUi';
-import { pickEvenlyByTopic, shuffle } from './bankRandom';
+import { QUESTION_TYPE_LABEL, QUESTION_TYPE_OPTIONS } from './assessmentsUi';
 
-const PRACTICE_CAP = 10;
+const TYPE_FILTER_OPTIONS = [{ value: 'ALL', label: 'All types' }, ...QUESTION_TYPE_OPTIONS];
+import { pickEvenlyByTopic, shuffle } from './bankRandom';
 
 /**
  * Pick questions from the module's bank to add to a test. Questions are scoped to
@@ -35,10 +34,14 @@ export function BankPicker({ assessment, onClose }) {
   const scoped = topicSet.size > 0 ? (items ?? []).filter((q) => topicSet.has(String(q.topic))) : (items ?? []);
   const available = scoped.filter((q) => !alreadyAdded.has(q.id));
 
-  // Practice tests cap at 10 total; cap the random target to the remaining room.
-  const isPractice = assessment.type === AssessmentType.PRACTICE;
-  const maxTarget = isPractice ? Math.max(0, PRACTICE_CAP - alreadyAdded.size) : available.length;
-  const [target, setTarget] = useState(() => String(Math.min(PRACTICE_CAP, maxTarget || PRACTICE_CAP)));
+  // Optional question-type filter — "All types" by default. When a type is
+  // chosen, only that type is shown (and auto-picked) below.
+  const [typeFilter, setTypeFilter] = useState('ALL');
+  const visible = typeFilter === 'ALL' ? available : available.filter((q) => q.type === typeFilter);
+
+  // The admin can auto-pick as many as are available (no per-type cap).
+  const maxTarget = visible.length;
+  const [target, setTarget] = useState(() => String(Math.min(10, available.length) || ''));
 
   function toggle(id) {
     setSelected((s) => {
@@ -50,11 +53,11 @@ export function BankPicker({ assessment, onClose }) {
 
   function selectRandomly() {
     setErr('');
-    const n = Math.min(Number(target) || 0, available.length, maxTarget || available.length);
+    const n = Math.min(Number(target) || 0, visible.length);
     if (n <= 0) return;
     const picks = topicSet.size > 1
-      ? pickEvenlyByTopic(available, testTopics, n)
-      : shuffle(available).slice(0, n).map((q) => q.id);
+      ? pickEvenlyByTopic(visible, testTopics, n)
+      : shuffle(visible).slice(0, n).map((q) => q.id);
     setSelected(new Set(picks));
   }
 
@@ -111,9 +114,15 @@ export function BankPicker({ assessment, onClose }) {
               onChange={(e) => setTarget(e.target.value)}
               style={{ width: '4.5rem' }}
             />
-            <span className="lms-muted">
-              at random{topicSet.size > 1 ? ` · split evenly across ${topicSet.size} topics` : ''}
-            </span>
+            <span className="lms-muted">at random</span>
+            {/* Type filter — restrict the pool (and the list below) to one type. */}
+            <Select
+              options={TYPE_FILTER_OPTIONS}
+              value={typeFilter}
+              onChange={(e) => { setTypeFilter(e.target.value); setSelected(new Set()); }}
+              className="bank-random__type"
+            />
+            {topicSet.size > 1 && <span className="lms-muted">split evenly across {topicSet.size} topics</span>}
             <Button type="button" variant="outline" size="sm" onClick={selectRandomly}>
               <Shuffle size={14} style={{ marginRight: 6 }} /> Select randomly
             </Button>
@@ -123,20 +132,22 @@ export function BankPicker({ assessment, onClose }) {
           <div className="q-list" style={{ maxHeight: '24rem', overflowY: 'auto' }}>
             {testTopics.length > 0 ? (
               testTopics.map((t) => {
-                const group = available.filter((q) => String(q.topic) === String(t.topic));
+                const group = visible.filter((q) => String(q.topic) === String(t.topic));
                 return (
                   <div key={t.topic} className="bank-group">
                     <div className="bank-group__head">
                       {t.title} <span className="lms-muted">· {group.length} question{group.length === 1 ? '' : 's'}</span>
                     </div>
                     {group.length === 0
-                      ? <p className="lms-muted" style={{ fontSize: 'var(--font-size-sm)', margin: '0 0 var(--space-2)' }}>No questions tagged with this topic yet.</p>
+                      ? <p className="lms-muted" style={{ fontSize: 'var(--font-size-sm)', margin: '0 0 var(--space-2)' }}>No questions{typeFilter === 'ALL' ? '' : ` of this type`} for this topic.</p>
                       : group.map(QItem)}
                   </div>
                 );
               })
+            ) : visible.length === 0 ? (
+              <p className="lms-muted" style={{ fontSize: 'var(--font-size-sm)', margin: 0 }}>No questions of this type in the bank.</p>
             ) : (
-              available.map(QItem)
+              visible.map(QItem)
             )}
           </div>
         </>

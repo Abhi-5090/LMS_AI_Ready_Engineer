@@ -67,9 +67,6 @@ export const setAllowedStudentsSchema = z.object({
   studentIds: z.array(objectId),
 });
 
-// Practice ready-made tests are capped at exactly this many questions.
-export const PRACTICE_QUESTION_COUNT = 10;
-
 export const updateAssessmentSchema = z
   .object({
     title: z.string().min(2).optional(),
@@ -340,8 +337,8 @@ async function snapshotsFromBank(questionIds, moduleId) {
 
 /**
  * Admin authors a ready-made test (template). It holds the questions + duration +
- * proctoring but no batch or schedule — trainers assign it later. Practice templates
- * are capped at PRACTICE_QUESTION_COUNT questions.
+ * proctoring but no batch or schedule — trainers assign it later. The admin picks
+ * as many questions as they want (practice tests are no longer capped).
  */
 export async function createAssessment(req, res) {
   const data = req.body;
@@ -369,9 +366,6 @@ export async function createAssessment(req, res) {
   }
 
   const questions = await snapshotsFromBank(data.questionIds, data.module);
-  if (data.type === AssessmentType.PRACTICE && questions.length > PRACTICE_QUESTION_COUNT) {
-    throw ApiError.badRequest(`A practice test can have at most ${PRACTICE_QUESTION_COUNT} questions.`);
-  }
 
   // Default: practice = built-in proctoring off, final = built-in app.
   const proctoring = data.proctoring
@@ -549,18 +543,14 @@ export async function addQuestionsFromBank(req, res) {
   const snapshots = await snapshotsFromBank(req.body.questionIds, assessment.module);
   // Skip bank questions already added to this test (by source id).
   const already = new Set(assessment.questions.map((q) => q.sourceId?.toString()).filter(Boolean));
-  const cap = assessment.type === AssessmentType.PRACTICE ? PRACTICE_QUESTION_COUNT : Infinity;
   let added = 0;
-  let capped = false;
   for (const q of snapshots) {
     if (q.sourceId && already.has(q.sourceId.toString())) continue;
-    // Practice tests are capped — add up to the limit and drop the rest.
-    if (assessment.questions.length >= cap) { capped = true; break; }
     assessment.questions.push(q);
     added += 1;
   }
   await assessment.save();
-  ok(res, { ...assessment.toJSON(), added, capped }, 201);
+  ok(res, { ...assessment.toJSON(), added, capped: false }, 201);
 }
 
 /**

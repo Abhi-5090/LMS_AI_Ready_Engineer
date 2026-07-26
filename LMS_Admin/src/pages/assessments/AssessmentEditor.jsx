@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import * as XLSX from 'xlsx';
 import { Check, Database, Download, HelpCircle, ScrollText, Trash2, UploadCloud, Users } from 'lucide-react';
-import { AssessmentAvailability, AssessmentType, ProctoringMode, QuestionType } from '@/shared';
+import { AssessmentAvailability, ProctoringMode, QuestionType } from '@/shared';
 import { Badge, Button, Card, CardHeader, EmptyState, ErrorState, Input, Modal, Select, SkeletonTable, SkeletonText, useConfirm, useToast } from '@/components/ui';
 import { PageHeader } from '@/components/PageHeader';
 import { apiErrorMessage, downloadFile, fileSrc } from '@/lib/api';
@@ -68,7 +68,6 @@ export function AssessmentEditor() {
 
   const unlocked = a.availability === AssessmentAvailability.UNLOCKED;
   const isTemplate = a.isTemplate;
-  const canAddMore = !(a.type === AssessmentType.PRACTICE && a.questions.length >= 10);
 
   return (
     <>
@@ -117,11 +116,11 @@ export function AssessmentEditor() {
       <Card style={{ marginBottom: 'var(--space-6)' }}>
         <div className="panel-head">
           <CardHeader
-            title={`Questions (${a.questions.length}${a.type === AssessmentType.PRACTICE ? ' / 10' : ''})`}
+            title={`Questions (${a.questions.length})`}
             subtitle={isTemplate ? 'Picked from this module’s question bank. MCQs are auto-graded.' : 'Fixed by the admin who created this ready-made test.'}
           />
           {isTemplate && (
-            <Button onClick={() => setPickerOpen(true)} disabled={!canAddMore} title={!canAddMore ? 'A practice test is limited to 10 questions' : ''}>
+            <Button onClick={() => setPickerOpen(true)}>
               <Database size={15} style={{ marginRight: 6 }} /> Add from question bank
             </Button>
           )}
