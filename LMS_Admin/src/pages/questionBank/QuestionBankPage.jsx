@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import * as XLSX from 'xlsx';
-import { AlertTriangle, CheckCircle2, Download, FileQuestion, FolderOpen, Library, Lock, Pencil, Plus, Trash2, UploadCloud, X } from 'lucide-react';
+import { AlertTriangle, Boxes, CheckCircle2, Copy, Download, FileQuestion, FolderOpen, Library, Lock, Pencil, Plus, Trash2, UploadCloud, X } from 'lucide-react';
 import { QuestionType, QuestionComplexity, UserRole } from '@/shared';
-import { Badge, Button, Card, CardHeader, EmptyState, Input, Modal, Select, SkeletonTable, useConfirm } from '@/components/ui';
+import { Badge, Button, Card, CardHeader, EmptyState, Input, Modal, Select, SkeletonTable, useConfirm, useToast } from '@/components/ui';
 import { PageHeader } from '@/components/PageHeader';
 import { apiErrorMessage } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
@@ -11,10 +11,14 @@ import {
   useAddBankQuestion,
   useBulkAddBankQuestions,
   useDeleteBankQuestion,
+  useDeleteUploadBatch,
+  useDuplicates,
   useImportFromMaster,
   useQuestionBank,
   useUpdateBankQuestion,
+  useUploadBatches,
 } from '@/lib/questionBank';
+import { formatDate } from '@/lib/format';
 import { QUESTION_TYPE_LABEL, QUESTION_TYPE_OPTIONS } from '../assessments/assessmentsUi';
 import '../modules/modules.css';
 
@@ -41,6 +45,7 @@ export function QuestionBankPage() {
   const [editing, setEditing] = useState(null); // question item or {} for new
   const [importing, setImporting] = useState(false);
   const [importMaster, setImportMaster] = useState(false);
+  const [managing, setManaging] = useState(false); // uploads + duplicates manager
   const del = useDeleteBankQuestion();
   const confirm = useConfirm();
 
@@ -113,6 +118,9 @@ export function QuestionBankPage() {
             )}
             <Button variant="outline" onClick={() => setImporting(true)}>
               <UploadCloud size={15} style={{ marginRight: 6 }} /> Import Excel
+            </Button>
+            <Button variant="outline" onClick={() => setManaging(true)}>
+              <Boxes size={15} style={{ marginRight: 6 }} /> Uploads &amp; duplicates
             </Button>
             <Button onClick={() => setEditing({})}>
               <Plus size={15} style={{ marginRight: 6 }} /> Add question
@@ -208,7 +216,161 @@ export function QuestionBankPage() {
           <ImportFromMasterModal modules={modules ?? []} defaultModuleId={moduleId} onClose={() => setImportMaster(false)} />
         </Modal>
       )}
+
+      {managing && (
+        <Modal open title="Uploads & duplicates" size="xl" onClose={() => setManaging(false)}>
+          <UploadsManagerModal moduleId={moduleId} onClose={() => setManaging(false)} />
+        </Modal>
+      )}
     </>
+  );
+}
+
+// ── Uploads (batch cards) + duplicates report ────────────────────────────────────
+
+/**
+ * Manage a module's bank hygiene: review each Excel/import batch and delete it (or
+ * individual questions from it) as a card, and see a read-only report of questions
+ * already duplicated in the bank so the extras can be removed.
+ */
+function UploadsManagerModal({ moduleId, onClose }) {
+  const [tab, setTab] = useState('uploads'); // 'uploads' | 'duplicates'
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+      <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
+        <Button size="sm" variant={tab === 'uploads' ? 'primary' : 'outline'} onClick={() => setTab('uploads')}>
+          <Boxes size={14} style={{ marginRight: 6 }} /> Uploads
+        </Button>
+        <Button size="sm" variant={tab === 'duplicates' ? 'primary' : 'outline'} onClick={() => setTab('duplicates')}>
+          <Copy size={14} style={{ marginRight: 6 }} /> Duplicates
+        </Button>
+      </div>
+      {tab === 'uploads' ? <UploadsTab moduleId={moduleId} /> : <DuplicatesTab moduleId={moduleId} />}
+      <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+        <Button variant="outline" onClick={onClose}>Close</Button>
+      </div>
+    </div>
+  );
+}
+
+/** One card per upload; expand to see its questions, delete individually or all. */
+function UploadsTab({ moduleId }) {
+  const { data: batches, isLoading } = useUploadBatches(moduleId);
+  const delBatch = useDeleteUploadBatch();
+  const confirm = useConfirm();
+  const toast = useToast();
+  const [openId, setOpenId] = useState(null);
+
+  async function removeBatch(b) {
+    if (await confirm({ title: `Delete this upload (${b.count} questions)?`, message: `Every question from “${b.source || 'this upload'}” will be removed from the bank.`, confirmLabel: 'Delete all', tone: 'danger' })) {
+      try { await delBatch.mutateAsync(b.uploadBatch); toast.success('Upload deleted.'); if (openId === b.uploadBatch) setOpenId(null); }
+      catch (e) { toast.error(apiErrorMessage(e)); }
+    }
+  }
+
+  if (isLoading && !batches) return <SkeletonTable rows={3} cols={2} />;
+  if (!batches || batches.length === 0) {
+    return <EmptyState icon={<Boxes size={26} />} title="No uploads yet" description="Excel imports and master imports appear here as cards you can review or delete." />;
+  }
+  return (
+    <div className="dash-grid-2">
+      {batches.map((b) => (
+        <Card key={b.uploadBatch} className="upload-card">
+          <div className="panel-head">
+            <div>
+              <strong>{b.source || 'Upload'}</strong>
+              <div className="lms-muted" style={{ fontSize: 'var(--font-size-xs)' }}>
+                {b.count} question{b.count === 1 ? '' : 's'}{b.topicTitle ? ` · ${b.topicTitle}` : ''} · {formatDate(b.uploadedAt)}
+              </div>
+            </div>
+            <Badge tone="neutral">{b.count}</Badge>
+          </div>
+          <div style={{ display: 'flex', gap: 'var(--space-2)', marginTop: 'var(--space-2)' }}>
+            <Button size="sm" variant="outline" onClick={() => setOpenId(openId === b.uploadBatch ? null : b.uploadBatch)}>
+              {openId === b.uploadBatch ? 'Hide' : 'View questions'}
+            </Button>
+            <Button size="sm" variant="danger" loading={delBatch.isPending} onClick={() => removeBatch(b)}>
+              <Trash2 size={14} style={{ marginRight: 6 }} /> Delete upload
+            </Button>
+          </div>
+          {openId === b.uploadBatch && <BatchQuestions moduleId={moduleId} batchId={b.uploadBatch} />}
+        </Card>
+      ))}
+    </div>
+  );
+}
+
+/** The questions inside one upload batch, each individually deletable. */
+function BatchQuestions({ moduleId, batchId }) {
+  const { data: items, isLoading } = useQuestionBank({ module: moduleId, uploadBatch: batchId });
+  const del = useDeleteBankQuestion();
+  const confirm = useConfirm();
+  if (isLoading && !items) return <SkeletonTable rows={2} cols={1} />;
+  return (
+    <div style={{ marginTop: 'var(--space-3)', display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
+      {(items ?? []).map((q, i) => (
+        <div key={q.id} className="q-item" style={{ padding: 'var(--space-2) var(--space-3)' }}>
+          <div className="q-item__body">
+            <div className="q-item__prompt">{i + 1}. {q.prompt}</div>
+            {q.type === QuestionType.MCQ && q.options?.length > 0 && (
+              <div className="q-item__meta">{q.options.map((o, oi) => (
+                <Badge key={oi} tone={oi === q.correctOption ? 'success' : 'neutral'}>{o}</Badge>
+              ))}</div>
+            )}
+          </div>
+          <Button size="sm" variant="ghost" title="Remove this question"
+            onClick={async () => { if (await confirm({ title: 'Delete this question?', message: 'It will be removed from the bank.', confirmLabel: 'Delete', tone: 'danger' })) del.mutate(q.id); }}>
+            <Trash2 size={14} />
+          </Button>
+        </div>
+      ))}
+      {(items ?? []).length === 0 && <span className="lms-muted" style={{ fontSize: 'var(--font-size-sm)' }}>This upload is now empty.</span>}
+    </div>
+  );
+}
+
+/** Read-only report of questions already duplicated in the bank — delete the extras. */
+function DuplicatesTab({ moduleId }) {
+  const { data, isLoading } = useDuplicates(moduleId);
+  const del = useDeleteBankQuestion();
+  const confirm = useConfirm();
+  const toast = useToast();
+
+  if (isLoading && !data) return <SkeletonTable rows={3} cols={2} />;
+  const groups = data?.groups ?? [];
+  if (groups.length === 0) {
+    return <EmptyState icon={<CheckCircle2 size={26} />} title="No duplicates" description="Every question in this module is unique." />;
+  }
+
+  async function removeExtra(id) {
+    if (await confirm({ title: 'Delete this copy?', message: 'This duplicate will be removed. The other copies stay.', confirmLabel: 'Delete copy', tone: 'danger' })) {
+      try { await del.mutateAsync(id); } catch (e) { toast.error(apiErrorMessage(e)); }
+    }
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
+      <div className="lms-secondary-text" style={{ fontSize: 'var(--font-size-sm)' }}>
+        <strong>{groups.length}</strong> duplicated question{groups.length === 1 ? '' : 's'} · <strong>{data.removableCount}</strong> extra cop{data.removableCount === 1 ? 'y' : 'ies'} could be removed. The first (oldest) of each is kept below; delete the rest.
+      </div>
+      {groups.map((g, gi) => (
+        <Card key={gi}>
+          <div className="q-item__prompt" style={{ fontWeight: 'var(--font-weight-medium)' }}>{g.prompt}</div>
+          {g.topicTitle && <Badge tone="primary" style={{ marginTop: 4 }}>{g.topicTitle}</Badge>}
+          <div style={{ marginTop: 'var(--space-2)', display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {g.items.map((it, i) => (
+              <div key={it.id} style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', fontSize: 'var(--font-size-sm)' }}>
+                <Badge tone={i === 0 ? 'success' : 'warning'}>{i === 0 ? 'Keep' : 'Duplicate'}</Badge>
+                <span className="lms-muted" style={{ flex: 1 }}>{it.uploadSource || 'Added manually'} · {formatDate(it.createdAt)}</span>
+                {i > 0 && (
+                  <Button size="sm" variant="ghost" onClick={() => removeExtra(it.id)}><Trash2 size={14} /></Button>
+                )}
+              </div>
+            ))}
+          </div>
+        </Card>
+      ))}
+    </div>
   );
 }
 
@@ -546,15 +708,16 @@ function BankExcelImport({ moduleId, topics, onClose }) {
     setError('');
     if (!topic) { setError('Choose a topic for these questions.'); return; }
     try {
-      const res = await bulk.mutateAsync({ module: moduleId, topic, items: questions });
-      // Prefer the server's real counts; fall back to what we sent. Combine the
-      // server's skipped items with the rows we dropped while parsing the sheet.
-      const serverSkipped = Array.isArray(res?.skipped) ? res.skipped : [];
+      const res = await bulk.mutateAsync({ module: moduleId, topic, source: fileName || undefined, items: questions });
+      // Duplicates the server refused (already in the bank / repeated in the file) +
+      // rows we dropped while parsing the sheet.
+      const serverDupes = Array.isArray(res?.duplicates) ? res.duplicates : [];
       setResult({
-        added: res?.added ?? questions.length,
+        added: res?.added ?? 0,
+        duplicateCount: res?.duplicateCount ?? serverDupes.length,
         skipped: [
           ...skippedRows.map((s) => ({ label: `Row ${s.row}${s.prompt ? ` — ${s.prompt}` : ''}`, reason: s.error })),
-          ...serverSkipped.map((s) => ({ label: s.prompt ?? s.label ?? 'Question', reason: s.reason ?? 'Rejected by server' })),
+          ...serverDupes.map((s) => ({ label: s.prompt ?? 'Question', reason: 'Already in the bank' })),
         ],
       });
     } catch (e2) {
@@ -568,6 +731,11 @@ function BankExcelImport({ moduleId, topics, onClose }) {
         <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', color: 'var(--color-success)' }}>
           <CheckCircle2 size={20} /> <strong>{result.added} question(s) added to the bank.</strong>
         </div>
+        {result.duplicateCount > 0 && (
+          <div className="lms-secondary-text" style={{ fontSize: 'var(--font-size-sm)' }}>
+            {result.duplicateCount} were already in the bank (same wording + options) and were skipped.
+          </div>
+        )}
         {result.skipped.length > 0 && (
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--color-warning)', marginBottom: 4 }}>

@@ -42,3 +42,27 @@ export function useImportFromMaster() {
   const invalidate = useInvalidate();
   return useMutation({ mutationFn: (body) => unwrap(api.post('/question-bank/import-from-template', body)), onSuccess: invalidate });
 }
+
+/** Upload batches (cards) for a module — one per Excel upload / master import. */
+export function useUploadBatches(moduleId) {
+  return useQuery({
+    queryKey: ['question-bank', 'uploads', moduleId],
+    queryFn: () => unwrap(api.get('/question-bank/uploads', { params: { module: moduleId } })),
+    enabled: Boolean(moduleId),
+  });
+}
+
+/** Delete an entire upload batch. */
+export function useDeleteUploadBatch() {
+  const invalidate = useInvalidate();
+  return useMutation({ mutationFn: (batchId) => unwrap(api.delete(`/question-bank/uploads/${batchId}`)), onSuccess: invalidate });
+}
+
+/** Read-only report of duplicate questions already in a module's bank. */
+export function useDuplicates(moduleId, enabled = true) {
+  return useQuery({
+    queryKey: ['question-bank', 'duplicates', moduleId],
+    queryFn: () => unwrap(api.get('/question-bank/duplicates', { params: { module: moduleId } })),
+    enabled: Boolean(moduleId && enabled),
+  });
+}
