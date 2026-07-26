@@ -262,57 +262,59 @@ function AdminModuleTemplates({ moduleId, moduleObj, onBack }) {
       <Modal open={creating} title="New ready-made test" size="lg" onClose={() => setCreating(false)}
         footer={<><Button variant="outline" onClick={() => setCreating(false)}>Cancel</Button><Button form="tmpl-form" type="submit" loading={create.isPending}>Create</Button></>}>
         <form id="tmpl-form" onSubmit={submitCreate} className="tmpl-grid">
-          {/* Row 1: name + topics side by side */}
+          {/* Row 1: name + description side by side */}
           <Input label="Test name" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="e.g. Prompt Patterns — Practice Test" required />
           <div className="field">
-            <label className="field__label">Topics covered <span className="lms-muted">— pick from this module</span></label>
-            {topics.length === 0 ? (
-              <p className="lms-muted" style={{ fontSize: 'var(--font-size-sm)', margin: 0 }}>This module has no topics yet — add them in Modules.</p>
-            ) : (
-              <>
-                <Select
-                  value=""
-                  onChange={(e) => {
-                    const v = e.target.value;
-                    if (!v) return;
-                    if (v === WHOLE_MODULE) pickWholeModule();
-                    else addTopic(v);
-                  }}
-                  options={[
-                    { value: '', label: 'Add a topic…' },
-                    { value: WHOLE_MODULE, label: 'Whole module — all topics' },
-                    ...availableTopics.map((t) => ({ value: t.id, label: t.title })),
-                  ]}
-                />
-                {wholeModule ? (
-                  <div className="allow-chips" style={{ marginTop: 'var(--space-2)' }}>
-                    <button type="button" className="allow-chip allow-chip--on" onClick={() => setWholeModule(false)} title="Remove">
-                      <span className="allow-chip__dot" /> Whole module (all topics) ×
-                    </button>
-                  </div>
-                ) : selectedTopics.length > 0 && (
-                  <div className="allow-chips" style={{ marginTop: 'var(--space-2)' }}>
-                    {selectedTopics.map((t) => (
-                      <button type="button" key={t.id} className="allow-chip allow-chip--on" onClick={() => removeTopic(t.id)} title="Remove">
-                        <span className="allow-chip__dot" /> {t.title} ×
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </>
-            )}
-          </div>
-
-          {/* Row 2: description full width */}
-          <div className="field tmpl-grid__full">
             <label className="field__label">Description <span className="lms-muted">— extra notes (optional)</span></label>
             <textarea
               className="input"
-              style={{ minHeight: '4rem', resize: 'vertical' }}
+              style={{ minHeight: '2.6rem', resize: 'vertical' }}
               placeholder="e.g. Covers Prompt Patterns, Chain of Thought, and Structured Outputs."
               value={form.description}
               onChange={(e) => setForm({ ...form, description: e.target.value })}
             />
+          </div>
+
+          {/* Row 2: topics covered — its own row: picker on the left, chosen topics in a box beside it */}
+          <div className="field tmpl-grid__full">
+            <label className="field__label">Topics covered <span className="lms-muted">— pick from this module</span></label>
+            {topics.length === 0 ? (
+              <p className="lms-muted" style={{ fontSize: 'var(--font-size-sm)', margin: 0 }}>This module has no topics yet — add them in Modules.</p>
+            ) : (
+              <div className="tmpl-topics-row">
+                <div className="tmpl-topics-picker">
+                  <Select
+                    value=""
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      if (!v) return;
+                      if (v === WHOLE_MODULE) pickWholeModule();
+                      else addTopic(v);
+                    }}
+                    options={[
+                      { value: '', label: 'Add a topic…' },
+                      { value: WHOLE_MODULE, label: 'Whole module — all topics' },
+                      ...availableTopics.map((t) => ({ value: t.id, label: t.title })),
+                    ]}
+                  />
+                </div>
+                <div className="tmpl-topics-box">
+                  {wholeModule ? (
+                    <button type="button" className="allow-chip allow-chip--on" onClick={() => setWholeModule(false)} title="Remove">
+                      <span className="allow-chip__dot" /> Whole module (all topics) ×
+                    </button>
+                  ) : selectedTopics.length > 0 ? (
+                    selectedTopics.map((t) => (
+                      <button type="button" key={t.id} className="allow-chip allow-chip--on" onClick={() => removeTopic(t.id)} title="Remove">
+                        <span className="allow-chip__dot" /> {t.title} ×
+                      </button>
+                    ))
+                  ) : (
+                    <span className="lms-muted" style={{ fontSize: 'var(--font-size-sm)' }}>Selected topics appear here.</span>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Row 3: type + proctoring side by side */}
