@@ -110,7 +110,7 @@ test('assign with a student allow-list scopes visibility; clearing it opens the 
   assert.ok((await req('GET', '/assessments', B1)).data.some((x) => x.id === instId), 'cleared list = whole batch sees it');
 });
 
-test('a practice template is capped at 10 questions', async () => {
+test('a practice template can hold more than 10 questions (no cap)', async () => {
   const { req } = ctx;
   const ids = [];
   for (let i = 0; i < 11; i += 1) {
@@ -121,11 +121,11 @@ test('a practice template is capped at 10 questions', async () => {
   const ten = await req('POST', `/assessments/${t.data.id}/questions/from-bank`, ADMIN, { questionIds: ids.slice(0, 10) });
   assert.equal(ten.status, 201);
   assert.equal(ten.data.questions.length, 10);
-  // The 11th is dropped, not added — the test stays at 10.
+  // The 11th is added too — practice tests are no longer capped.
   const eleventh = await req('POST', `/assessments/${t.data.id}/questions/from-bank`, ADMIN, { questionIds: [ids[10]] });
-  assert.equal(eleventh.data.questions.length, 10, 'stays capped at 10');
-  assert.equal(eleventh.data.added, 0);
-  assert.equal(eleventh.data.capped, true);
+  assert.equal(eleventh.data.questions.length, 11, 'accepts the 11th question');
+  assert.equal(eleventh.data.added, 1);
+  assert.equal(eleventh.data.capped, false);
 });
 
 test('a template carries its description onto the assigned test', async () => {
