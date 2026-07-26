@@ -381,9 +381,9 @@
 .th-sort:hover { color: var(--color-primary); }
 .th-sort__idle { opacity: 0.4; }
 
-/* Question-bank table: centered headers + clean, compact, borderless chips. */
-.qb-table th, .qb-table td { vertical-align: middle; }
-.qb-table th { text-align: center; } /* every column header centered */
+/* Question-bank table: everything centered + clean, compact, borderless chips. */
+.qb-table th, .qb-table td { vertical-align: middle; text-align: center; }
+.qb-table td .list-actions { justify-content: center; } /* center the action buttons too */
 .qb-c { text-align: center; }
 .qb-table th.qb-c .th-sort { justify-content: center; }
 .qb-chip {
