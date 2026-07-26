@@ -398,6 +398,8 @@ export async function leaderboard(req, res) {
     score: s.score ?? 0,
     passed: s.passed === true,
     isMe: Boolean(s.student && s.student._id.toString() === userId),
+    // How long the attempt took (start → submit), for the leaderboard's Time column.
+    timeTakenMs: s.startedAt && s.submittedAt ? Math.max(0, new Date(s.submittedAt) - new Date(s.startedAt)) : null,
   }));
 
   // True participant count (not capped by the top-100 entries limit).

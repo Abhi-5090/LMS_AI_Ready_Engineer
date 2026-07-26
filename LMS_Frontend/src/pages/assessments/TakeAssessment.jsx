@@ -112,60 +112,56 @@ function Result({ a, submission }) {
   return (
     <div className="result-page">
       {header}
-      <div className="result-cols">
-        {/* Left column: score, then "view your answers" */}
-        <div className="result-col">
-          <Card className="result-score">
-            <div className="result-score__pct" style={{ color: passed ? 'var(--color-success)' : 'var(--color-error)' }}>{submission.score}%</div>
-            <Badge tone={passed ? 'success' : 'error'}>{passed ? 'Passed' : 'Did not pass'} · need {a.passingScore}%</Badge>
-            <p className="lms-muted" style={{ marginTop: 'var(--space-3)', marginBottom: 0 }}>
-              {passed ? 'Great work — this section is complete.' : 'Review the material and ask your trainer about a re-attempt.'}
-            </p>
-          </Card>
+      {/* Row 1: score · AI feedback · your answers */}
+      <div className="result-top3">
+        <Card className="result-score">
+          <div className="result-score__pct" style={{ color: passed ? 'var(--color-success)' : 'var(--color-error)' }}>{submission.score}%</div>
+          <Badge tone={passed ? 'success' : 'error'}>{passed ? 'Passed' : 'Did not pass'} · need {a.passingScore}%</Badge>
+          <p className="lms-muted" style={{ marginTop: 'var(--space-3)', marginBottom: 0, fontSize: 'var(--font-size-sm)' }}>
+            {passed ? 'Great work — this section is complete.' : 'Review the material and ask your trainer about a re-attempt.'}
+          </p>
+        </Card>
 
-          {a.answersLockedUntil ? (
-            <LockedAnswersCard a={a} />
-          ) : answersReady ? (
-            <Card className="result-answers-cta">
-              <CardHeader title="Your answers" subtitle="Compare what you chose with the correct answers" />
-              <Button onClick={() => setShowAnswers(true)}><Eye size={16} style={{ marginRight: 6 }} /> View your answers</Button>
-            </Card>
+        <Card className="result-feedback">
+          <CardHeader title="AI Feedback" />
+          {hasFeedback ? (
+            <div className="result-feedback__body">
+              {fb.summary && <p className="lms-secondary-text">{fb.summary}</p>}
+              {fb.breakdown && Object.keys(fb.breakdown).length > 0 && (
+                <div style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap', margin: 'var(--space-3) 0' }}>
+                  {Object.entries(fb.breakdown).map(([k, v]) => (<Badge key={k} tone="neutral">{k}: {v}</Badge>))}
+                </div>
+              )}
+              {fb.suggestions && fb.suggestions.length > 0 && (
+                <>
+                  <div className="lms-secondary-text" style={{ fontWeight: 'var(--font-weight-semibold)', margin: 'var(--space-2) 0' }}>Suggestions</div>
+                  <ul style={{ paddingLeft: 'var(--space-5)', display: 'flex', flexDirection: 'column', gap: 'var(--space-1)' }}>
+                    {fb.suggestions.map((s, i) => (<li key={i} className="lms-secondary-text">{s}</li>))}
+                  </ul>
+                </>
+              )}
+            </div>
           ) : (
-            <Card><CardHeader title="Your answers" subtitle="Not available for this test" /></Card>
+            <p className="lms-muted" style={{ margin: 0 }}>
+              {passed ? 'No AI feedback for this test.' : 'Review the material and ask your trainer about a re-attempt.'}
+            </p>
           )}
-        </div>
+        </Card>
 
-        {/* Right column: AI feedback, then the leaderboard */}
-        <div className="result-col">
-          <Card className="result-feedback">
-            <CardHeader title="AI Feedback" />
-            {hasFeedback ? (
-              <div className="result-feedback__body">
-                {fb.summary && <p className="lms-secondary-text">{fb.summary}</p>}
-                {fb.breakdown && Object.keys(fb.breakdown).length > 0 && (
-                  <div style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap', margin: 'var(--space-3) 0' }}>
-                    {Object.entries(fb.breakdown).map(([k, v]) => (<Badge key={k} tone="neutral">{k}: {v}</Badge>))}
-                  </div>
-                )}
-                {fb.suggestions && fb.suggestions.length > 0 && (
-                  <>
-                    <div className="lms-secondary-text" style={{ fontWeight: 'var(--font-weight-semibold)', margin: 'var(--space-2) 0' }}>Suggestions</div>
-                    <ul style={{ paddingLeft: 'var(--space-5)', display: 'flex', flexDirection: 'column', gap: 'var(--space-1)' }}>
-                      {fb.suggestions.map((s, i) => (<li key={i} className="lms-secondary-text">{s}</li>))}
-                    </ul>
-                  </>
-                )}
-              </div>
-            ) : (
-              <p className="lms-muted" style={{ margin: 0 }}>
-                {passed ? 'No AI feedback for this test.' : 'Review the material and ask your trainer about a re-attempt.'}
-              </p>
-            )}
+        {a.answersLockedUntil ? (
+          <LockedAnswersCard a={a} />
+        ) : answersReady ? (
+          <Card className="result-answers-cta">
+            <CardHeader title="Your answers" subtitle="Compare with the correct answers" />
+            <Button onClick={() => setShowAnswers(true)}><Eye size={16} style={{ marginRight: 6 }} /> View your answers</Button>
           </Card>
-
-          <Leaderboard id={a.id} />
-        </div>
+        ) : (
+          <Card><CardHeader title="Your answers" subtitle="Not available for this test" /></Card>
+        )}
       </div>
+
+      {/* Row 2: full-width leaderboard */}
+      <Leaderboard id={a.id} />
 
       {showAnswers && <AnswersModal a={a} submission={submission} onClose={() => setShowAnswers(false)} />}
     </div>
@@ -239,23 +235,26 @@ function AnswersModal({ a, submission, onClose }) {
     <Modal open title="Your answers vs the correct answers" size="xl" onClose={onClose}>
       <div className="ans-modal">
         <nav className="ans-nav" aria-label="Questions">
-          {a.questions.map((q, i) => {
-            const ans = map[q.id];
-            const isMcq = q.type === QuestionType.MCQ;
-            const done = isMcq ? ans?.selectedOption !== undefined : Boolean(ans?.text?.trim());
-            const correct = isMcq && ans?.selectedOption === q.correctOption;
-            return (
-              <button
-                key={q.id}
-                type="button"
-                className={`ans-nav__btn${isMcq ? (correct ? ' is-correct' : done ? ' is-wrong' : '') : done ? ' is-answered' : ''}`}
-                onClick={() => jump(q.id)}
-                title={`Question ${i + 1}`}
-              >
-                {i + 1}
-              </button>
-            );
-          })}
+          <div className="ans-nav__head"><ListChecks size={16} /> Questions</div>
+          <div className="ans-nav__grid">
+            {a.questions.map((q, i) => {
+              const ans = map[q.id];
+              const isMcq = q.type === QuestionType.MCQ;
+              const done = isMcq ? ans?.selectedOption !== undefined : Boolean(ans?.text?.trim());
+              const correct = isMcq && ans?.selectedOption === q.correctOption;
+              return (
+                <button
+                  key={q.id}
+                  type="button"
+                  className={`ans-nav__btn${isMcq ? (correct ? ' is-correct' : done ? ' is-wrong' : '') : done ? ' is-answered' : ''}`}
+                  onClick={() => jump(q.id)}
+                  title={`Question ${i + 1}`}
+                >
+                  {i + 1}
+                </button>
+              );
+            })}
+          </div>
         </nav>
 
         <div className="ans-body" ref={bodyRef}>
@@ -324,16 +323,27 @@ function AnswersModal({ a, submission, onClose }) {
   );
 }
 
-/** A single podium place (top 3). `place` is 1 | 2 | 3. */
+/** Compact "time taken" label for the leaderboard (start → submit). */
+function timeTaken(ms) {
+  if (ms == null) return '—';
+  const s = Math.max(0, Math.round(ms / 1000));
+  const m = Math.floor(s / 60);
+  return m > 0 ? `${m}m ${String(s % 60).padStart(2, '0')}s` : `${s}s`;
+}
+
+/** A single podium place (top 3): rank medal, name, percentage and time taken. */
 function PodiumPlace({ e }) {
   if (!e) return <div className="lb-place lb-place--empty" />;
   const Icon = e.rank === 1 ? Crown : Medal;
   return (
     <div className={`lb-place lb-place--${e.rank}${e.isMe ? ' lb-place--me' : ''}`} title={`${e.name} — ${e.score}%`}>
-      <div className="lb-place__medal"><Icon size={e.rank === 1 ? 22 : 18} /></div>
+      <div className="lb-place__medal"><Icon size={e.rank === 1 ? 24 : 19} /></div>
       <div className="lb-place__avatar">{(e.name || '?').trim().charAt(0).toUpperCase()}</div>
       <div className="lb-place__name">{e.name}{e.isMe ? ' (you)' : ''}</div>
-      <div className="lb-place__score" style={{ color: e.passed ? 'var(--color-success)' : 'var(--color-text-secondary)' }}>{e.score}%</div>
+      <div className="lb-place__meta">
+        <span className="lb-place__score" style={{ color: e.passed ? 'var(--color-success)' : 'var(--color-text-secondary)' }}>{e.score}%</span>
+        <span className="lb-place__time">{timeTaken(e.timeTakenMs)}</span>
+      </div>
     </div>
   );
 }
@@ -370,16 +380,22 @@ function Leaderboard({ id }) {
               </div>
             )}
           </div>
-          {/* Ranks 4+ — scrollable list. */}
+          {/* Ranks 4+ — scrollable list with Name / Percentage / Time columns. */}
           {rest.length > 0 && (
             <div className="lb-rest">
-              {rest.map((e) => (
-                <div className={`lb-row${e.isMe ? ' lb-row--me' : ''}`} key={e.rank}>
-                  <span className="lb-rank lb-rank--n">{e.rank}</span>
-                  <span className="lb-name">{e.name}{e.isMe ? ' (you)' : ''}</span>
-                  <span className="lb-score" style={{ color: e.passed ? 'var(--color-success)' : 'var(--color-text-secondary)' }}>{e.score}%</span>
-                </div>
-              ))}
+              <div className="lb-rest__head">
+                <span>#</span><span>Name</span><span>Percentage</span><span>Time taken</span>
+              </div>
+              <div className="lb-rest__list">
+                {rest.map((e) => (
+                  <div className={`lb-lrow${e.isMe ? ' lb-lrow--me' : ''}`} key={e.rank}>
+                    <span className="lb-rank lb-rank--n">{e.rank}</span>
+                    <span className="lb-name">{e.name}{e.isMe ? ' (you)' : ''}</span>
+                    <span className="lb-lscore" style={{ color: e.passed ? 'var(--color-success)' : 'var(--color-text-secondary)' }}>{e.score}%</span>
+                    <span className="lb-ltime">{timeTaken(e.timeTakenMs)}</span>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
         </div>
