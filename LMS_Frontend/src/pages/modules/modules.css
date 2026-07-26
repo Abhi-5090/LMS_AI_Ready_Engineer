@@ -397,8 +397,11 @@
   line-height: 1.55;
   white-space: nowrap;
 }
-.qb-chip--type   { background: color-mix(in srgb, var(--color-primary) 12%, transparent);   color: var(--color-primary-hover); }
-.qb-chip--topic  { background: color-mix(in srgb, var(--color-secondary) 15%, transparent); color: var(--color-secondary); }
+/* Use the designed light-bg + hover-text token pairs so chips stay readable in
+   every theme + dark mode (brand tokens don't change in dark mode; some themes'
+   secondary is a dark neutral, so a transparent tint + base-color text vanished). */
+.qb-chip--type   { background: var(--color-primary-light);   color: var(--color-primary-hover); }
+.qb-chip--topic  { background: var(--color-secondary-light); color: var(--color-secondary-hover); }
 .qb-chip--easy   { background: color-mix(in srgb, var(--color-success) 16%, transparent);    color: var(--color-success); }
 .qb-chip--medium { background: color-mix(in srgb, var(--color-warning) 18%, transparent);    color: var(--color-warning); }
 .qb-chip--hard   { background: color-mix(in srgb, var(--color-error) 15%, transparent);      color: var(--color-error); }
