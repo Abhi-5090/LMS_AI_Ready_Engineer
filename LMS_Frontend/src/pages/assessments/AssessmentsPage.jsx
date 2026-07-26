@@ -72,7 +72,8 @@ function StudentAssessments() {
         // Module cards, each showing how many assessments are still to take.
         <div className="module-grid">
           {groups.map((g) => {
-            const toTake = g.items.filter((a) => !isDone(a)).length;
+            const unlocked = g.items.filter((a) => a.availableNow && !isDone(a)).length;
+            const pending = g.items.filter((a) => !isDone(a)).length;
             return (
               <Card key={g.id} className="module-card module-card--clickable" onClick={() => setModuleId(g.id)} role="button" tabIndex={0}
                 onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setModuleId(g.id); } }}>
@@ -87,7 +88,17 @@ function StudentAssessments() {
                 </div>
                 <div className="module-card__meta">
                   <Badge tone="neutral">{g.items.length} assessment{g.items.length === 1 ? '' : 's'}</Badge>
-                  {toTake > 0 ? <Badge tone="primary">{toTake} to take →</Badge> : <Badge tone="success">All done</Badge>}
+                </div>
+                <div className="list-actions">
+                  {unlocked > 0 ? (
+                    <Button onClick={(e) => { e.stopPropagation(); setModuleId(g.id); }}>
+                      {unlocked} unlocked test{unlocked === 1 ? '' : 's'} →
+                    </Button>
+                  ) : pending > 0 ? (
+                    <Badge tone="neutral">Locked for now</Badge>
+                  ) : (
+                    <Badge tone="success">All done</Badge>
+                  )}
                 </div>
               </Card>
             );
