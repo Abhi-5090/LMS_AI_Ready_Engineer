@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom';
 import { AlertTriangle, Camera, Clock, Copy, Download, Expand, ListChecks, Lock, Maximize, ShieldCheck } from 'lucide-react';
 import { QuestionType } from '@/shared';
 import { Badge, Button, Card, CardHeader } from '@/components/ui';
-import { PageHeader } from '@/components/PageHeader';
 import { apiErrorMessage } from '@/lib/api';
 import { useProctorShot, useRecordWarning, useSaveProgress, useStartAttempt, useSubmitAssessment } from '@/lib/assessments';
 import { assessmentLabel, isGithubRepoUrl, QUESTION_TYPE_HINT } from './assessmentsUi';
@@ -23,7 +22,7 @@ function exitFullscreen() {
   if (document.fullscreenElement) document.exitFullscreen?.().catch(() => {});
 }
 async function requestCamera() {
-  return navigator.mediaDevices.getUserMedia({ video: { width: 480, height: 360 }, audio: false });
+  return navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 }, audio: false });
 }
 function stopStream(stream) {
   stream?.getTracks?.().forEach((t) => t.stop());
@@ -90,12 +89,12 @@ function ExamIntro({ a, onStarted }) {
   }
 
   return (
-    <>
-      <PageHeader title={assessmentLabel(a)} subtitle={<Link to="/app/assessments" className="lms-muted">← All assessments</Link>} />
-      <Card style={{ maxWidth: '42rem' }}>
+    <div className="exam-intro-screen">
+      <Card className="exam-intro-card">
+        <Link to="/app/assessments" className="lms-muted exam-intro-card__back">← All assessments</Link>
         <CardHeader
-          title={<span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}><ShieldCheck size={18} style={{ color: 'var(--color-primary)' }} /> Proctored test</span>}
-          subtitle={`${a.module?.name} · pass ≥ ${a.passingScore}%`}
+          title={<span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}><ShieldCheck size={22} style={{ color: 'var(--color-primary)' }} /> {assessmentLabel(a)}</span>}
+          subtitle={`Proctored test · ${a.module?.name} · pass ≥ ${a.passingScore}%`}
         />
 
         <div className="exam-intro__meta">
@@ -142,7 +141,7 @@ function ExamIntro({ a, onStarted }) {
           </>
         )}
       </Card>
-    </>
+    </div>
   );
 }
 
@@ -387,8 +386,8 @@ function TimedExam({ assessment, questions, endsAt, serverNow, initialStream }) 
 
       <div className="exam-body">
         <aside className="exam-palette">
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 'var(--font-weight-semibold)', fontSize: 'var(--font-size-sm)' }}>
-            <ListChecks size={15} /> Questions
+          <div className="exam-palette__head">
+            <ListChecks size={18} /> Questions
           </div>
           <div className="exam-palette__grid">
             {questions.map((q, i) => {
@@ -437,7 +436,7 @@ function TimedExam({ assessment, questions, endsAt, serverNow, initialStream }) 
               )}
             </div>
           ))}
-          <div style={{ maxWidth: '46rem', margin: '0 auto', display: 'flex', justifyContent: 'flex-end', paddingBottom: 'var(--space-8)' }}>
+          <div style={{ maxWidth: '54rem', margin: 0, display: 'flex', justifyContent: 'flex-end', paddingBottom: 'var(--space-8)' }}>
             <Button loading={submitMut.isPending} onClick={doSubmit}>Submit test</Button>
           </div>
         </main>
