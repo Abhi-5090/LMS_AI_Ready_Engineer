@@ -33,7 +33,7 @@ const COMPLEXITY_RANK = { easy: 0, medium: 1, hard: 2 };
 const TYPE_ABBR = {
   [QuestionType.MCQ]: 'MCQ',
   [QuestionType.SCENARIO]: 'SB',
-  [QuestionType.PROMPT_WRITING]: 'RW',
+  [QuestionType.PROMPT_WRITING]: 'PW',
   [QuestionType.CODING]: 'RE',
 };
 
