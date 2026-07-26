@@ -604,6 +604,11 @@
 .lb-place--2 { border-color: rgba(176,180,186,0.6); background: color-mix(in srgb, #b0b4ba 14%, var(--color-surface)); }
 .lb-place--3 { border-color: rgba(205,127,50,0.55); background: color-mix(in srgb, #cd7f32 14%, var(--color-surface)); }
 .lb-place--me { outline: 2px solid var(--color-primary); outline-offset: 1px; }
+.lb-place__top { display: flex; align-items: center; gap: 6px; }
+.lb-place__medal { line-height: 0; color: var(--color-text-muted); }
+.lb-place--1 .lb-place__medal { color: #e0a92e; }
+.lb-place--2 .lb-place__medal { color: #9aa0a6; }
+.lb-place--3 .lb-place__medal { color: #cd7f32; }
 .lb-place__rank {
   width: 1.9rem; height: 1.9rem; border-radius: 50%; display: grid; place-items: center;
   font-weight: var(--font-weight-bold); font-size: var(--font-size-sm);

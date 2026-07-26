@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Link, useParams } from 'react-router-dom';
-import { Check, CheckCircle2, Eye, Github, ListChecks, Lock, ShieldAlert, Trophy, X } from 'lucide-react';
+import { Check, CheckCircle2, Crown, Eye, Github, ListChecks, Lock, Medal, ShieldAlert, Trophy, X } from 'lucide-react';
 import { QuestionType } from '@/shared';
 import { Badge, Button, Card, CardHeader, EmptyState, ErrorState, Modal, Skeleton, SkeletonText, Spinner, Textarea, useConfirm } from '@/components/ui';
 import { PageHeader } from '@/components/PageHeader';
@@ -334,9 +334,13 @@ function timeTaken(ms) {
 /** One of the six static top places: circled rank, name, percentage and time. */
 function PodiumPlace({ e }) {
   if (!e) return <div className="lb-place lb-place--empty" />;
+  const Icon = e.rank === 1 ? Crown : Medal; // crown for #1, medal for the rest
   return (
     <div className={`lb-place${e.rank <= 3 ? ` lb-place--${e.rank}` : ''}${e.isMe ? ' lb-place--me' : ''}`} title={`${e.name} — ${e.score}%`}>
-      <div className="lb-place__rank">{e.rank}</div>
+      <div className="lb-place__top">
+        <Icon size={e.rank === 1 ? 18 : 15} className="lb-place__medal" />
+        <span className="lb-place__rank">{e.rank}</span>
+      </div>
       <div className="lb-place__name">{e.name}{e.isMe ? ' (you)' : ''}</div>
       <div className="lb-place__meta">
         <span className="lb-place__score" style={{ color: e.passed ? 'var(--color-success)' : 'var(--color-text-secondary)' }}>{e.score}%</span>
