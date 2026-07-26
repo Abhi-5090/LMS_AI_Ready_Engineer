@@ -84,6 +84,13 @@
   font-size: var(--font-size-sm);
   text-align: center;
 }
+/* Show only the recent few notifications; the rest scroll into view. */
+.bell__list {
+  max-height: 21rem; /* ~5 items visible, then scroll */
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.bell__list .bell__item:last-child { border-bottom: none; }
 .bell__item {
   padding: var(--space-3) var(--space-4);
   border-bottom: 1px solid var(--color-border);
