@@ -1,9 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Link, useParams } from 'react-router-dom';
-import { Check, CheckCircle2, Github, Lock, ShieldAlert, Trophy, X } from 'lucide-react';
+import { Check, CheckCircle2, Crown, Eye, Github, ListChecks, Lock, Medal, ShieldAlert, Trophy, X } from 'lucide-react';
 import { QuestionType } from '@/shared';
-import { Badge, Button, Card, CardHeader, EmptyState, ErrorState, Skeleton, SkeletonText, Spinner, Textarea, useConfirm } from '@/components/ui';
+import { Badge, Button, Card, CardHeader, EmptyState, ErrorState, Modal, Skeleton, SkeletonText, Spinner, Textarea, useConfirm } from '@/components/ui';
 import { PageHeader } from '@/components/PageHeader';
 import { apiErrorMessage } from '@/lib/api';
 import { assessmentKeys, useAssessment, useLeaderboard, useMySubmission, useSubmitAssessment } from '@/lib/assessments';
@@ -45,6 +45,7 @@ export function TakeAssessment() {
 }
 
 function Result({ a, submission }) {
+  const [showAnswers, setShowAnswers] = useState(false);
   const header = (
     <PageHeader title={assessmentLabel(a)} subtitle={<Link to="/app/assessments" className="lms-muted">← All assessments</Link>} />
   );
@@ -105,59 +106,69 @@ function Result({ a, submission }) {
 
   const passed = submission.passed;
   const fb = submission.feedback;
+  const hasFeedback = fb && (fb.summary || (fb.suggestions && fb.suggestions.length > 0) || (fb.breakdown && Object.keys(fb.breakdown).length > 0));
+  const answersReady = !a.answersLockedUntil && a.questions?.length > 0;
+
   return (
-    <>
+    <div className="result-page">
       {header}
-      <div className="result-grid">
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-6)' }}>
-          <Card style={{ textAlign: 'center', padding: 'var(--space-10)' }}>
-            <div style={{ fontSize: 'var(--font-size-4xl)', fontWeight: 'var(--font-weight-bold)', color: passed ? 'var(--color-success)' : 'var(--color-error)' }}>
-              {submission.score}%
-            </div>
-            <div style={{ marginTop: 'var(--space-3)' }}>
-              <Badge tone={passed ? 'success' : 'error'}>
-                {passed ? 'Passed' : 'Did not pass'} · need {a.passingScore}%
-              </Badge>
-            </div>
-            <p className="lms-muted" style={{ marginTop: 'var(--space-4)' }}>
+      <div className="result-cols">
+        {/* Left column: score, then "view your answers" */}
+        <div className="result-col">
+          <Card className="result-score">
+            <div className="result-score__pct" style={{ color: passed ? 'var(--color-success)' : 'var(--color-error)' }}>{submission.score}%</div>
+            <Badge tone={passed ? 'success' : 'error'}>{passed ? 'Passed' : 'Did not pass'} · need {a.passingScore}%</Badge>
+            <p className="lms-muted" style={{ marginTop: 'var(--space-3)', marginBottom: 0 }}>
               {passed ? 'Great work — this section is complete.' : 'Review the material and ask your trainer about a re-attempt.'}
             </p>
           </Card>
 
-          {a.answersLockedUntil
-            ? <LockedAnswersCard a={a} />
-            : a.questions?.length > 0 && <ReviewCard a={a} submission={submission} />}
-
-          {fb && (fb.summary || (fb.suggestions && fb.suggestions.length > 0)) && (
-            <Card>
-              <CardHeader title="AI Feedback" />
-              {fb.summary && <p className="lms-secondary-text">{fb.summary}</p>}
-              {fb.breakdown && Object.keys(fb.breakdown).length > 0 && (
-                <div style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap', margin: 'var(--space-4) 0' }}>
-                  {Object.entries(fb.breakdown).map(([k, v]) => (
-                    <Badge key={k} tone="neutral">{k}: {v}</Badge>
-                  ))}
-                </div>
-              )}
-              {fb.suggestions && fb.suggestions.length > 0 && (
-                <>
-                  <div className="lms-secondary-text" style={{ fontWeight: 'var(--font-weight-semibold)', marginBottom: 'var(--space-2)' }}>
-                    Suggestions
-                  </div>
-                  <ul style={{ paddingLeft: 'var(--space-5)', display: 'flex', flexDirection: 'column', gap: 'var(--space-1)' }}>
-                    {fb.suggestions.map((s, i) => (
-                      <li key={i} className="lms-secondary-text">{s}</li>
-                    ))}
-                  </ul>
-                </>
-              )}
+          {a.answersLockedUntil ? (
+            <LockedAnswersCard a={a} />
+          ) : answersReady ? (
+            <Card className="result-answers-cta">
+              <CardHeader title="Your answers" subtitle="Compare what you chose with the correct answers" />
+              <Button onClick={() => setShowAnswers(true)}><Eye size={16} style={{ marginRight: 6 }} /> View your answers</Button>
             </Card>
+          ) : (
+            <Card><CardHeader title="Your answers" subtitle="Not available for this test" /></Card>
           )}
         </div>
 
-        <Leaderboard id={a.id} />
+        {/* Right column: AI feedback, then the leaderboard */}
+        <div className="result-col">
+          <Card className="result-feedback">
+            <CardHeader title="AI Feedback" />
+            {hasFeedback ? (
+              <div className="result-feedback__body">
+                {fb.summary && <p className="lms-secondary-text">{fb.summary}</p>}
+                {fb.breakdown && Object.keys(fb.breakdown).length > 0 && (
+                  <div style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap', margin: 'var(--space-3) 0' }}>
+                    {Object.entries(fb.breakdown).map(([k, v]) => (<Badge key={k} tone="neutral">{k}: {v}</Badge>))}
+                  </div>
+                )}
+                {fb.suggestions && fb.suggestions.length > 0 && (
+                  <>
+                    <div className="lms-secondary-text" style={{ fontWeight: 'var(--font-weight-semibold)', margin: 'var(--space-2) 0' }}>Suggestions</div>
+                    <ul style={{ paddingLeft: 'var(--space-5)', display: 'flex', flexDirection: 'column', gap: 'var(--space-1)' }}>
+                      {fb.suggestions.map((s, i) => (<li key={i} className="lms-secondary-text">{s}</li>))}
+                    </ul>
+                  </>
+                )}
+              </div>
+            ) : (
+              <p className="lms-muted" style={{ margin: 0 }}>
+                {passed ? 'No AI feedback for this test.' : 'Review the material and ask your trainer about a re-attempt.'}
+              </p>
+            )}
+          </Card>
+
+          <Leaderboard id={a.id} />
+        </div>
       </div>
-    </>
+
+      {showAnswers && <AnswersModal a={a} submission={submission} onClose={() => setShowAnswers(false)} />}
+    </div>
   );
 }
 
@@ -207,64 +218,134 @@ function LockedAnswersCard({ a }) {
   );
 }
 
-function ReviewCard({ a, submission }) {
+/**
+ * Full-screen-ish modal comparing YOUR answer with the ACTUAL answer for every
+ * question, side by side. A left nav lists question numbers; clicking one jumps to
+ * that question at the top of the scrollable body. Scales to any number of questions.
+ */
+function AnswersModal({ a, submission, onClose }) {
   const map = {};
   (submission.answers ?? []).forEach((an) => { map[an.question] = an; });
+  const bodyRef = useRef(null);
+
+  const jump = (qid) => {
+    const el = bodyRef.current?.querySelector(`#ans-q-${qid}`);
+    if (el && bodyRef.current) bodyRef.current.scrollTo({ top: el.offsetTop - 8, behavior: 'smooth' });
+  };
+
+  const optClass = (isCorrect, isPicked) => `ans-opt${isCorrect ? ' ans-opt--correct' : ''}${isPicked && !isCorrect ? ' ans-opt--wrong' : ''}${isPicked ? ' ans-opt--picked' : ''}`;
 
   return (
-    <Card>
-      <CardHeader title="Your answers" subtitle="What you got right and wrong" />
-      <div className="q-review">
-        {a.questions.map((q, i) => {
-          const ans = map[q.id];
-          const picked = ans?.selectedOption;
-          const isMcq = q.type === QuestionType.MCQ;
-          const correct = isMcq && picked === q.correctOption;
-          return (
-            <div key={q.id} className="q-review__item">
-              <div className="q-review__head">
-                <span className="q-review__num">{i + 1}</span>
-                <span style={{ flex: 1 }}>{q.prompt}</span>
-                {isMcq && (
-                  <Badge tone={correct ? 'success' : picked === undefined ? 'neutral' : 'error'}>
-                    {correct ? 'Correct' : picked === undefined ? 'Skipped' : 'Wrong'}
-                  </Badge>
+    <Modal open title="Your answers vs the correct answers" size="xl" onClose={onClose}>
+      <div className="ans-modal">
+        <nav className="ans-nav" aria-label="Questions">
+          {a.questions.map((q, i) => {
+            const ans = map[q.id];
+            const isMcq = q.type === QuestionType.MCQ;
+            const done = isMcq ? ans?.selectedOption !== undefined : Boolean(ans?.text?.trim());
+            const correct = isMcq && ans?.selectedOption === q.correctOption;
+            return (
+              <button
+                key={q.id}
+                type="button"
+                className={`ans-nav__btn${isMcq ? (correct ? ' is-correct' : done ? ' is-wrong' : '') : done ? ' is-answered' : ''}`}
+                onClick={() => jump(q.id)}
+                title={`Question ${i + 1}`}
+              >
+                {i + 1}
+              </button>
+            );
+          })}
+        </nav>
+
+        <div className="ans-body" ref={bodyRef}>
+          {a.questions.map((q, i) => {
+            const ans = map[q.id];
+            const picked = ans?.selectedOption;
+            const isMcq = q.type === QuestionType.MCQ;
+            const correct = isMcq && picked === q.correctOption;
+            return (
+              <div key={q.id} id={`ans-q-${q.id}`} className="ans-q">
+                <div className="ans-q__head">
+                  <span className="ans-q__num">{i + 1}</span>
+                  <span className="ans-q__prompt">{q.prompt}</span>
+                  {isMcq && (
+                    <Badge tone={correct ? 'success' : picked === undefined ? 'neutral' : 'error'}>
+                      {correct ? 'Correct' : picked === undefined ? 'Skipped' : 'Wrong'}
+                    </Badge>
+                  )}
+                </div>
+
+                {isMcq ? (
+                  <div className="ans-cols">
+                    <div className="ans-side">
+                      <div className="ans-side__label">Your answer</div>
+                      <ul className="ans-opts">
+                        {q.options?.map((opt, oi) => (
+                          <li key={oi} className={optClass(false, oi === picked)}>
+                            <span>{opt}</span>
+                            {oi === picked && <span className="ans-opts__tag">you</span>}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                    <div className="ans-side">
+                      <div className="ans-side__label">Correct answer</div>
+                      <ul className="ans-opts">
+                        {q.options?.map((opt, oi) => (
+                          <li key={oi} className={optClass(oi === q.correctOption, false)}>
+                            <span>{opt}</span>
+                            {oi === q.correctOption && <Check size={14} strokeWidth={3} />}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="ans-cols">
+                    <div className="ans-side">
+                      <div className="ans-side__label">Your answer</div>
+                      <div className="ans-text">{ans?.text ? ans.text : <em className="lms-muted">Not answered</em>}</div>
+                    </div>
+                    <div className="ans-side">
+                      <div className="ans-side__label">Actual answer</div>
+                      <div className="ans-text lms-muted">
+                        {q.referenceAnswer ? q.referenceAnswer : 'Graded by the AI evaluation engine against the model answer.'}
+                      </div>
+                    </div>
+                  </div>
                 )}
               </div>
-              {isMcq ? (
-                <ul className="q-review__opts">
-                  {q.options?.map((opt, oi) => {
-                    const isCorrect = oi === q.correctOption;
-                    const isPicked = oi === picked;
-                    return (
-                      <li key={oi} className={isCorrect ? 'is-correct' : isPicked ? 'is-wrong' : ''}>
-                        <span>{opt}</span>
-                        {isCorrect && <Check size={14} strokeWidth={3} />}
-                        {isPicked && !isCorrect && <X size={14} strokeWidth={3} />}
-                        {isPicked && <span className="q-review__you">your answer</span>}
-                      </li>
-                    );
-                  })}
-                </ul>
-              ) : (
-                <div className="q-review__text">
-                  <strong>Your answer:</strong> {ans?.text ? ans.text : <em className="lms-muted">Not answered</em>}
-                </div>
-              )}
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
       </div>
-    </Card>
+    </Modal>
+  );
+}
+
+/** A single podium place (top 3). `place` is 1 | 2 | 3. */
+function PodiumPlace({ e }) {
+  if (!e) return <div className="lb-place lb-place--empty" />;
+  const Icon = e.rank === 1 ? Crown : Medal;
+  return (
+    <div className={`lb-place lb-place--${e.rank}${e.isMe ? ' lb-place--me' : ''}`} title={`${e.name} — ${e.score}%`}>
+      <div className="lb-place__medal"><Icon size={e.rank === 1 ? 22 : 18} /></div>
+      <div className="lb-place__avatar">{(e.name || '?').trim().charAt(0).toUpperCase()}</div>
+      <div className="lb-place__name">{e.name}{e.isMe ? ' (you)' : ''}</div>
+      <div className="lb-place__score" style={{ color: e.passed ? 'var(--color-success)' : 'var(--color-text-secondary)' }}>{e.score}%</div>
+    </div>
   );
 }
 
 function Leaderboard({ id }) {
   const { data, isLoading } = useLeaderboard(id);
   const entries = data?.entries ?? [];
+  const top3 = entries.slice(0, 3);
+  const rest = entries.slice(3);
 
   return (
-    <Card>
+    <Card className="lb-card">
       <CardHeader
         title={
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
@@ -278,14 +359,29 @@ function Leaderboard({ id }) {
       ) : entries.length === 0 ? (
         <EmptyState icon={<Trophy size={26} />} title="No results yet" description="No graded results in your batch yet." />
       ) : (
-        <div className="lb-list">
-          {entries.slice(0, 10).map((e) => (
-            <div className={`lb-row${e.isMe ? ' lb-row--me' : ''}`} key={e.rank}>
-              <span className={`lb-rank lb-rank--${e.rank <= 3 ? e.rank : 'n'}`}>{e.rank}</span>
-              <span className="lb-name">{e.name}{e.isMe ? ' (you)' : ''}</span>
-              <span className="lb-score" style={{ color: e.passed ? 'var(--color-success)' : 'var(--color-text-secondary)' }}>{e.score}%</span>
+        <div className="lb-board">
+          {/* Podium: 1st centered on top, 2nd + 3rd below — stays put while the rest scroll. */}
+          <div className="lb-podium">
+            <div className="lb-podium__top"><PodiumPlace e={top3[0]} /></div>
+            {(top3[1] || top3[2]) && (
+              <div className="lb-podium__row2">
+                <PodiumPlace e={top3[1]} />
+                <PodiumPlace e={top3[2]} />
+              </div>
+            )}
+          </div>
+          {/* Ranks 4+ — scrollable list. */}
+          {rest.length > 0 && (
+            <div className="lb-rest">
+              {rest.map((e) => (
+                <div className={`lb-row${e.isMe ? ' lb-row--me' : ''}`} key={e.rank}>
+                  <span className="lb-rank lb-rank--n">{e.rank}</span>
+                  <span className="lb-name">{e.name}{e.isMe ? ' (you)' : ''}</span>
+                  <span className="lb-score" style={{ color: e.passed ? 'var(--color-success)' : 'var(--color-text-secondary)' }}>{e.score}%</span>
+                </div>
+              ))}
             </div>
-          ))}
+          )}
         </div>
       )}
     </Card>
