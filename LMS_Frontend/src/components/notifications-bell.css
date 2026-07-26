@@ -86,7 +86,7 @@
 }
 /* Show only the recent few notifications; the rest scroll into view. */
 .bell__list {
-  max-height: 21rem; /* ~5 items visible, then scroll */
+  max-height: 15rem; /* recent few visible, then scroll */
   overflow-y: auto;
   overscroll-behavior: contain;
 }
