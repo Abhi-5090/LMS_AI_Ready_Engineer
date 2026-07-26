@@ -387,7 +387,7 @@ function Leaderboard({ id }) {
                 <div className={`lb-lrow${e.isMe ? ' lb-lrow--me' : ''}`} key={e.rank}>
                   <span className="lb-rank lb-rank--n">{e.rank}</span>
                   <span className="lb-name">{e.name}{e.isMe ? ' (you)' : ''}</span>
-                  <span className="lb-lscore" style={{ color: e.passed ? 'var(--color-success)' : 'var(--color-text-secondary)' }}>{e.score}</span>
+                  <span className="lb-lscore" style={{ color: e.passed ? 'var(--color-success)' : 'var(--color-text-secondary)' }}>{e.score}%</span>
                   <span className="lb-ltime">{timeTaken(e.timeTakenMs)}</span>
                 </div>
               ))}

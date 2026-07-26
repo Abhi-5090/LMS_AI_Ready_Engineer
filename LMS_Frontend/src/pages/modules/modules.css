@@ -629,11 +629,11 @@
 
 /* Ranks 7+ — a header row then a scrollable list: number · name · % · time. */
 .lb-rest { flex: 1; min-width: 0; display: flex; flex-direction: column; border-left: 1px solid var(--color-border); padding-left: var(--space-4); }
-.lb-rest__head, .lb-lrow { display: grid; grid-template-columns: 3rem 1fr 5.5rem 5rem; align-items: center; gap: var(--space-2); padding: var(--space-2); }
+/* Full table: serial · name · percentage · time — every column centered,
+   with a comfortable gap between the serial number and the name. */
+.lb-rest__head, .lb-lrow { display: grid; grid-template-columns: 3.5rem 1fr 6rem 5.5rem; align-items: center; justify-items: center; text-align: center; column-gap: var(--space-4); padding: var(--space-2); }
 .lb-rest__head { font-size: var(--font-size-sm); font-weight: var(--font-weight-semibold); color: var(--color-text-secondary); border-bottom: 1px solid var(--color-border); }
-.lb-rest__head span:nth-child(3), .lb-rest__head span:nth-child(4),
-.lb-lscore, .lb-ltime { text-align: right; }
-/* Serial number: plain text, not a circular badge. */
+/* Serial number: plain centered text, not a circular badge. */
 .lb-rank--n { width: auto; height: auto; display: inline-block; place-items: initial; background: none; border: none; border-radius: 0; color: var(--color-text-secondary); font-size: var(--font-size-sm); font-weight: var(--font-weight-semibold); }
 .lb-rest__list { flex: 1; min-height: 0; max-height: 13rem; overflow-y: auto; }
 .lb-rest__empty { color: var(--color-text-muted); font-size: var(--font-size-sm); padding: var(--space-3) var(--space-2); }
@@ -675,6 +675,8 @@
 .lb-name {
   flex: 1;
   min-width: 0;
+  justify-self: stretch;
+  text-align: center;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
