@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import * as XLSX from 'xlsx';
-import { AlertTriangle, Boxes, CheckCircle2, Copy, Download, FileQuestion, FolderOpen, Library, Lock, Pencil, Plus, Trash2, UploadCloud, X } from 'lucide-react';
+import { AlertTriangle, ArrowDown, ArrowDownUp, ArrowUp, Boxes, CheckCircle2, Copy, Download, FileQuestion, FolderOpen, Library, Lock, Pencil, Plus, Trash2, UploadCloud, X } from 'lucide-react';
 import { QuestionType, QuestionComplexity, UserRole } from '@/shared';
 import { Badge, Button, Card, CardHeader, EmptyState, Input, Modal, Select, SkeletonTable, useConfirm, useToast } from '@/components/ui';
 import { PageHeader } from '@/components/PageHeader';
@@ -27,6 +27,8 @@ import '../modules/modules.css';
 export const COMPLEXITY_LABEL = { easy: 'Easy', medium: 'Medium', hard: 'Hard' };
 const COMPLEXITY_TONE = { easy: 'success', medium: 'warning', hard: 'danger' };
 const COMPLEXITY_OPTIONS = Object.values(QuestionComplexity).map((v) => ({ value: v, label: COMPLEXITY_LABEL[v] }));
+// Easy → Medium → Hard for the sortable Complexity column.
+const COMPLEXITY_RANK = { easy: 0, medium: 1, hard: 2 };
 
 export function QuestionBankPage() {
   const role = useAuth((s) => s.user?.role);
@@ -36,15 +38,15 @@ export function QuestionBankPage() {
   const { data: modules } = useModules();
   const [moduleId, setModuleId] = useState('');
   const [topicFilter, setTopicFilter] = useState(''); // '' = all topics, or a topicId
-  const [typeFilter, setTypeFilter] = useState(''); // '' = all types, or a QuestionType
-  const [complexityFilter, setComplexityFilter] = useState(''); // '' = all
-  const { data: items, isLoading } = useQuestionBank({ module: moduleId, complexity: complexityFilter });
+  const [complexitySort, setComplexitySort] = useState(null); // null | 'asc' | 'desc'
+  const { data: items, isLoading } = useQuestionBank({ module: moduleId });
+  // Cycle the Complexity column: unsorted → ascending → descending → unsorted.
+  const cycleComplexitySort = () => setComplexitySort((s) => (s === null ? 'asc' : s === 'asc' ? 'desc' : null));
 
   const moduleObj = useMemo(() => (modules ?? []).find((m) => m.id === moduleId), [modules, moduleId]);
   const topics = moduleObj?.topics ?? [];
 
-  const [editing, setEditing] = useState(null); // an existing question being edited
-  const [adding, setAdding] = useState(false); // inline add-question form (animated)
+  const [editing, setEditing] = useState(null); // question item or {} for new
   const [importing, setImporting] = useState(false);
   const [importMaster, setImportMaster] = useState(false);
   const [managing, setManaging] = useState(false); // uploads + duplicates manager
@@ -68,10 +70,16 @@ export function QuestionBankPage() {
   }
 
   const filtered = (items ?? []).filter((q) => {
-    if (topicFilter && q.topic !== topicFilter) return false; // "All topics" = everything
-    if (typeFilter && q.type !== typeFilter) return false; // "All types" = everything
-    return true;
+    if (!topicFilter) return true; // "All topics" — every question in the module
+    return q.topic === topicFilter;
   });
+  // Apply the Complexity column sort (stable — equal ranks keep their order).
+  const displayed = complexitySort
+    ? [...filtered].sort((a, b) => {
+        const d = (COMPLEXITY_RANK[a.complexity] ?? 1) - (COMPLEXITY_RANK[b.complexity] ?? 1);
+        return complexitySort === 'asc' ? d : -d;
+      })
+    : filtered;
 
   return (
     <>
@@ -104,24 +112,6 @@ export function QuestionBankPage() {
           </div>
         )}
         {moduleId && (
-          <div style={{ flex: '1 1 10rem', minWidth: 0, maxWidth: '13rem' }}>
-            <Select
-              value={typeFilter}
-              onChange={(e) => setTypeFilter(e.target.value)}
-              options={[{ value: '', label: 'All types' }, ...QUESTION_TYPE_OPTIONS]}
-            />
-          </div>
-        )}
-        {moduleId && (
-          <div style={{ flex: '1 1 9rem', minWidth: 0, maxWidth: '12rem' }}>
-            <Select
-              value={complexityFilter}
-              onChange={(e) => setComplexityFilter(e.target.value)}
-              options={[{ value: '', label: 'All complexity' }, ...COMPLEXITY_OPTIONS]}
-            />
-          </div>
-        )}
-        {moduleId && (
           <div style={{ display: 'flex', gap: 'var(--space-2)', marginLeft: 'auto' }}>
             {canImportFromMaster && (
               <Button variant="outline" onClick={() => setImportMaster(true)}>
@@ -134,38 +124,12 @@ export function QuestionBankPage() {
             <Button variant="outline" onClick={() => setManaging(true)}>
               <Boxes size={15} style={{ marginRight: 6 }} /> Uploads &amp; duplicates
             </Button>
+            <Button onClick={() => setEditing({})}>
+              <Plus size={15} style={{ marginRight: 6 }} /> Add question
+            </Button>
           </div>
         )}
       </div>
-
-      {/* Add question — its own full-width row; the form animates open in place. */}
-      {moduleId && (
-        <>
-          <Button
-            className="qbank-add-btn"
-            variant={adding ? 'outline' : 'primary'}
-            onClick={() => { setAdding((v) => !v); if (editing) setEditing(null); }}
-          >
-            <Plus size={16} style={{ marginRight: 6 }} /> {adding ? 'Close' : 'Add question'}
-          </Button>
-          <div className={`qbank-add-panel${adding ? ' qbank-add-panel--open' : ''}`} aria-hidden={!adding}>
-            <div>
-              <div className="qbank-add-panel__inner">
-                <Card>
-                  <BankQuestionForm
-                    key={adding ? 'add-open' : 'add-closed'}
-                    moduleId={moduleId}
-                    topics={topics}
-                    question={null}
-                    onDone={() => setAdding(false)}
-                    onCancel={() => setAdding(false)}
-                  />
-                </Card>
-              </div>
-            </div>
-          </div>
-        </>
-      )}
 
       {!moduleId ? (
         <EmptyState
@@ -191,7 +155,7 @@ export function QuestionBankPage() {
                   <Button variant="outline" onClick={() => setImporting(true)}>
                     <UploadCloud size={15} style={{ marginRight: 6 }} /> Import Excel
                   </Button>
-                  <Button onClick={() => setAdding(true)}>
+                  <Button onClick={() => setEditing({})}>
                     <Plus size={15} style={{ marginRight: 6 }} /> Add question
                   </Button>
                 </div>
@@ -201,10 +165,21 @@ export function QuestionBankPage() {
             <div className="table-wrap">
               <table className="table">
                 <thead>
-                  <tr><th>#</th><th>Question</th><th>Type</th><th>Complexity</th><th>Topic</th><th>Answer</th><th>Pts</th><th /></tr>
+                  <tr>
+                    <th>#</th><th>Question</th><th>Type</th>
+                    <th>
+                      <button type="button" className="th-sort" onClick={cycleComplexitySort} title="Sort by complexity (easy → hard, then hard → easy, then off)">
+                        Complexity
+                        {complexitySort === 'asc' ? <ArrowUp size={13} />
+                          : complexitySort === 'desc' ? <ArrowDown size={13} />
+                          : <ArrowDownUp size={13} className="th-sort__idle" />}
+                      </button>
+                    </th>
+                    <th>Topic</th><th>Answer</th><th>Pts</th><th />
+                  </tr>
                 </thead>
                 <tbody>
-                  {filtered.map((q, i) => (
+                  {displayed.map((q, i) => (
                     <tr key={q.id}>
                       <td>{i + 1}</td>
                       <td style={{ maxWidth: '24rem' }}>{q.prompt}</td>
@@ -240,7 +215,7 @@ export function QuestionBankPage() {
         <BankQuestionModal
           moduleId={moduleId}
           topics={topics}
-          question={editing}
+          question={editing.id ? editing : null}
           onClose={() => setEditing(null)}
         />
       )}
@@ -510,7 +485,7 @@ function ImportFromMasterModal({ modules, defaultModuleId, onClose }) {
 
 const BLANK_Q = { type: QuestionType.MCQ, complexity: QuestionComplexity.MEDIUM, prompt: '', options: ['', ''], correctOption: 0, referenceAnswer: '', points: 1, topic: '' };
 
-function BankQuestionForm({ moduleId, topics, question, onDone, onCancel }) {
+function BankQuestionModal({ moduleId, topics, question, onClose }) {
   const isEdit = Boolean(question);
   const [form, setForm] = useState(BLANK_Q);
   const [err, setErr] = useState('');
@@ -561,14 +536,25 @@ function BankQuestionForm({ moduleId, topics, question, onDone, onCancel }) {
     try {
       if (isEdit) await update.mutateAsync({ id: question.id, ...payload });
       else await add.mutateAsync({ module: moduleId, ...payload });
-      onDone();
+      onClose();
     } catch (e2) {
       setErr(apiErrorMessage(e2));
     }
   }
 
   return (
-    <form onSubmit={save} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+    <Modal
+      open
+      title={isEdit ? 'Edit question' : 'Add question'}
+      onClose={onClose}
+      footer={
+        <>
+          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button form="bank-q-form" type="submit" loading={add.isPending || update.isPending}>Save</Button>
+        </>
+      }
+    >
+      <form id="bank-q-form" onSubmit={save} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
         <div style={{ display: 'flex', gap: 'var(--space-3)', flexWrap: 'wrap' }}>
           <div style={{ flex: '1 1 12rem' }}>
             <Select label="Type" value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })} options={QUESTION_TYPE_OPTIONS} />
@@ -620,19 +606,7 @@ function BankQuestionForm({ moduleId, topics, question, onDone, onCancel }) {
         )}
         <Input label="Points" type="number" min="1" max="100" value={form.points} onChange={(e) => setForm({ ...form, points: e.target.value })} />
         {err && <span className="field__error">{err}</span>}
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--space-2)' }}>
-          <Button type="button" variant="outline" onClick={onCancel}>Cancel</Button>
-          <Button type="submit" loading={add.isPending || update.isPending}>{isEdit ? 'Save' : 'Add question'}</Button>
-        </div>
       </form>
-  );
-}
-
-/** Edit an existing question in a modal. Adding uses the inline animated form. */
-function BankQuestionModal({ moduleId, topics, question, onClose }) {
-  return (
-    <Modal open title="Edit question" onClose={onClose}>
-      <BankQuestionForm moduleId={moduleId} topics={topics} question={question} onDone={onClose} onCancel={onClose} />
     </Modal>
   );
 }
