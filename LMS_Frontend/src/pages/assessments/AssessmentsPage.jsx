@@ -86,11 +86,9 @@ function StudentAssessments() {
                     </div>
                   </div>
                 </div>
-                <div className="module-card__meta">
+                {/* Count on the left, unlocked-tests CTA on the right — one row. */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--space-2)', marginTop: 'auto' }}>
                   <Badge tone="neutral">{g.items.length} assessment{g.items.length === 1 ? '' : 's'}</Badge>
-                </div>
-                {/* Unlocked-tests CTA sits in the bottom-right corner of the card. */}
-                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 'auto' }}>
                   {unlocked > 0 ? (
                     <Button size="sm" onClick={(e) => { e.stopPropagation(); setModuleId(g.id); }}>
                       {unlocked} unlocked test{unlocked === 1 ? '' : 's'} →
