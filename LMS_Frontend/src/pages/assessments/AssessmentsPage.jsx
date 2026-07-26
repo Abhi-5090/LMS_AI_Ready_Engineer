@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CalendarClock, ChevronLeft, ClipboardList, FolderOpen, Layers, Plus, Send, Users } from 'lucide-react';
 import { AssessmentAvailability, AssessmentType, ProctoringMode, UserRole } from '@/shared';
@@ -26,54 +26,68 @@ export function AssessmentsPage() {
 
 // ── Student ────────────────────────────────────────────────────────────────────
 
+const isDone = (a) => a.submission && a.submission.status !== 'not_started';
+const recencyOf = (a) => new Date(a.createdAt || a.availableFrom || 0).getTime();
+
 function StudentAssessments() {
   const navigate = useNavigate();
   const { data: items, isLoading, isError, error, refetch } = useAssessments();
+  const [moduleId, setModuleId] = useState('');
+
+  // Group the flat list into one entry per module; within a module, newest first.
+  const groups = useMemo(() => {
+    const map = new Map();
+    for (const a of items ?? []) {
+      const mid = a.module?.id ?? a.module ?? 'none';
+      if (!map.has(mid)) map.set(mid, { id: mid, name: a.module?.name ?? 'Module', code: a.module?.code, items: [] });
+      map.get(mid).items.push(a);
+    }
+    for (const g of map.values()) g.items.sort((x, y) => recencyOf(y) - recencyOf(x));
+    return [...map.values()].sort((a, b) => a.name.localeCompare(b.name));
+  }, [items]);
+
+  const selected = groups.find((g) => g.id === moduleId);
 
   return (
     <>
-      <PageHeader title="Assessments" subtitle="Assigned to you by your trainer." />
+      <PageHeader title="Assessments" subtitle="Assigned to you by your trainer, grouped by module." />
       {isLoading && !items ? (
         <SkeletonCards count={4} height="9rem" />
       ) : isError ? (
         <ErrorState message={apiErrorMessage(error)} onRetry={refetch} />
       ) : items && items.length === 0 ? (
         <EmptyState icon={<ClipboardList size={26} />} title="No assessments yet" description="Your trainer assigns tests as you progress." />
+      ) : selected ? (
+        // Drill-down: one module's assessments, most recent on top.
+        <>
+          <div className="toolbar">
+            <Button variant="ghost" size="sm" onClick={() => setModuleId('')}><ChevronLeft size={16} /> All modules</Button>
+            <strong style={{ fontSize: 'var(--font-size-lg)' }}>{selected.name}</strong>
+          </div>
+          <div className="module-grid">
+            {selected.items.map((a) => <StudentAssessmentCard key={a.id} a={a} navigate={navigate} />)}
+          </div>
+        </>
       ) : (
+        // Module cards, each showing how many assessments are still to take.
         <div className="module-grid">
-          {items?.map((a) => {
-            const badge = submissionBadge(a.submission);
-            const done = a.submission && a.submission.status !== 'not_started';
+          {groups.map((g) => {
+            const toTake = g.items.filter((a) => !isDone(a)).length;
             return (
-              <Card key={a.id} className="module-card">
+              <Card key={g.id} className="module-card module-card--clickable" onClick={() => setModuleId(g.id)} role="button" tabIndex={0}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setModuleId(g.id); } }}>
                 <div className="module-card__top">
-                  <div>
-                    <div className="module-card__name">{assessmentLabel(a)}</div>
-                    <div className="lms-muted" style={{ fontSize: 'var(--font-size-sm)' }}>{a.module?.name}</div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
+                    <span className="module-card__icon"><Layers size={20} /></span>
+                    <div>
+                      <div className="module-card__name">{g.name}</div>
+                      {g.code && <div className="lms-muted" style={{ fontSize: 'var(--font-size-sm)' }}>{g.code}</div>}
+                    </div>
                   </div>
-                  <Badge tone={ASSESSMENT_TYPE_TONE[a.type]}>{ASSESSMENT_TYPE_LABEL[a.type]}</Badge>
                 </div>
-                {a.description && (
-                  <div className="lms-secondary-text" style={{ fontSize: 'var(--font-size-sm)' }}>{a.description}</div>
-                )}
-                {(a.topics ?? []).length > 0 && (
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-                    {a.topics.map((t) => <Badge key={t.id ?? t.topic ?? t.title} tone="neutral">{t.title}</Badge>)}
-                  </div>
-                )}
                 <div className="module-card__meta">
-                  <Badge tone="neutral">{a.questionCount} questions</Badge>
-                  <Badge tone="neutral">Pass ≥ {a.passingScore}%</Badge>
-                  <Badge tone={badge.tone}>{badge.label}</Badge>
-                </div>
-                <div className="list-actions">
-                  {done ? (
-                    <Button size="sm" variant="outline" onClick={() => navigate(`/app/assessments/${a.id}`)}>View result</Button>
-                  ) : a.availableNow ? (
-                    <Button size="sm" onClick={() => navigate(`/app/assessments/${a.id}`)}>Take assessment</Button>
-                  ) : (
-                    <Button size="sm" variant="outline" disabled>Not available</Button>
-                  )}
+                  <Badge tone="neutral">{g.items.length} assessment{g.items.length === 1 ? '' : 's'}</Badge>
+                  {toTake > 0 ? <Badge tone="primary">{toTake} to take →</Badge> : <Badge tone="success">All done</Badge>}
                 </div>
               </Card>
             );
@@ -81,6 +95,44 @@ function StudentAssessments() {
         </div>
       )}
     </>
+  );
+}
+
+function StudentAssessmentCard({ a, navigate }) {
+  const badge = submissionBadge(a.submission);
+  const done = isDone(a);
+  return (
+    <Card className="module-card">
+      <div className="module-card__top">
+        <div>
+          <div className="module-card__name">{assessmentLabel(a)}</div>
+          <div className="lms-muted" style={{ fontSize: 'var(--font-size-sm)' }}>{a.module?.name}</div>
+        </div>
+        <Badge tone={ASSESSMENT_TYPE_TONE[a.type]}>{ASSESSMENT_TYPE_LABEL[a.type]}</Badge>
+      </div>
+      {a.description && (
+        <div className="lms-secondary-text" style={{ fontSize: 'var(--font-size-sm)' }}>{a.description}</div>
+      )}
+      {(a.topics ?? []).length > 0 && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+          {a.topics.map((t) => <Badge key={t.id ?? t.topic ?? t.title} tone="neutral">{t.title}</Badge>)}
+        </div>
+      )}
+      <div className="module-card__meta">
+        <Badge tone="neutral">{a.questionCount} questions</Badge>
+        <Badge tone="neutral">Pass ≥ {a.passingScore}%</Badge>
+        <Badge tone={badge.tone}>{badge.label}</Badge>
+      </div>
+      <div className="list-actions">
+        {done ? (
+          <Button size="sm" variant="outline" onClick={() => navigate(`/app/assessments/${a.id}`)}>View result</Button>
+        ) : a.availableNow ? (
+          <Button size="sm" onClick={() => navigate(`/app/assessments/${a.id}`)}>Take assessment</Button>
+        ) : (
+          <Button size="sm" variant="outline" disabled>Not available</Button>
+        )}
+      </div>
+    </Card>
   );
 }
 
