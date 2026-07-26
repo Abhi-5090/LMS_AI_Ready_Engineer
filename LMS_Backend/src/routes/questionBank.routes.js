@@ -13,6 +13,11 @@ const adminOrTrainer = requireRole(UserRole.ADMIN, UserRole.TRAINER);
 router.use(adminOrTrainer);
 
 router.get('/', validate({ query: qb.listBankQuery }), asyncHandler(qb.listBankItems));
+// Upload batches (cards) + the read-only duplicates report — literal paths declared
+// before "/:itemId" so they win the match.
+router.get('/uploads', validate({ query: qb.moduleQueryReq }), asyncHandler(qb.listUploadBatches));
+router.delete('/uploads/:batchId', validate({ params: qb.batchParam }), asyncHandler(qb.deleteUploadBatch));
+router.get('/duplicates', validate({ query: qb.moduleQueryReq }), asyncHandler(qb.listDuplicates));
 router.post('/', validate({ body: qb.createBankItemSchema }), asyncHandler(qb.createBankItem));
 router.post('/bulk', validate({ body: qb.bulkBankSchema }), asyncHandler(qb.bulkAddBankItems));
 // Super admin only (enforced in the handler): copy master-bank questions into the

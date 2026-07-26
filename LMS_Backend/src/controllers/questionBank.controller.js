@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import { z } from 'zod';
 import { QuestionType, QuestionComplexity, UserRole } from '#shared';
 import { Module, QuestionBankItem } from '../models/index.js';
@@ -8,12 +9,34 @@ import { ok } from '../utils/http.js';
 const objectId = z.string().length(24);
 
 export const bankItemParam = z.object({ itemId: objectId });
+export const batchParam = z.object({ batchId: objectId });
+export const moduleQueryReq = z.object({ module: objectId });
 
 export const listBankQuery = z.object({
   module: objectId.optional(),
   topic: objectId.optional(),
   complexity: z.nativeEnum(QuestionComplexity).optional(),
+  uploadBatch: objectId.optional(),
 });
+
+// ── Duplicate detection ───────────────────────────────────────────────────────
+
+/**
+ * A question's dedup signature: same TYPE + same wording + same SET of options
+ * (order-independent). Wording/options are normalized (trim, lowercase, collapse
+ * whitespace) so trivially-different copies still collide. Scoped per module.
+ */
+export function questionSignature(q) {
+  const norm = (s) => String(s ?? '').trim().toLowerCase().replace(/\s+/g, ' ');
+  const opts = (q.options ?? []).map(norm).filter(Boolean).sort();
+  return `${q.type || QuestionType.MCQ}::${norm(q.prompt)}::${opts.join('|~|')}`;
+}
+
+/** The set of signatures already present in a module's bank. */
+async function existingSignatures(moduleId) {
+  const items = await QuestionBankItem.find({ module: moduleId }).select('type prompt options').lean();
+  return new Set(items.map(questionSignature));
+}
 
 /** A single question payload (shared by manual add + bulk import). */
 const questionInput = z
@@ -61,6 +84,7 @@ export const createBankItemSchema = z
 export const bulkBankSchema = z.object({
   module: objectId,
   topic: objectId.optional().nullable(),
+  source: z.string().max(200).optional(), // original file name (for the upload card)
   items: z.array(questionInput).min(1, 'No questions to import').max(1000),
 });
 
@@ -127,13 +151,92 @@ export async function listBankItems(req, res) {
   }
   if (req.query.topic) filter.topic = req.query.topic;
   if (req.query.complexity) filter.complexity = req.query.complexity;
+  if (req.query.uploadBatch) filter.uploadBatch = req.query.uploadBatch;
 
   const items = await QuestionBankItem.find(filter).sort({ createdAt: -1 });
   ok(res, items.map((i) => i.toJSON()));
 }
 
+/**
+ * The Excel/import "batches" for a module, newest first — one card per upload with
+ * its question count, when it happened, and the file it came from.
+ */
+export async function listUploadBatches(req, res) {
+  await loadManageableModule(req, req.query.module); // authorize
+  const rows = await QuestionBankItem.aggregate([
+    { $match: { module: new mongoose.Types.ObjectId(req.query.module), uploadBatch: { $ne: null } } },
+    { $group: {
+      _id: '$uploadBatch',
+      count: { $sum: 1 },
+      uploadedAt: { $min: '$createdAt' },
+      source: { $first: '$uploadSource' },
+      topicTitle: { $first: '$topicTitle' },
+    } },
+    { $sort: { uploadedAt: -1 } },
+  ]);
+  ok(res, rows.map((r) => ({
+    uploadBatch: String(r._id),
+    count: r.count,
+    uploadedAt: r.uploadedAt,
+    source: r.source || '',
+    topicTitle: r.topicTitle || '',
+  })));
+}
+
+/** Delete every question in one upload batch. */
+export async function deleteUploadBatch(req, res) {
+  const first = await QuestionBankItem.findOne({ uploadBatch: req.params.batchId }).select('module');
+  if (!first) throw ApiError.notFound('Upload not found');
+  await loadManageableModule(req, first.module); // authorize on the module
+  const result = await QuestionBankItem.deleteMany({ uploadBatch: req.params.batchId });
+  ok(res, { deleted: result.deletedCount ?? 0 });
+}
+
+/**
+ * Read-only duplicates report for a module: groups of questions that share the same
+ * signature (wording + options). Each group keeps its items oldest-first so the UI
+ * can suggest keeping the first and removing the rest. Nothing is deleted here.
+ */
+export async function listDuplicates(req, res) {
+  await loadManageableModule(req, req.query.module); // authorize
+  const items = await QuestionBankItem
+    .find({ module: req.query.module })
+    .select('type prompt options topic topicTitle createdAt uploadSource')
+    .lean();
+  const groups = new Map();
+  for (const it of items) {
+    const sig = questionSignature(it);
+    if (!groups.has(sig)) groups.set(sig, []);
+    groups.get(sig).push({
+      id: String(it._id),
+      prompt: it.prompt,
+      options: it.options ?? [],
+      topicTitle: it.topicTitle || '',
+      createdAt: it.createdAt,
+      uploadSource: it.uploadSource || '',
+    });
+  }
+  const dupes = [...groups.values()]
+    .filter((g) => g.length > 1)
+    .map((g) => {
+      const items2 = g.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+      return { count: items2.length, prompt: items2[0].prompt, topicTitle: items2[0].topicTitle, items: items2 };
+    })
+    .sort((a, b) => b.count - a.count);
+  ok(res, {
+    groups: dupes,
+    duplicateGroups: dupes.length,
+    removableCount: dupes.reduce((s, g) => s + g.count - 1, 0), // extras beyond one-per-group
+  });
+}
+
 export async function createBankItem(req, res) {
   const module = await loadManageableModule(req, req.body.module);
+  // Refuse an exact duplicate (same wording + options) already in this module.
+  const seen = await existingSignatures(req.body.module);
+  if (seen.has(questionSignature(req.body))) {
+    throw ApiError.conflict('This question already exists in this module’s bank (same wording and options).');
+  }
   const item = await QuestionBankItem.create({
     module: req.body.module,
     topic: req.body.topic ?? null,
@@ -151,25 +254,48 @@ export async function createBankItem(req, res) {
   ok(res, item.toJSON(), 201);
 }
 
-/** Bulk insert (Excel import parsed client-side, sent as JSON). */
+/**
+ * Bulk insert (Excel import parsed client-side, sent as JSON). Skips any question
+ * that already exists in the module's bank (same wording + options) AND any repeat
+ * within the same file, so re-uploading the same sheet inserts nothing. The whole
+ * upload is tagged as one batch so it can be reviewed / deleted as a unit.
+ */
 export async function bulkAddBankItems(req, res) {
   const module = await loadManageableModule(req, req.body.module);
   const title = topicTitleOf(module, req.body.topic);
-  const docs = req.body.items.map((q) => ({
-    module: req.body.module,
-    topic: req.body.topic ?? null,
-    topicTitle: title,
-    type: q.type,
-    complexity: q.complexity,
-    prompt: q.prompt,
-    options: q.options ?? [],
-    correctOption: q.correctOption,
-    referenceAnswer: q.type === QuestionType.MCQ ? '' : (q.referenceAnswer ?? ''),
-    points: q.points,
-    createdBy: req.auth.userId,
-  }));
-  const created = await QuestionBankItem.insertMany(docs);
-  ok(res, { added: created.length }, 201);
+  const seen = await existingSignatures(req.body.module);
+  const uploadBatch = new mongoose.Types.ObjectId();
+  const uploadSource = (req.body.source ?? '').trim().slice(0, 200);
+
+  const docs = [];
+  const duplicates = []; // questions skipped because they already exist
+  for (const q of req.body.items) {
+    const sig = questionSignature(q);
+    if (seen.has(sig)) { duplicates.push({ prompt: q.prompt }); continue; }
+    seen.add(sig); // also dedups repeats within this same file
+    docs.push({
+      module: req.body.module,
+      topic: req.body.topic ?? null,
+      topicTitle: title,
+      type: q.type,
+      complexity: q.complexity,
+      prompt: q.prompt,
+      options: q.options ?? [],
+      correctOption: q.correctOption,
+      referenceAnswer: q.type === QuestionType.MCQ ? '' : (q.referenceAnswer ?? ''),
+      points: q.points,
+      createdBy: req.auth.userId,
+      uploadBatch,
+      uploadSource,
+    });
+  }
+  const created = docs.length ? await QuestionBankItem.insertMany(docs) : [];
+  ok(res, {
+    added: created.length,
+    duplicateCount: duplicates.length,
+    duplicates: duplicates.slice(0, 200),
+    uploadBatch: created.length ? String(uploadBatch) : null,
+  }, 201);
 }
 
 export async function updateBankItem(req, res) {
@@ -239,15 +365,16 @@ export async function importFromTemplate(req, res) {
   }
 
   const source = await QuestionBankItem.find(src).lean();
-  // Skip prompts already in this org's module bank (idempotent re-import).
-  const existing = await QuestionBankItem.find({ module: targetModule._id }).select('prompt').lean();
-  const seen = new Set(existing.map((e) => String(e.prompt).trim().toLowerCase()));
+  // Skip questions already in this org's module bank (same wording + options), so a
+  // re-import never duplicates. The whole import is tagged as one batch.
+  const seen = await existingSignatures(targetModule._id);
+  const uploadBatch = new mongoose.Types.ObjectId();
 
   const docs = [];
   for (const s of source) {
-    const key = String(s.prompt).trim().toLowerCase();
-    if (seen.has(key)) continue;
-    seen.add(key);
+    const sig = questionSignature(s);
+    if (seen.has(sig)) continue;
+    seen.add(sig);
     // Re-map the source topic title onto this org module's own topic id.
     const match = s.topicTitle ? targetModule.topics.find((t) => t.title === s.topicTitle) : null;
     docs.push({
@@ -262,6 +389,8 @@ export async function importFromTemplate(req, res) {
       referenceAnswer: s.type === QuestionType.MCQ ? '' : (s.referenceAnswer ?? ''),
       points: s.points ?? 1,
       createdBy: req.auth.userId,
+      uploadBatch,
+      uploadSource: 'Imported from master',
     });
   }
   const created = docs.length ? await QuestionBankItem.insertMany(docs) : [];

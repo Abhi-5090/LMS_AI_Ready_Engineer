@@ -27,6 +27,10 @@ const questionBankSchema = new Schema(
     referenceAnswer: { type: String, default: '' },
     points: { type: Number, default: 1, min: 1, max: 100 },
     createdBy: { type: Schema.Types.ObjectId, ref: 'User' },
+    // Groups questions that arrived together (one Excel upload or one master import)
+    // so the batch can be reviewed and deleted as a unit. Null = added individually.
+    uploadBatch: { type: Schema.Types.ObjectId, default: null, index: true },
+    uploadSource: { type: String, trim: true, default: '' }, // e.g. the Excel file name
     organization: { type: Schema.Types.ObjectId, ref: 'Organization', default: null, index: true },
   },
   baseSchemaOptions,
