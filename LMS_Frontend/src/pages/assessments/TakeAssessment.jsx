@@ -195,20 +195,16 @@ function LockedAnswersCard({ a }) {
   }, [a.answersLockedUntil, a.id, qc]);
 
   return (
-    <Card style={{ textAlign: 'center', padding: 'var(--space-8)' }}>
-      <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 'var(--space-3)' }}>
-        <Lock size={32} style={{ color: 'var(--color-primary)' }} />
-      </div>
-      <h3 style={{ margin: 0 }}>Answers locked</h3>
-      <p className="lms-muted" style={{ marginTop: 'var(--space-2)' }}>
-        Your score is recorded. The questions and correct answers unlock when the exam window closes — so no one can
-        share them while others are still taking the test.
-      </p>
-      <div className="exam-timer" style={{ marginTop: 'var(--space-3)' }}>
-        <Lock size={16} /> {fmtLeft(left)}
-      </div>
-      <div className="lms-muted" style={{ fontSize: 'var(--font-size-xs)', marginTop: 'var(--space-2)' }}>
-        Unlocks at {new Date(a.answersLockedUntil).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}
+    <Card className="result-locked">
+      <CardHeader
+        title={<span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><Lock size={16} style={{ color: 'var(--color-primary)' }} /> Answers locked</span>}
+        subtitle="Your score is recorded"
+      />
+      <div className="result-locked__body">
+        <div className="exam-timer"><Lock size={16} /> {fmtLeft(left)}</div>
+        <div className="lms-muted" style={{ fontSize: 'var(--font-size-xs)' }}>
+          Unlocks at {new Date(a.answersLockedUntil).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}
+        </div>
       </div>
     </Card>
   );

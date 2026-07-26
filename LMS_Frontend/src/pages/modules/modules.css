@@ -581,12 +581,17 @@
 /* ── Result page: consolidated, compact (mostly one screen) ──────────────────── */
 .result-page { display: flex; flex-direction: column; }
 .result-page > .page-header { margin-bottom: var(--space-4); }
-/* Row 1: three cards (score · AI feedback · your answers). */
-.result-top3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-5); margin-bottom: var(--space-5); align-items: start; }
-.result-score { text-align: center; display: flex; flex-direction: column; align-items: center; gap: var(--space-2); padding: var(--space-5); }
+/* Row 1: three EQUAL cards (score · AI feedback · your answers / locked). */
+.result-top3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-5); margin-bottom: var(--space-5); align-items: stretch; }
+.result-top3 > * { height: 14rem; } /* same height for all three */
+.result-score { text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--space-2); padding: var(--space-5); }
 .result-score__pct { font-size: var(--font-size-4xl); font-weight: var(--font-weight-bold); line-height: 1; }
-.result-feedback { display: flex; flex-direction: column; max-height: 18rem; }
-.result-feedback__body { overflow-y: auto; min-height: 0; }
+.result-feedback { display: flex; flex-direction: column; }
+.result-feedback__body { flex: 1; overflow-y: auto; min-height: 0; }
+.result-answers-cta { display: flex; flex-direction: column; justify-content: space-between; }
+/* Locked-answers: just the essentials — title, "score recorded", countdown, unlock time. */
+.result-locked { display: flex; flex-direction: column; }
+.result-locked__body { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-2); margin-top: auto; }
 
 /* Row 2: leaderboard — a short card. Static top-6 staircase (col1=#1, col2=#2/#3,
    col3=#4/#5/#6) on the left; ranks 7+ in a scrollable table on the right. */
