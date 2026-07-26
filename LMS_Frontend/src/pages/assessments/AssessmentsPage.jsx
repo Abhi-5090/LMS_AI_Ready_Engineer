@@ -150,6 +150,9 @@ function ModuleBar({ moduleObj, onBack, children }) {
 
 const BLANK_TEMPLATE = { title: '', description: '', type: AssessmentType.PRACTICE, proctoring: ProctoringMode.NONE, durationMinutes: '', passingScore: '' };
 const WHOLE_MODULE = '__whole__'; // dropdown sentinel: the test covers every topic
+// Keep topic chips short — long titles are clipped to 15 chars with an ellipsis
+// (the full title stays available via the chip's tooltip).
+const shortTopic = (s) => (s && s.length > 15 ? `${s.slice(0, 15)}…` : s);
 
 function AdminModuleTemplates({ moduleId, moduleObj, onBack }) {
   const navigate = useNavigate();
@@ -305,8 +308,8 @@ function AdminModuleTemplates({ moduleId, moduleObj, onBack }) {
                     </button>
                   ) : selectedTopics.length > 0 ? (
                     selectedTopics.map((t) => (
-                      <button type="button" key={t.id} className="allow-chip allow-chip--on" onClick={() => removeTopic(t.id)} title="Remove">
-                        <span className="allow-chip__dot" /> {t.title} ×
+                      <button type="button" key={t.id} className="allow-chip allow-chip--on" onClick={() => removeTopic(t.id)} title={`${t.title} — remove`}>
+                        <span className="allow-chip__dot" /> {shortTopic(t.title)} ×
                       </button>
                     ))
                   ) : (
