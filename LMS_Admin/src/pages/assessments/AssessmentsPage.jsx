@@ -15,7 +15,7 @@ import '../modules/modules.css';
 
 /** Only two categories now: practice + final. */
 const TYPE_OPTIONS = [
-  { value: AssessmentType.PRACTICE, label: 'Practice Test (10 questions)' },
+  { value: AssessmentType.PRACTICE, label: 'Practice Test' },
   { value: AssessmentType.FINAL, label: 'Final Test' },
 ];
 
