@@ -386,7 +386,8 @@
 
 /* Question-bank table: the body scrolls inside a fixed height (~5 rows visible)
    with a sticky header, so the page itself stays put. */
-.qb-scroll { max-height: 55vh; overflow-y: auto; }
+.qb-scroll { max-height: 55vh; overflow-y: auto; scrollbar-width: none; } /* scroll works; bar hidden */
+.qb-scroll::-webkit-scrollbar { display: none; }
 .qb-table thead th { position: sticky; top: 0; z-index: 2; }
 
 /* Question-bank table: everything centered + clean, compact, borderless chips. */
