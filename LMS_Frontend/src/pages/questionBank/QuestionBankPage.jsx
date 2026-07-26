@@ -34,6 +34,7 @@ export function QuestionBankPage() {
   const { data: modules } = useModules();
   const [moduleId, setModuleId] = useState('');
   const [topicFilter, setTopicFilter] = useState(''); // '' = all topics, or a topicId
+  const [typeFilter, setTypeFilter] = useState(''); // '' = all types, or a QuestionType
   const [complexitySort, setComplexitySort] = useState(null); // null | 'asc' | 'desc'
   const { data: items, isLoading, isError, error, refetch } = useQuestionBank({ module: moduleId });
   // Cycle the Complexity column: unsorted → ascending → descending → unsorted.
@@ -58,8 +59,9 @@ export function QuestionBankPage() {
   }
 
   const filtered = (items ?? []).filter((q) => {
-    if (!topicFilter) return true; // "All topics" — every question in the module
-    return q.topic === topicFilter;
+    if (topicFilter && q.topic !== topicFilter) return false; // "All topics" = everything
+    if (typeFilter && q.type !== typeFilter) return false; // "All types" = everything
+    return true;
   });
   // Apply the Complexity column sort (stable — equal ranks keep their order).
   const displayed = complexitySort
@@ -77,10 +79,10 @@ export function QuestionBankPage() {
       />
 
       <div className="toolbar">
-        <div style={{ flex: '1 1 16rem', minWidth: 0, maxWidth: '22rem' }}>
+        <div style={{ flex: '1 1 12rem', minWidth: 0, maxWidth: '17rem' }}>
           <Select
             value={moduleId}
-            onChange={(e) => { setModuleId(e.target.value); setTopicFilter(''); }}
+            onChange={(e) => { setModuleId(e.target.value); setTopicFilter(''); setTypeFilter(''); }}
             options={[
               { value: '', label: 'Select a module…' },
               ...(modules ?? []).map((m) => ({ value: m.id, label: `${m.name} (${m.code})` })),
@@ -88,7 +90,7 @@ export function QuestionBankPage() {
           />
         </div>
         {moduleId && (
-          <div style={{ flex: '1 1 12rem', minWidth: 0, maxWidth: '16rem' }}>
+          <div style={{ flex: '1 1 9rem', minWidth: 0, maxWidth: '13rem' }}>
             <Select
               value={topicFilter}
               onChange={(e) => setTopicFilter(e.target.value)}
@@ -96,6 +98,15 @@ export function QuestionBankPage() {
                 { value: '', label: 'All topics' },
                 ...topics.map((t) => ({ value: t.id, label: t.title })),
               ]}
+            />
+          </div>
+        )}
+        {moduleId && (
+          <div style={{ flex: '1 1 9rem', minWidth: 0, maxWidth: '13rem' }}>
+            <Select
+              value={typeFilter}
+              onChange={(e) => setTypeFilter(e.target.value)}
+              options={[{ value: '', label: 'All types' }, ...QUESTION_TYPE_OPTIONS]}
             />
           </div>
         )}
