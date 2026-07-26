@@ -369,7 +369,11 @@
 /* Topics-covered row: the "add a topic" picker on the left, the chosen topics in a
    box beside it. */
 .tmpl-topics-row { display: flex; gap: var(--space-3); align-items: stretch; }
-.tmpl-topics-picker { flex: 1 1 0; min-width: 0; } /* equal width with the box */
+/* Equal width AND height: the select fills its cell so it matches the box, which
+   sets the row height (the native select's fixed height ignores stretch on its own). */
+.tmpl-topics-picker { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; }
+.tmpl-topics-picker > .field { flex: 1; }
+.tmpl-topics-picker .select { height: 100%; }
 .tmpl-topics-box {
   flex: 1 1 0; min-width: 0; min-height: 2.6rem;
   display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2);
