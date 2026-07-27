@@ -71,8 +71,8 @@
 .stu-row__info { display: flex; flex-direction: column; min-width: 0; flex: 1; }
 .stu-row__name { font-weight: var(--font-weight-medium); color: var(--color-text); }
 .stu-row__email { font-size: var(--font-size-xs); color: var(--color-text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.stu-row__check { flex: none; width: 1.4rem; height: 1.4rem; border-radius: 50%; border: 2px solid color-mix(in srgb, var(--color-text) 40%, transparent); background: var(--color-surface); display: grid; place-items: center; color: #fff; transition: background 120ms var(--ease-out, ease), border-color 120ms var(--ease-out, ease); }
-.stu-row:hover .stu-row__check { border-color: color-mix(in srgb, var(--color-primary) 60%, var(--color-border)); }
+.stu-row__check { flex: none; width: 1.4rem; height: 1.4rem; border-radius: 50%; border: 2px solid var(--color-text-secondary); background: transparent; display: grid; place-items: center; color: #fff; transition: background 120ms var(--ease-out, ease), border-color 120ms var(--ease-out, ease); }
+.stu-row:hover .stu-row__check { border-color: var(--color-primary); }
 .stu-row.is-on .stu-row__check { background: var(--color-primary); border-color: var(--color-primary); }
 .module-card__progress-track {
   height: 6px;
