@@ -187,10 +187,13 @@ export function BankPicker({ assessment, onClose }) {
               share of the Auto-pick total; the admin can rebalance per type). */}
           {typeFilter === 'ALL' && typeCaps.length > 1 && (
             <div className="bank-types">
-              <div className="bank-types__label">How many of each type to pick at random</div>
+              <div className="bank-types__label">
+                How many of each type to pick at random
+                <span className="lms-muted"> — the number after each box is how many exist in the bank for these topics</span>
+              </div>
               <div className="bank-types__row">
                 {typeCaps.map((c) => (
-                  <label key={c.type} className="bank-type">
+                  <label key={c.type} className="bank-type" title={`${c.cap} ${c.label} question${c.cap === 1 ? '' : 's'} available`}>
                     <span className="bank-type__name">{c.label}</span>
                     <Input
                       type="number"
@@ -200,10 +203,10 @@ export function BankPicker({ assessment, onClose }) {
                       onChange={(e) => setTypeCount(c.type, e.target.value)}
                       className="bank-type__input"
                     />
-                    <span className="bank-type__cap">/ {c.cap}</span>
+                    <span className="bank-type__cap">of {c.cap} available</span>
                   </label>
                 ))}
-                <span className="bank-types__total">Total <strong>{perTypeTotal}</strong></span>
+                <span className="bank-types__total">Total to pick: <strong>{perTypeTotal}</strong></span>
               </div>
             </div>
           )}
