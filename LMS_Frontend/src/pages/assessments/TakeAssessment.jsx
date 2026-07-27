@@ -7,7 +7,7 @@ import { Badge, Button, Card, CardHeader, EmptyState, ErrorState, Modal, Skeleto
 import { PageHeader } from '@/components/PageHeader';
 import { apiErrorMessage } from '@/lib/api';
 import { assessmentKeys, useAssessment, useLeaderboard, useMySubmission, useSubmitAssessment } from '@/lib/assessments';
-import { assessmentLabel, groupQuestionsByType, isGithubRepoUrl, QUESTION_TYPE_HINT, sectionRange } from './assessmentsUi';
+import { assessmentLabel, groupQuestionsByType, isGithubRepoUrl, QUESTION_TYPE_HINT, QUESTION_TYPE_LABEL, sectionRange } from './assessmentsUi';
 import { ProctoredFlow } from './ProctoredExam';
 import '../modules/modules.css';
 import './exam.css';
@@ -448,6 +448,17 @@ function Quiz({ a }) {
   const [err, setErr] = useState('');
   const submit = useSubmitAssessment();
 
+  // One-question-at-a-time navigation (mirrors the proctored exam).
+  const [current, setCurrent] = useState(0);
+  const [visited, setVisited] = useState(() => new Set());
+  const orderedIds = groupQuestionsByType(a.questions).ordered;
+  const isAnswered = (q) => { const ans = answers[q.id]; return Boolean(ans && (ans.selectedOption !== undefined || ans.text?.trim())); };
+  const go = (i) => setCurrent(Math.max(0, Math.min(orderedIds.length - 1, i)));
+  useEffect(() => {
+    const item = orderedIds[current];
+    if (item) setVisited((v) => (v.has(item.q.id) ? v : new Set(v).add(item.q.id)));
+  }, [current, orderedIds.length]);
+
   function setAnswer(qid, patch) {
     setAnswers((prev) => ({ ...prev, [qid]: { ...prev[qid], ...patch } }));
   }
@@ -496,55 +507,84 @@ function Quiz({ a }) {
     }
   }
 
-  const { groups } = groupQuestionsByType(a.questions);
+  const { groups, ordered } = groupQuestionsByType(a.questions);
+  const cur = ordered[current];
 
   return (
     <>
       <PageHeader title={assessmentLabel(a)} subtitle={`${a.module?.name} · pass ≥ ${a.passingScore}%`} />
 
-      {groups.map((g) => (
-        <section key={g.type} className="quiz-section">
-          <div className="quiz-section__head">
-            <span className="quiz-section__title">{g.label}</span>
-            <span className="quiz-section__range">{sectionRange(g.items)}</span>
-          </div>
-          {g.items.map(({ q, number }) => (
-            <Card key={q.id} style={{ marginBottom: 'var(--space-4)' }}>
-              <div style={{ fontWeight: 'var(--font-weight-semibold)', marginBottom: 'var(--space-3)' }}>
-                {number}. {q.prompt}
+      {/* Question navigator — green = answered, blue = seen but not answered. */}
+      <Card style={{ marginBottom: 'var(--space-4)' }}>
+        <div className="quiz-pal">
+          {groups.map((g) => (
+            <div key={g.type} className="quiz-pal__group">
+              <span className="quiz-pal__label">{g.label}</span>
+              <div className="quiz-pal__grid">
+                {g.items.map(({ q, number }) => {
+                  const answered = isAnswered(q);
+                  const seen = visited.has(q.id);
+                  return (
+                    <button
+                      key={q.id}
+                      type="button"
+                      className={`quiz-pal__btn${answered ? ' is-answered' : seen ? ' is-review' : ''}${number - 1 === current ? ' is-current' : ''}`}
+                      onClick={() => go(number - 1)}
+                    >
+                      {number}
+                    </button>
+                  );
+                })}
               </div>
-              {q.type === QuestionType.MCQ ? (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
-                  {q.options?.map((opt, oi) => (
-                    <label key={oi} style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', cursor: 'pointer' }}>
-                      <input
-                        type="radio"
-                        name={q.id}
-                        checked={answers[q.id]?.selectedOption === oi}
-                        onChange={() => setAnswer(q.id, { selectedOption: oi })}
-                      />
-                      {opt}
-                    </label>
-                  ))}
-                </div>
-              ) : q.type === QuestionType.CODING ? (
-                <RepoInput value={answers[q.id]?.text ?? ''} onChange={(v) => setAnswer(q.id, { text: v })} />
-              ) : (
-                <Textarea
-                  placeholder={QUESTION_TYPE_HINT[q.type] || 'Type your answer…'}
-                  value={answers[q.id]?.text ?? ''}
-                  onChange={(e) => setAnswer(q.id, { text: e.target.value })}
-                />
-              )}
-            </Card>
+            </div>
           ))}
-        </section>
-      ))}
+          <div className="quiz-pal__legend">
+            <span><i className="quiz-pal__dot quiz-pal__dot--answered" /> Answered</span>
+            <span><i className="quiz-pal__dot quiz-pal__dot--review" /> To review</span>
+          </div>
+        </div>
+      </Card>
+
+      {/* One question at a time. */}
+      {cur && (
+        <Card style={{ marginBottom: 'var(--space-4)' }}>
+          <div className="quiz-q__section">{QUESTION_TYPE_LABEL[cur.q.type]} · Question {cur.number} of {ordered.length}</div>
+          <div className="quiz-q__prompt">{cur.number}. {cur.q.prompt}</div>
+          {cur.q.type === QuestionType.MCQ ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
+              {cur.q.options?.map((opt, oi) => (
+                <label key={oi} style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', cursor: 'pointer' }}>
+                  <input
+                    type="radio"
+                    name={cur.q.id}
+                    checked={answers[cur.q.id]?.selectedOption === oi}
+                    onChange={() => setAnswer(cur.q.id, { selectedOption: oi })}
+                  />
+                  {opt}
+                </label>
+              ))}
+            </div>
+          ) : cur.q.type === QuestionType.CODING ? (
+            <RepoInput value={answers[cur.q.id]?.text ?? ''} onChange={(v) => setAnswer(cur.q.id, { text: v })} />
+          ) : (
+            <Textarea
+              placeholder={QUESTION_TYPE_HINT[cur.q.type] || 'Type your answer…'}
+              value={answers[cur.q.id]?.text ?? ''}
+              onChange={(e) => setAnswer(cur.q.id, { text: e.target.value })}
+            />
+          )}
+        </Card>
+      )}
 
       <Card>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--space-4)' }}>
-          <span className="lms-secondary-text">{answeredCount} / {a.questions.length} answered</span>
-          <Button onClick={onSubmit} loading={submit.isPending}>Submit assessment</Button>
+        <div className="quiz-nav">
+          <Button variant="outline" disabled={current === 0} onClick={() => go(current - 1)}>Previous</Button>
+          <span className="quiz-nav__meta lms-secondary-text">{answeredCount} / {a.questions.length} answered</span>
+          {current < ordered.length - 1 ? (
+            <Button onClick={() => go(current + 1)}>Next</Button>
+          ) : (
+            <Button onClick={onSubmit} loading={submit.isPending}>Submit assessment</Button>
+          )}
         </div>
         {err && <span className="field__error" style={{ display: 'block', marginTop: 'var(--space-2)' }}>{err}</span>}
       </Card>

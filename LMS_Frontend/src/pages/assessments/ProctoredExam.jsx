@@ -5,7 +5,7 @@ import { QuestionType } from '@/shared';
 import { Badge, Button, Card, CardHeader } from '@/components/ui';
 import { apiErrorMessage } from '@/lib/api';
 import { useProctorShot, useRecordWarning, useSaveProgress, useStartAttempt, useSubmitAssessment } from '@/lib/assessments';
-import { assessmentLabel, groupQuestionsByType, isGithubRepoUrl, QUESTION_TYPE_HINT, sectionRange } from './assessmentsUi';
+import { assessmentLabel, groupQuestionsByType, isGithubRepoUrl, QUESTION_TYPE_HINT, QUESTION_TYPE_LABEL } from './assessmentsUi';
 import { RepoInput } from './TakeAssessment';
 import './exam.css';
 const fmtClock = (ms) => {
@@ -370,8 +370,20 @@ function TimedExam({ assessment, questions, endsAt, serverNow, initialStream }) 
   const lowTime = remaining <= 60_000;
   const midTime = remaining <= 5 * 60_000;
 
-  // Group questions by type (with continuous numbering) for the section headings.
+  // Group questions by type (continuous numbering) for the navigator; flatten to
+  // one ordered list for one-question-at-a-time navigation.
   const { groups } = useMemo(() => groupQuestionsByType(questions), [questions]);
+  const ordered = useMemo(() => groups.flatMap((g) => g.items), [groups]); // [{ q, number }]
+  const [current, setCurrent] = useState(0);
+  const [visited, setVisited] = useState(() => new Set());
+  const isAnswered = (q) => { const ans = answers[q.id]; return Boolean(ans && (ans.selectedOption !== undefined || ans.text?.trim())); };
+  const go = (i) => setCurrent(Math.max(0, Math.min(ordered.length - 1, i)));
+  // Mark the question on screen as "seen" — a seen-but-unanswered one shows for review.
+  useEffect(() => {
+    const item = ordered[current];
+    if (item) setVisited((v) => (v.has(item.q.id) ? v : new Set(v).add(item.q.id)));
+  }, [current, ordered]);
+  const cur = ordered[current];
 
   return (
     <div className="exam-shell">
@@ -392,20 +404,20 @@ function TimedExam({ assessment, questions, endsAt, serverNow, initialStream }) 
           <div className="exam-palette__head">
             <ListChecks size={18} /> Questions
           </div>
-          {/* Palette is grouped by type; numbers run continuously across the test. */}
+          {/* Grouped by type; green = answered, blue = seen but not answered (review). */}
           {groups.map((g) => (
             <div key={g.type} className="exam-pal-group">
               <div className="exam-pal-group__label">{g.label}</div>
               <div className="exam-palette__grid">
                 {g.items.map(({ q, number }) => {
-                  const ans = answers[q.id];
-                  const done = ans && (ans.selectedOption !== undefined || ans.text?.trim());
+                  const answered = isAnswered(q);
+                  const seen = visited.has(q.id);
                   return (
                     <button
                       key={q.id}
                       type="button"
-                      className={`exam-pal-btn${done ? ' is-answered' : ''}`}
-                      onClick={() => document.getElementById(`exam-q-${q.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+                      className={`exam-pal-btn${answered ? ' is-answered' : seen ? ' is-review' : ''}${number - 1 === current ? ' is-current' : ''}`}
+                      onClick={() => go(number - 1)}
                     >
                       {number}
                     </button>
@@ -414,47 +426,50 @@ function TimedExam({ assessment, questions, endsAt, serverNow, initialStream }) 
               </div>
             </div>
           ))}
+          <div className="exam-legend">
+            <span><i className="exam-legend__dot exam-legend__dot--answered" /> Answered</span>
+            <span><i className="exam-legend__dot exam-legend__dot--review" /> To review</span>
+          </div>
         </aside>
 
         <main className="exam-questions">
-          {groups.map((g) => (
-            <section key={g.type} className="exam-section">
-              <div className="exam-section__head">
-                <span className="exam-section__title">{g.label}</span>
-                <span className="exam-section__range">{sectionRange(g.items)}</span>
-              </div>
-              {g.items.map(({ q, number }) => (
-                <div key={q.id} id={`exam-q-${q.id}`} className="exam-q">
-                  <div className="exam-q__prompt">{number}. {q.prompt}</div>
-                  {q.type === QuestionType.MCQ ? (
-                    q.options?.map((opt, oi) => (
-                      <label key={oi} className={`exam-opt${answers[q.id]?.selectedOption === oi ? ' is-selected' : ''}`}>
-                        <input
-                          type="radio"
-                          name={q.id}
-                          checked={answers[q.id]?.selectedOption === oi}
-                          onChange={() => setAnswer(q.id, { selectedOption: oi })}
-                        />
-                        {opt}
-                      </label>
-                    ))
-                  ) : q.type === QuestionType.CODING ? (
-                    <RepoInput value={answers[q.id]?.text ?? ''} onChange={(v) => setAnswer(q.id, { text: v })} />
-                  ) : (
-                    <textarea
-                      className="input"
-                      style={{ minHeight: '7rem', width: '100%' }}
-                      placeholder={QUESTION_TYPE_HINT[q.type] || 'Type your answer…'}
-                      value={answers[q.id]?.text ?? ''}
-                      onChange={(e) => setAnswer(q.id, { text: e.target.value })}
+          {cur && (
+            <div className="exam-q-single">
+              <div className="exam-q__section">{QUESTION_TYPE_LABEL[cur.q.type]} · Question {cur.number} of {ordered.length}</div>
+              <div className="exam-q__prompt">{cur.number}. {cur.q.prompt}</div>
+              {cur.q.type === QuestionType.MCQ ? (
+                cur.q.options?.map((opt, oi) => (
+                  <label key={oi} className={`exam-opt${answers[cur.q.id]?.selectedOption === oi ? ' is-selected' : ''}`}>
+                    <input
+                      type="radio"
+                      name={cur.q.id}
+                      checked={answers[cur.q.id]?.selectedOption === oi}
+                      onChange={() => setAnswer(cur.q.id, { selectedOption: oi })}
                     />
-                  )}
-                </div>
-              ))}
-            </section>
-          ))}
-          <div style={{ maxWidth: '54rem', margin: 0, display: 'flex', justifyContent: 'flex-end', paddingBottom: 'var(--space-8)' }}>
-            <Button loading={submitMut.isPending} onClick={doSubmit}>Submit test</Button>
+                    {opt}
+                  </label>
+                ))
+              ) : cur.q.type === QuestionType.CODING ? (
+                <RepoInput value={answers[cur.q.id]?.text ?? ''} onChange={(v) => setAnswer(cur.q.id, { text: v })} />
+              ) : (
+                <textarea
+                  className="input"
+                  style={{ minHeight: '9rem', width: '100%' }}
+                  placeholder={QUESTION_TYPE_HINT[cur.q.type] || 'Type your answer…'}
+                  value={answers[cur.q.id]?.text ?? ''}
+                  onChange={(e) => setAnswer(cur.q.id, { text: e.target.value })}
+                />
+              )}
+            </div>
+          )}
+          <div className="exam-nav">
+            <Button variant="outline" disabled={current === 0} onClick={() => go(current - 1)}>Previous</Button>
+            <span className="exam-nav__spacer" />
+            {current < ordered.length - 1 ? (
+              <Button onClick={() => go(current + 1)}>Next</Button>
+            ) : (
+              <Button loading={submitMut.isPending} onClick={doSubmit}>Submit test</Button>
+            )}
           </div>
         </main>
       </div>
