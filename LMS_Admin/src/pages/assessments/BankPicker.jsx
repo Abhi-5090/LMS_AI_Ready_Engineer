@@ -1,13 +1,24 @@
 import { useState } from 'react';
-import { Database, Shuffle } from 'lucide-react';
-import { Badge, Button, EmptyState, Input, Select, SkeletonText } from '@/components/ui';
+import { Database, Minus, Plus, Shuffle } from 'lucide-react';
+import { Badge, Button, EmptyState, SkeletonText } from '@/components/ui';
 import { apiErrorMessage } from '@/lib/api';
 import { useQuestionBank } from '@/lib/questionBank';
 import { useAddQuestionsFromBank } from '@/lib/assessments';
 import { QUESTION_TYPE_LABEL, QUESTION_TYPE_OPTIONS, QUESTION_TYPE_SHORT } from './assessmentsUi';
 import { pickEvenlyByTopic, shuffle } from './bankRandom';
 
-const TYPE_FILTER_OPTIONS = [{ value: 'ALL', label: 'All types' }, ...QUESTION_TYPE_OPTIONS];
+/** Small −/＋ number stepper (hides the native number spinners). */
+function Stepper({ value, min = 0, max, onChange, ariaLabel }) {
+  const v = Number(value) || 0;
+  const set = (nv) => onChange(String(Math.max(min, Math.min(max ?? Infinity, nv))));
+  return (
+    <div className="stepper">
+      <button type="button" className="stepper__btn" onClick={() => set(v - 1)} disabled={v <= min} aria-label={`Decrease ${ariaLabel}`}><Minus size={13} /></button>
+      <input className="stepper__input" type="number" inputMode="numeric" min={min} max={max} value={value} onChange={(e) => onChange(e.target.value)} aria-label={ariaLabel} />
+      <button type="button" className="stepper__btn" onClick={() => set(v + 1)} disabled={max != null && v >= max} aria-label={`Increase ${ariaLabel}`}><Plus size={13} /></button>
+    </div>
+  );
+}
 
 // Split `total` as evenly as possible across the given types, capped by each
 // type's available count; any leftover from a capped type spills to the others.
@@ -55,7 +66,6 @@ export function BankPicker({ assessment, onClose }) {
   const visible = typeFilter === 'ALL' ? available : available.filter((q) => q.type === typeFilter);
 
   // The admin can auto-pick as many as are available (no per-type cap).
-  const maxTarget = visible.length;
   const [target, setTarget] = useState(() => String(Math.min(10, available.length) || ''));
 
   // Per-type availability (only types that actually have questions), in a
@@ -157,59 +167,76 @@ export function BankPicker({ assessment, onClose }) {
         />
       ) : (
         <>
-          {/* Random picker: share N evenly across the selected topics. */}
-          <div className="bank-random">
-            <span className="lms-muted">Auto-pick</span>
-            <Input
-              type="number"
-              min={0}
-              max={(typeFilter === 'ALL' ? available.length : maxTarget) || undefined}
-              value={target}
-              onChange={(e) => changeTarget(e.target.value)}
-              style={{ width: '4.5rem' }}
-            />
-            <span className="lms-muted">at random</span>
-            {/* Type filter — restrict the pool (and the list below) to one type. */}
-            <Select
-              options={TYPE_FILTER_OPTIONS}
-              value={typeFilter}
-              onChange={(e) => { setTypeFilter(e.target.value); setSelected(new Set()); setPerType({}); }}
-              className="bank-random__type"
-            />
-            {topicSet.size > 1 && <span className="lms-muted">split evenly across {topicSet.size} topics</span>}
-            <Button type="button" variant="outline" size="sm" onClick={selectRandomly}>
-              <Shuffle size={14} style={{ marginRight: 6 }} /> Select randomly
-            </Button>
-            {selected.size > 0 && <span className="lms-muted" style={{ marginLeft: 'auto' }}>{selected.size} selected</span>}
-          </div>
-
-          {/* All-types split: how many of EACH type to pull (defaults to an even
-              share of the Auto-pick total; the admin can rebalance per type). */}
-          {typeFilter === 'ALL' && typeCaps.length > 1 && (
-            <div className="bank-types">
-              <div className="bank-types__label">
-                How many of each type to pick at random
-                <span className="lms-muted"> — the number after each box is how many exist in the bank for these topics</span>
-              </div>
-              <div className="bank-types__row">
-                {typeCaps.map((c) => (
-                  <label key={c.type} className="bank-type" title={`${c.label} — ${c.cap} in the bank`}>
-                    <span className="bank-type__name">{QUESTION_TYPE_SHORT[c.type] ?? c.label}</span>
-                    <Input
-                      type="number"
-                      min={0}
-                      max={c.cap}
-                      value={countFor(c.type)}
-                      onChange={(e) => setTypeCount(c.type, e.target.value)}
-                      className="bank-type__input"
-                    />
-                    <span className="bank-type__cap">of {c.cap}</span>
-                  </label>
-                ))}
-                <span className="bank-types__total">Total to pick: <strong>{perTypeTotal}</strong></span>
-              </div>
+          {/* ── Auto-pick panel ─────────────────────────────────────────── */}
+          <div className="autopick">
+            <div className="autopick__head">
+              <span className="autopick__title"><Shuffle size={16} /> Auto-pick</span>
+              <span className="autopick__sub">Randomly select questions from the bank{topicSet.size > 1 ? `, split evenly across ${topicSet.size} topics` : ''}.</span>
             </div>
-          )}
+
+            <div className="autopick__body">
+              {/* Type filter — segmented control (All + each type present). */}
+              <div className="seg" role="tablist" aria-label="Question type">
+                {[{ type: 'ALL', label: 'All types' }, ...typeCaps.map((c) => ({ type: c.type, label: QUESTION_TYPE_SHORT[c.type] ?? c.label }))].map((o) => (
+                  <button
+                    key={o.type}
+                    type="button"
+                    role="tab"
+                    aria-selected={typeFilter === o.type}
+                    className={`seg__btn${typeFilter === o.type ? ' is-active' : ''}`}
+                    onClick={() => { setTypeFilter(o.type); setSelected(new Set()); setPerType({}); }}
+                  >
+                    {o.label}
+                  </button>
+                ))}
+              </div>
+
+              {typeFilter === 'ALL' ? (
+                <>
+                  {typeCaps.length > 1 && (
+                    <div className="autopick__evenly">
+                      <span>Split</span>
+                      <Stepper value={target} min={0} max={available.length} onChange={changeTarget} ariaLabel="total to distribute" />
+                      <span>evenly, then fine-tune each type:</span>
+                    </div>
+                  )}
+                  <div className="autopick__grid">
+                    {typeCaps.map((c) => {
+                      const val = Number(countFor(c.type)) || 0;
+                      return (
+                        <div key={c.type} className="tcard" data-active={val > 0} title={c.label}>
+                          <div className="tcard__top">
+                            <span className="tcard__code">{QUESTION_TYPE_SHORT[c.type] ?? c.label}</span>
+                            <span className="tcard__cap">of {c.cap}</span>
+                          </div>
+                          <Stepper value={countFor(c.type)} min={0} max={c.cap} onChange={(v) => setTypeCount(c.type, v)} ariaLabel={`${c.label} count`} />
+                          <div className="tcard__track"><div className="tcard__fill" style={{ width: `${c.cap ? Math.min(100, (val / c.cap) * 100) : 0}%` }} /></div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </>
+              ) : (
+                <div className="autopick__single">
+                  <span>How many <strong>{QUESTION_TYPE_SHORT[typeFilter] ?? ''}</strong> questions?</span>
+                  <Stepper value={target} min={0} max={visible.length} onChange={changeTarget} ariaLabel="how many" />
+                  <span className="autopick__cap">of {visible.length}</span>
+                </div>
+              )}
+            </div>
+
+            <div className="autopick__foot">
+              <div className="autopick__meta">
+                <span className="autopick__count">
+                  <strong>{typeFilter === 'ALL' ? perTypeTotal : Math.min(Number(target) || 0, visible.length)}</strong> to pick
+                </span>
+                {selected.size > 0 && <span className="autopick__selected">{selected.size} selected</span>}
+              </div>
+              <Button type="button" onClick={selectRandomly}>
+                <Shuffle size={15} style={{ marginRight: 6 }} /> Select randomly
+              </Button>
+            </div>
+          </div>
 
           <div className="q-list" style={{ maxHeight: '24rem', overflowY: 'auto' }}>
             {testTopics.length > 0 ? (
