@@ -690,11 +690,14 @@
 .ans-modal { display: flex; gap: var(--space-4); height: min(72vh, 42rem); }
 /* Wider question-number sidebar with a heading and 4 numbers per row. */
 .ans-nav {
-  flex: none; width: 12rem; display: flex; flex-direction: column;
+  flex: none; width: 12rem; display: flex; flex-direction: column; min-height: 0; overflow-y: auto;
   padding-right: var(--space-3); border-right: 1px solid var(--color-border);
 }
-.ans-nav__head { display: flex; align-items: center; gap: 6px; font-weight: var(--font-weight-semibold); font-size: var(--font-size-sm); margin-bottom: var(--space-3); }
-.ans-nav__grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; overflow-y: auto; align-content: start; }
+.ans-nav__head { position: sticky; top: 0; z-index: 1; background: var(--color-surface); display: flex; align-items: center; gap: 6px; font-weight: var(--font-weight-semibold); font-size: var(--font-size-sm); padding-bottom: var(--space-2); margin-bottom: var(--space-2); }
+/* Question navigator grouped by type. */
+.ans-nav__group + .ans-nav__group { margin-top: var(--space-3); }
+.ans-nav__label { font-size: var(--font-size-xs); font-weight: var(--font-weight-semibold); text-transform: uppercase; letter-spacing: 0.04em; color: var(--color-text-secondary); margin-bottom: 6px; }
+.ans-nav__grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; align-content: start; }
 .ans-nav__btn {
   aspect-ratio: 1; border: 1px solid var(--color-border); border-radius: var(--radius-md);
   background: var(--color-surface); cursor: pointer; font-size: var(--font-size-xs);
@@ -704,6 +707,16 @@
 .ans-nav__btn.is-wrong { background: color-mix(in srgb, var(--color-error) 14%, transparent); color: var(--color-error); border-color: color-mix(in srgb, var(--color-error) 40%, transparent); }
 .ans-nav__btn.is-answered { background: color-mix(in srgb, var(--color-primary) 14%, transparent); color: var(--color-primary-hover); }
 .ans-body { flex: 1; min-width: 0; overflow-y: auto; position: relative; padding-right: var(--space-2); }
+/* Type section headings inside the answers body (sticky while scrolling). */
+.ans-section + .ans-section { margin-top: var(--space-5); }
+.ans-section__head {
+  position: sticky; top: 0; z-index: 1; background: var(--color-surface);
+  display: flex; align-items: baseline; gap: var(--space-3);
+  padding: var(--space-2) 0; margin-bottom: var(--space-2);
+  border-bottom: 2px solid color-mix(in srgb, var(--color-primary) 30%, var(--color-border));
+}
+.ans-section__title { font-size: var(--font-size-lg); font-weight: var(--font-weight-bold); color: var(--color-text); }
+.ans-section__range { margin-left: auto; font-size: var(--font-size-xs); font-weight: var(--font-weight-semibold); text-transform: uppercase; letter-spacing: 0.05em; color: var(--color-text-secondary); }
 .ans-q { padding: var(--space-4) 0; border-bottom: 1px solid var(--color-border); }
 .ans-q:first-child { padding-top: 0; }
 .ans-q__head { display: flex; align-items: flex-start; gap: var(--space-2); margin-bottom: var(--space-3); }

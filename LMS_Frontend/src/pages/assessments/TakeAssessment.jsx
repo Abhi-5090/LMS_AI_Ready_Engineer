@@ -7,7 +7,7 @@ import { Badge, Button, Card, CardHeader, EmptyState, ErrorState, Modal, Skeleto
 import { PageHeader } from '@/components/PageHeader';
 import { apiErrorMessage } from '@/lib/api';
 import { assessmentKeys, useAssessment, useLeaderboard, useMySubmission, useSubmitAssessment } from '@/lib/assessments';
-import { assessmentLabel, isGithubRepoUrl, QUESTION_TYPE_HINT } from './assessmentsUi';
+import { assessmentLabel, groupQuestionsByType, isGithubRepoUrl, QUESTION_TYPE_HINT, sectionRange } from './assessmentsUi';
 import { ProctoredFlow } from './ProctoredExam';
 import '../modules/modules.css';
 import './exam.css';
@@ -219,6 +219,8 @@ function AnswersModal({ a, submission, onClose }) {
   const map = {};
   (submission.answers ?? []).forEach((an) => { map[an.question] = an; });
   const bodyRef = useRef(null);
+  // Same type grouping + continuous numbering as the test screen.
+  const { groups } = groupQuestionsByType(a.questions);
 
   const jump = (qid) => {
     const el = bodyRef.current?.querySelector(`#ans-q-${qid}`);
@@ -232,46 +234,57 @@ function AnswersModal({ a, submission, onClose }) {
       <div className="ans-modal">
         <nav className="ans-nav" aria-label="Questions">
           <div className="ans-nav__head"><ListChecks size={16} /> Questions</div>
-          <div className="ans-nav__grid">
-            {a.questions.map((q, i) => {
-              const ans = map[q.id];
-              const isMcq = q.type === QuestionType.MCQ;
-              const done = isMcq ? ans?.selectedOption !== undefined : Boolean(ans?.text?.trim());
-              const correct = isMcq && ans?.selectedOption === q.correctOption;
-              return (
-                <button
-                  key={q.id}
-                  type="button"
-                  className={`ans-nav__btn${isMcq ? (correct ? ' is-correct' : done ? ' is-wrong' : '') : done ? ' is-answered' : ''}`}
-                  onClick={() => jump(q.id)}
-                  title={`Question ${i + 1}`}
-                >
-                  {i + 1}
-                </button>
-              );
-            })}
-          </div>
+          {groups.map((g) => (
+            <div key={g.type} className="ans-nav__group">
+              <div className="ans-nav__label">{g.label}</div>
+              <div className="ans-nav__grid">
+                {g.items.map(({ q, number }) => {
+                  const ans = map[q.id];
+                  const isMcq = q.type === QuestionType.MCQ;
+                  const done = isMcq ? ans?.selectedOption !== undefined : Boolean(ans?.text?.trim());
+                  const correct = isMcq && ans?.selectedOption === q.correctOption;
+                  return (
+                    <button
+                      key={q.id}
+                      type="button"
+                      className={`ans-nav__btn${isMcq ? (correct ? ' is-correct' : done ? ' is-wrong' : '') : done ? ' is-answered' : ''}`}
+                      onClick={() => jump(q.id)}
+                      title={`Question ${number}`}
+                    >
+                      {number}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
         </nav>
 
         <div className="ans-body" ref={bodyRef}>
-          {a.questions.map((q, i) => {
-            const ans = map[q.id];
-            const picked = ans?.selectedOption;
-            const isMcq = q.type === QuestionType.MCQ;
-            const correct = isMcq && picked === q.correctOption;
-            return (
-              <div key={q.id} id={`ans-q-${q.id}`} className="ans-q">
-                <div className="ans-q__head">
-                  <span className="ans-q__num">{i + 1}</span>
-                  <span className="ans-q__prompt">{q.prompt}</span>
-                  {isMcq && (
-                    <Badge tone={correct ? 'success' : picked === undefined ? 'neutral' : 'error'}>
-                      {correct ? 'Correct' : picked === undefined ? 'Skipped' : 'Wrong'}
-                    </Badge>
-                  )}
-                </div>
+          {groups.map((g) => (
+            <div key={g.type} className="ans-section">
+              <div className="ans-section__head">
+                <span className="ans-section__title">{g.label}</span>
+                <span className="ans-section__range">{sectionRange(g.items)}</span>
+              </div>
+              {g.items.map(({ q, number }) => {
+                const ans = map[q.id];
+                const picked = ans?.selectedOption;
+                const isMcq = q.type === QuestionType.MCQ;
+                const correct = isMcq && picked === q.correctOption;
+                return (
+                  <div key={q.id} id={`ans-q-${q.id}`} className="ans-q">
+                    <div className="ans-q__head">
+                      <span className="ans-q__num">{number}</span>
+                      <span className="ans-q__prompt">{q.prompt}</span>
+                      {isMcq && (
+                        <Badge tone={correct ? 'success' : picked === undefined ? 'neutral' : 'error'}>
+                          {correct ? 'Correct' : picked === undefined ? 'Skipped' : 'Wrong'}
+                        </Badge>
+                      )}
+                    </div>
 
-                {isMcq ? (
+                    {isMcq ? (
                   <div className="ans-cols">
                     <div className="ans-side">
                       <div className="ans-side__label">Your answer</div>
@@ -308,11 +321,13 @@ function AnswersModal({ a, submission, onClose }) {
                         {q.referenceAnswer ? q.referenceAnswer : 'Graded by the AI evaluation engine against the model answer.'}
                       </div>
                     </div>
+                        </div>
+                      )}
                   </div>
-                )}
-              </div>
-            );
-          })}
+                );
+              })}
+            </div>
+          ))}
         </div>
       </div>
     </Modal>
@@ -481,39 +496,49 @@ function Quiz({ a }) {
     }
   }
 
+  const { groups } = groupQuestionsByType(a.questions);
+
   return (
     <>
       <PageHeader title={assessmentLabel(a)} subtitle={`${a.module?.name} · pass ≥ ${a.passingScore}%`} />
 
-      {a.questions.map((q, i) => (
-        <Card key={q.id} style={{ marginBottom: 'var(--space-4)' }}>
-          <div style={{ fontWeight: 'var(--font-weight-semibold)', marginBottom: 'var(--space-3)' }}>
-            {i + 1}. {q.prompt}
+      {groups.map((g) => (
+        <section key={g.type} className="quiz-section">
+          <div className="quiz-section__head">
+            <span className="quiz-section__title">{g.label}</span>
+            <span className="quiz-section__range">{sectionRange(g.items)}</span>
           </div>
-          {q.type === QuestionType.MCQ ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
-              {q.options?.map((opt, oi) => (
-                <label key={oi} style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', cursor: 'pointer' }}>
-                  <input
-                    type="radio"
-                    name={q.id}
-                    checked={answers[q.id]?.selectedOption === oi}
-                    onChange={() => setAnswer(q.id, { selectedOption: oi })}
-                  />
-                  {opt}
-                </label>
-              ))}
-            </div>
-          ) : q.type === QuestionType.CODING ? (
-            <RepoInput value={answers[q.id]?.text ?? ''} onChange={(v) => setAnswer(q.id, { text: v })} />
-          ) : (
-            <Textarea
-              placeholder={QUESTION_TYPE_HINT[q.type] || 'Type your answer…'}
-              value={answers[q.id]?.text ?? ''}
-              onChange={(e) => setAnswer(q.id, { text: e.target.value })}
-            />
-          )}
-        </Card>
+          {g.items.map(({ q, number }) => (
+            <Card key={q.id} style={{ marginBottom: 'var(--space-4)' }}>
+              <div style={{ fontWeight: 'var(--font-weight-semibold)', marginBottom: 'var(--space-3)' }}>
+                {number}. {q.prompt}
+              </div>
+              {q.type === QuestionType.MCQ ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
+                  {q.options?.map((opt, oi) => (
+                    <label key={oi} style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', cursor: 'pointer' }}>
+                      <input
+                        type="radio"
+                        name={q.id}
+                        checked={answers[q.id]?.selectedOption === oi}
+                        onChange={() => setAnswer(q.id, { selectedOption: oi })}
+                      />
+                      {opt}
+                    </label>
+                  ))}
+                </div>
+              ) : q.type === QuestionType.CODING ? (
+                <RepoInput value={answers[q.id]?.text ?? ''} onChange={(v) => setAnswer(q.id, { text: v })} />
+              ) : (
+                <Textarea
+                  placeholder={QUESTION_TYPE_HINT[q.type] || 'Type your answer…'}
+                  value={answers[q.id]?.text ?? ''}
+                  onChange={(e) => setAnswer(q.id, { text: e.target.value })}
+                />
+              )}
+            </Card>
+          ))}
+        </section>
       ))}
 
       <Card>

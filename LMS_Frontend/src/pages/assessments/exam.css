@@ -117,6 +117,50 @@
 /* Questions sit toward the left; the right gutter is reserved for the webcam. */
 .exam-questions { flex: 1; overflow-y: auto; padding: var(--space-6) 15.5rem var(--space-8) var(--space-6); }
 .exam-q { max-width: 54rem; margin: 0 0 var(--space-6); }
+
+/* ── Question-type sections (MCQ / Scenario / Prompt Writing …) ───────────── */
+/* Questions are grouped by type with a heading; numbering runs continuously. */
+.exam-section { margin-bottom: var(--space-8); }
+.exam-section__head {
+  max-width: 54rem;
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+  margin-bottom: var(--space-5);
+  padding-bottom: var(--space-2);
+  border-bottom: 2px solid color-mix(in srgb, var(--color-primary) 30%, var(--color-border));
+}
+.exam-section__title { font-size: var(--font-size-xl); font-weight: var(--font-weight-bold); color: var(--color-text); }
+.exam-section__range {
+  font-size: var(--font-size-xs); font-weight: var(--font-weight-semibold);
+  text-transform: uppercase; letter-spacing: 0.05em; color: var(--color-text-secondary);
+  margin-left: auto;
+}
+/* Palette (question navigator) is grouped by type too. */
+.exam-pal-group { margin-top: var(--space-4); }
+.exam-pal-group:first-of-type { margin-top: var(--space-3); }
+.exam-pal-group__label {
+  font-size: var(--font-size-xs); font-weight: var(--font-weight-semibold);
+  text-transform: uppercase; letter-spacing: 0.04em; color: var(--color-text-secondary);
+}
+.exam-pal-group .exam-palette__grid { margin-top: var(--space-2); }
+
+/* ── Non-proctored quiz: same type-grouped headings ───────────────────────── */
+.quiz-section { margin-bottom: var(--space-6); }
+.quiz-section__head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+  padding-bottom: var(--space-2);
+  border-bottom: 2px solid color-mix(in srgb, var(--color-primary) 30%, var(--color-border));
+}
+.quiz-section__title { font-size: var(--font-size-lg); font-weight: var(--font-weight-bold); color: var(--color-text); }
+.quiz-section__range {
+  font-size: var(--font-size-xs); font-weight: var(--font-weight-semibold);
+  text-transform: uppercase; letter-spacing: 0.05em; color: var(--color-text-secondary);
+  margin-left: auto;
+}
 .exam-q__prompt { font-size: var(--font-size-xl); font-weight: var(--font-weight-semibold); margin-bottom: var(--space-4); line-height: 1.45; }
 .exam-opt {
   display: flex;

@@ -1,11 +1,11 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { AlertTriangle, Camera, Clock, Copy, Download, Expand, ListChecks, Lock, Maximize, ShieldCheck } from 'lucide-react';
 import { QuestionType } from '@/shared';
 import { Badge, Button, Card, CardHeader } from '@/components/ui';
 import { apiErrorMessage } from '@/lib/api';
 import { useProctorShot, useRecordWarning, useSaveProgress, useStartAttempt, useSubmitAssessment } from '@/lib/assessments';
-import { assessmentLabel, isGithubRepoUrl, QUESTION_TYPE_HINT } from './assessmentsUi';
+import { assessmentLabel, groupQuestionsByType, isGithubRepoUrl, QUESTION_TYPE_HINT, sectionRange } from './assessmentsUi';
 import { RepoInput } from './TakeAssessment';
 import './exam.css';
 const fmtClock = (ms) => {
@@ -370,6 +370,9 @@ function TimedExam({ assessment, questions, endsAt, serverNow, initialStream }) 
   const lowTime = remaining <= 60_000;
   const midTime = remaining <= 5 * 60_000;
 
+  // Group questions by type (with continuous numbering) for the section headings.
+  const { groups } = useMemo(() => groupQuestionsByType(questions), [questions]);
+
   return (
     <div className="exam-shell">
       <div className="exam-bar">
@@ -389,52 +392,66 @@ function TimedExam({ assessment, questions, endsAt, serverNow, initialStream }) 
           <div className="exam-palette__head">
             <ListChecks size={18} /> Questions
           </div>
-          <div className="exam-palette__grid">
-            {questions.map((q, i) => {
-              const ans = answers[q.id];
-              const done = ans && (ans.selectedOption !== undefined || ans.text?.trim());
-              return (
-                <button
-                  key={q.id}
-                  type="button"
-                  className={`exam-pal-btn${done ? ' is-answered' : ''}`}
-                  onClick={() => document.getElementById(`exam-q-${q.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
-                >
-                  {i + 1}
-                </button>
-              );
-            })}
-          </div>
+          {/* Palette is grouped by type; numbers run continuously across the test. */}
+          {groups.map((g) => (
+            <div key={g.type} className="exam-pal-group">
+              <div className="exam-pal-group__label">{g.label}</div>
+              <div className="exam-palette__grid">
+                {g.items.map(({ q, number }) => {
+                  const ans = answers[q.id];
+                  const done = ans && (ans.selectedOption !== undefined || ans.text?.trim());
+                  return (
+                    <button
+                      key={q.id}
+                      type="button"
+                      className={`exam-pal-btn${done ? ' is-answered' : ''}`}
+                      onClick={() => document.getElementById(`exam-q-${q.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+                    >
+                      {number}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
         </aside>
 
         <main className="exam-questions">
-          {questions.map((q, i) => (
-            <div key={q.id} id={`exam-q-${q.id}`} className="exam-q">
-              <div className="exam-q__prompt">{i + 1}. {q.prompt}</div>
-              {q.type === QuestionType.MCQ ? (
-                q.options?.map((opt, oi) => (
-                  <label key={oi} className={`exam-opt${answers[q.id]?.selectedOption === oi ? ' is-selected' : ''}`}>
-                    <input
-                      type="radio"
-                      name={q.id}
-                      checked={answers[q.id]?.selectedOption === oi}
-                      onChange={() => setAnswer(q.id, { selectedOption: oi })}
+          {groups.map((g) => (
+            <section key={g.type} className="exam-section">
+              <div className="exam-section__head">
+                <span className="exam-section__title">{g.label}</span>
+                <span className="exam-section__range">{sectionRange(g.items)}</span>
+              </div>
+              {g.items.map(({ q, number }) => (
+                <div key={q.id} id={`exam-q-${q.id}`} className="exam-q">
+                  <div className="exam-q__prompt">{number}. {q.prompt}</div>
+                  {q.type === QuestionType.MCQ ? (
+                    q.options?.map((opt, oi) => (
+                      <label key={oi} className={`exam-opt${answers[q.id]?.selectedOption === oi ? ' is-selected' : ''}`}>
+                        <input
+                          type="radio"
+                          name={q.id}
+                          checked={answers[q.id]?.selectedOption === oi}
+                          onChange={() => setAnswer(q.id, { selectedOption: oi })}
+                        />
+                        {opt}
+                      </label>
+                    ))
+                  ) : q.type === QuestionType.CODING ? (
+                    <RepoInput value={answers[q.id]?.text ?? ''} onChange={(v) => setAnswer(q.id, { text: v })} />
+                  ) : (
+                    <textarea
+                      className="input"
+                      style={{ minHeight: '7rem', width: '100%' }}
+                      placeholder={QUESTION_TYPE_HINT[q.type] || 'Type your answer…'}
+                      value={answers[q.id]?.text ?? ''}
+                      onChange={(e) => setAnswer(q.id, { text: e.target.value })}
                     />
-                    {opt}
-                  </label>
-                ))
-              ) : q.type === QuestionType.CODING ? (
-                <RepoInput value={answers[q.id]?.text ?? ''} onChange={(v) => setAnswer(q.id, { text: v })} />
-              ) : (
-                <textarea
-                  className="input"
-                  style={{ minHeight: '7rem', width: '100%' }}
-                  placeholder={QUESTION_TYPE_HINT[q.type] || 'Type your answer…'}
-                  value={answers[q.id]?.text ?? ''}
-                  onChange={(e) => setAnswer(q.id, { text: e.target.value })}
-                />
-              )}
-            </div>
+                  )}
+                </div>
+              ))}
+            </section>
           ))}
           <div style={{ maxWidth: '54rem', margin: 0, display: 'flex', justifyContent: 'flex-end', paddingBottom: 'var(--space-8)' }}>
             <Button loading={submitMut.isPending} onClick={doSubmit}>Submit test</Button>

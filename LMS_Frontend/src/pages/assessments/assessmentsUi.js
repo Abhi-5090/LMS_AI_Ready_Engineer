@@ -61,6 +61,41 @@ export function isAutoGraded(type) {
   return type === QuestionType.MCQ;
 }
 
+/** Canonical order for grouping a test's questions by type. */
+const TYPE_ORDER = [QuestionType.MCQ, QuestionType.SCENARIO, QuestionType.PROMPT_WRITING, QuestionType.CODING];
+
+/**
+ * Group a test's questions by type for display. Questions are ordered by type
+ * (Multiple Choice → Scenario Based → Prompt Writing → Repo Evaluation),
+ * keeping their original order within each type, and numbered continuously
+ * across the whole test (so MCQs might be 1–20, scenario 21–25, etc.).
+ * Returns { ordered, groups }:
+ *   ordered: [{ q, number }] in display order
+ *   groups:  [{ type, label, items: [{ q, number }] }] for section headings
+ */
+export function groupQuestionsByType(questions = []) {
+  const rank = (t) => { const i = TYPE_ORDER.indexOf(t); return i === -1 ? TYPE_ORDER.length : i; };
+  const ordered = questions
+    .map((q, i) => ({ q, i }))
+    .sort((a, b) => rank(a.q.type) - rank(b.q.type) || a.i - b.i)
+    .map(({ q }, idx) => ({ q, number: idx + 1 }));
+  const groups = [];
+  for (const item of ordered) {
+    const last = groups[groups.length - 1];
+    if (last && last.type === item.q.type) last.items.push(item);
+    else groups.push({ type: item.q.type, label: QUESTION_TYPE_LABEL[item.q.type] ?? 'Questions', items: [item] });
+  }
+  return { ordered, groups };
+}
+
+/** "Question 5" for a single-item group, else "Questions 1–20". */
+export function sectionRange(items = []) {
+  if (items.length === 0) return '';
+  const first = items[0].number;
+  const last = items[items.length - 1].number;
+  return first === last ? `Question ${first}` : `Questions ${first}–${last}`;
+}
+
 /** A Repo Evaluation answer must be a public GitHub repository URL. */
 export function isGithubRepoUrl(v = '') {
   return /^https?:\/\/(www\.)?github\.com\/[\w.-]+\/[\w.-]+\/?$/i.test(String(v).trim());
