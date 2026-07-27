@@ -115,11 +115,8 @@ export function AssessmentEditor() {
       </div>
 
       {isTemplate ? (
-        // Ready-made test: name/description and format/duration sit side by side.
-        <div className="editor-2col">
-          <DescriptionCard a={a} />
-          <ProctoringCard a={a} isTemplate />
-        </div>
+        // Ready-made test: name/description + format/duration in one card, one Save.
+        <TemplateBasicsCard a={a} />
       ) : (
         <>
           {a.description && (
@@ -244,42 +241,77 @@ function ProctoringCell({ s }) {
   );
 }
 
-/** Admin edits a ready-made test's name + description (the topics it covers). */
-function DescriptionCard({ a }) {
+/**
+ * Ready-made test basics — name/description (left) and format/duration (right)
+ * in a single card, saved together with one button in the bottom-right corner.
+ */
+function TemplateBasicsCard({ a }) {
   const update = useUpdateAssessment();
   const [title, setTitle] = useState(a.title);
   const [description, setDescription] = useState(a.description ?? '');
+  const [proctoring, setProctoring] = useState(a.proctoring ?? ProctoringMode.NONE);
+  const [durationMinutes, setDurationMinutes] = useState(a.durationMinutes ?? '');
+  const [violationLimit, setViolationLimit] = useState(String(a.violationLimit ?? 0));
   const [msg, setMsg] = useState('');
   const [err, setErr] = useState('');
+  const timed = proctoring !== ProctoringMode.NONE;
 
   async function save() {
     setMsg(''); setErr('');
     try {
-      await update.mutateAsync({ id: a.id, title, description });
+      await update.mutateAsync({
+        id: a.id,
+        title,
+        description,
+        proctoring,
+        durationMinutes: timed && durationMinutes ? Number(durationMinutes) : null,
+        violationLimit: timed ? Number(violationLimit) || 0 : 0,
+      });
       setMsg('Saved.');
     } catch (e) { setErr(apiErrorMessage(e)); }
   }
 
   return (
-    <Card className="editor-2col__card">
-      <CardHeader title="Name & description" subtitle="Shown with the test to trainers and students." />
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)', marginTop: 'var(--space-3)' }}>
-        <Input label="Test name" value={title} onChange={(e) => setTitle(e.target.value)} />
-        <div className="field">
-          <label className="field__label">Description <span className="lms-muted">— topics this test covers</span></label>
-          <textarea
-            className="input"
-            style={{ minHeight: '5rem', resize: 'vertical' }}
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            placeholder="e.g. Covers Prompt Patterns, Chain of Thought, and Structured Outputs."
-          />
+    <Card style={{ marginBottom: 'var(--space-6)' }}>
+      <div className="editor-split">
+        <div className="editor-split__col">
+          <CardHeader title="Name & description" subtitle="Shown with the test to trainers and students." />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)', marginTop: 'var(--space-3)' }}>
+            <Input label="Test name" value={title} onChange={(e) => setTitle(e.target.value)} />
+            <div className="field">
+              <label className="field__label">Description <span className="lms-muted">— topics this test covers</span></label>
+              <textarea
+                className="input"
+                style={{ minHeight: '5rem', resize: 'vertical' }}
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="e.g. Covers Prompt Patterns, Chain of Thought, and Structured Outputs."
+              />
+            </div>
+          </div>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
-          <Button onClick={save} loading={update.isPending}>Save</Button>
-          {msg && <span className="lms-muted" style={{ color: 'var(--color-success)' }}>{msg}</span>}
+
+        <div className="editor-split__col">
+          <CardHeader title="Format & duration" subtitle="How this ready-made test is invigilated. Trainers can't change this." />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)', marginTop: 'var(--space-3)' }}>
+            <Select label="Proctoring / format" value={proctoring} onChange={(e) => setProctoring(e.target.value)} options={PROCTORING_OPTIONS} />
+            {timed && (
+              <Input label="Duration (minutes per student)" type="number" min="1" max="600" value={durationMinutes} onChange={(e) => setDurationMinutes(e.target.value)} />
+            )}
+            {timed && (
+              <Select label="Auto-submit after violations" value={violationLimit} onChange={(e) => setViolationLimit(e.target.value)} options={VIOLATION_OPTIONS} />
+            )}
+            {proctoring === ProctoringMode.SEB && (
+              <span className="lms-muted" style={{ fontSize: 'var(--font-size-xs)' }}>Set the global SEB Config Key in Settings.</span>
+            )}
+          </div>
         </div>
-        {err && <span className="field__error" style={{ display: 'block' }}>{err}</span>}
+      </div>
+
+      <div className="editor-split__foot">
+        {err && <span className="field__error" style={{ marginRight: 'auto' }}>{err}</span>}
+        {msg && <span className="lms-muted" style={{ marginRight: 'auto', color: 'var(--color-success)' }}>{msg}</span>}
+        <Button onClick={save} loading={update.isPending}>Save</Button>
       </div>
     </Card>
   );
