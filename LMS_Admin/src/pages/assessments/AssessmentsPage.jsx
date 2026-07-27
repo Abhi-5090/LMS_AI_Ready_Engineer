@@ -6,7 +6,7 @@ import { Badge, Button, Card, EmptyState, ErrorState, Input, Modal, Select, Skel
 import { PageHeader } from '@/components/PageHeader';
 import { apiErrorMessage } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
-import { useAssessments, useAssignTemplate, useCreateAssessment, useDeleteAssessment, useSetAvailability } from '@/lib/assessments';
+import { useAssessments, useAssignTemplate, useCreateAssessment, useDeleteAssessment, useSetAvailability, useUpdateAssessment } from '@/lib/assessments';
 import { useModules } from '@/lib/modules';
 import { useBatches } from '@/lib/batches';
 import { assessmentLabel, ASSESSMENT_TYPE_LABEL, ASSESSMENT_TYPE_TONE, PROCTORING_LABEL, PROCTORING_OPTIONS, VIOLATION_OPTIONS, submissionBadge } from './assessmentsUi';
@@ -157,14 +157,17 @@ const shortTopic = (s) => (s && s.length > 15 ? `${s.slice(0, 15)}…` : s);
 function AdminModuleTemplates({ moduleId, moduleObj, onBack }) {
   const navigate = useNavigate();
   const { data: templates, isLoading, isError, error, refetch } = useAssessments({ template: 'true', module: moduleId });
-  const [creating, setCreating] = useState(false);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [editingId, setEditingId] = useState(null); // null = create mode
   const [form, setForm] = useState(BLANK_TEMPLATE);
   const [topicIds, setTopicIds] = useState([]);
   const [wholeModule, setWholeModule] = useState(false); // "cover all topics" — sends no topics
   const [err, setErr] = useState('');
   const create = useCreateAssessment();
+  const update = useUpdateAssessment();
   const del = useDeleteAssessment();
   const confirm = useConfirm();
+  const isEdit = Boolean(editingId);
   const timed = form.proctoring !== ProctoringMode.NONE;
   const topics = moduleObj?.topics ?? [];
   const addTopic = (id) => { setWholeModule(false); setTopicIds((prev) => (prev.includes(id) ? prev : [...prev, id])); };
@@ -174,20 +177,54 @@ function AdminModuleTemplates({ moduleId, moduleObj, onBack }) {
   const selectedTopics = topics.filter((t) => topicIds.includes(t.id)); // in module order
 
   function openCreate() {
+    setEditingId(null);
     setForm(BLANK_TEMPLATE);
     setTopicIds([]);
     setWholeModule(false);
     setErr('');
-    setCreating(true);
+    setModalOpen(true);
   }
 
-  async function submitCreate(e) {
+  function openEdit(a) {
+    setEditingId(a.id);
+    setForm({
+      title: a.title,
+      description: a.description ?? '',
+      type: a.type,
+      proctoring: a.proctoring ?? ProctoringMode.NONE,
+      durationMinutes: a.durationMinutes ?? '',
+      passingScore: a.passingScore != null ? String(a.passingScore) : '',
+      violationLimit: String(a.violationLimit ?? 0),
+    });
+    const tIds = (a.topics ?? []).map((t) => String(t.topic ?? t.id)).filter(Boolean);
+    setTopicIds(tIds);
+    setWholeModule(tIds.length === 0);
+    setErr('');
+    setModalOpen(true);
+  }
+
+  async function submit(e) {
     e.preventDefault();
     setErr('');
     if (timed && (!form.durationMinutes || Number(form.durationMinutes) <= 0)) {
       return setErr('Set a duration (minutes) for a proctored test.');
     }
     try {
+      if (isEdit) {
+        // Edit an existing test — everything but the type (type is fixed once created).
+        await update.mutateAsync({
+          id: editingId,
+          title: form.title,
+          description: form.description.trim(),
+          topics: wholeModule ? [] : topicIds,
+          proctoring: form.proctoring,
+          durationMinutes: timed && form.durationMinutes ? Number(form.durationMinutes) : null,
+          violationLimit: timed ? Number(form.violationLimit) || 0 : 0,
+          ...(form.passingScore ? { passingScore: Number(form.passingScore) } : {}),
+        });
+        setModalOpen(false);
+        return;
+      }
       const created = await create.mutateAsync({
         title: form.title,
         ...(form.description.trim() ? { description: form.description.trim() } : {}),
@@ -199,7 +236,7 @@ function AdminModuleTemplates({ moduleId, moduleObj, onBack }) {
         ...(timed ? { violationLimit: Number(form.violationLimit) || 0 } : {}),
         ...(form.passingScore ? { passingScore: Number(form.passingScore) } : {}),
       });
-      setCreating(false);
+      setModalOpen(false);
       setForm(BLANK_TEMPLATE);
       setTopicIds([]);
       setWholeModule(false);
@@ -229,30 +266,32 @@ function AdminModuleTemplates({ moduleId, moduleObj, onBack }) {
         <EmptyState icon={<ClipboardList size={26} />} title="No ready-made tests yet" description="Create a practice or final test for this module." action={<Button onClick={openCreate}><Plus size={15} style={{ marginRight: 6 }} /> New ready-made test</Button>} />
       ) : (
         <div className="table-wrap">
-          <table className="table">
-            <thead><tr><th>Test</th><th>Type</th><th>Questions</th><th>Duration</th><th /></tr></thead>
+          <table className="table table--center">
+            <thead><tr><th>Test</th><th>Topics</th><th>Type</th><th>Questions</th><th>Duration</th><th>Actions</th></tr></thead>
             <tbody>
               {templates?.map((a) => (
                 <tr key={a.id}>
                   <td>
-                    {a.title}
-                    {(a.topics ?? []).length > 0 && (
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, margin: '4px 0' }}>
-                        {a.topics.map((t) => <Badge key={t.id ?? t.topic ?? t.title} tone="neutral">{t.title}</Badge>)}
-                      </div>
-                    )}
-                    {a.description && <div className="lms-muted" style={{ fontSize: 'var(--font-size-xs)', maxWidth: '26rem' }}>{a.description}</div>}
+                    <div style={{ fontWeight: 'var(--font-weight-medium)' }}>{a.title}</div>
+                    {a.description && <div className="lms-muted" style={{ fontSize: 'var(--font-size-xs)', maxWidth: '22rem', margin: '2px auto 0' }}>{a.description}</div>}
                     <div className="lms-muted" style={{ fontSize: 'var(--font-size-xs)' }}>{PROCTORING_LABEL[a.proctoring] ?? 'No proctoring'}</div>
                   </td>
-                  <td><Badge tone={ASSESSMENT_TYPE_TONE[a.type]}>{ASSESSMENT_TYPE_LABEL[a.type]}</Badge></td>
                   <td>
-                    {a.questions.length}
-                    {a.type === AssessmentType.PRACTICE && <span className="lms-muted"> / 10</span>}
+                    {(a.topics ?? []).length > 0 ? (
+                      <div className="tmpl-topic-list">
+                        {a.topics.map((t) => <Badge key={t.id ?? t.topic ?? t.title} tone="neutral">{t.title}</Badge>)}
+                      </div>
+                    ) : (
+                      <span className="lms-muted">Whole module</span>
+                    )}
                   </td>
+                  <td><Badge tone={ASSESSMENT_TYPE_TONE[a.type]}>{ASSESSMENT_TYPE_LABEL[a.type]}</Badge></td>
+                  <td>{a.questions.length}</td>
                   <td>{a.durationMinutes ? `${a.durationMinutes} min` : '—'}</td>
                   <td>
-                    <div className="list-actions">
+                    <div className="list-actions" style={{ justifyContent: 'center' }}>
                       <Button size="sm" variant="outline" onClick={() => navigate(`/app/assessments/${a.id}`)}>Manage</Button>
+                      <Button size="sm" variant="outline" onClick={() => openEdit(a)}>Edit</Button>
                       <Button size="sm" variant="ghost" onClick={() => onDelete(a.id)}>Delete</Button>
                     </div>
                   </td>
@@ -263,9 +302,9 @@ function AdminModuleTemplates({ moduleId, moduleObj, onBack }) {
         </div>
       )}
 
-      <Modal open={creating} title="New ready-made test" size="lg" onClose={() => setCreating(false)}
-        footer={<><Button variant="outline" onClick={() => setCreating(false)}>Cancel</Button><Button form="tmpl-form" type="submit" loading={create.isPending}>Create</Button></>}>
-        <form id="tmpl-form" onSubmit={submitCreate} className="tmpl-grid">
+      <Modal open={modalOpen} title={isEdit ? 'Edit ready-made test' : 'New ready-made test'} size="lg" onClose={() => setModalOpen(false)}
+        footer={<><Button variant="outline" onClick={() => setModalOpen(false)}>Cancel</Button><Button form="tmpl-form" type="submit" loading={isEdit ? update.isPending : create.isPending}>{isEdit ? 'Save changes' : 'Create'}</Button></>}>
+        <form id="tmpl-form" onSubmit={submit} className="tmpl-grid">
           {/* Row 1: name + description side by side */}
           <Input label="Test name" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="e.g. Prompt Patterns — Practice Test" required />
           <div className="field">
@@ -321,8 +360,8 @@ function AdminModuleTemplates({ moduleId, moduleObj, onBack }) {
             )}
           </div>
 
-          {/* Row 3: type + proctoring side by side */}
-          <Select label="Type" value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })} options={TYPE_OPTIONS} />
+          {/* Row 3: type + proctoring side by side (type is fixed once created) */}
+          <Select label="Type" value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })} options={TYPE_OPTIONS} disabled={isEdit} />
           <Select label="Proctoring / format" value={form.proctoring} onChange={(e) => setForm({ ...form, proctoring: e.target.value })} options={PROCTORING_OPTIONS} />
 
           {/* Row 4 (proctored only): duration + auto-submit side by side */}
@@ -336,9 +375,11 @@ function AdminModuleTemplates({ moduleId, moduleObj, onBack }) {
           {/* Row 5: passing score */}
           <Input label="Passing score % (optional)" type="number" min="0" max="100" value={form.passingScore} onChange={(e) => setForm({ ...form, passingScore: e.target.value })} placeholder="Defaults to 70" />
 
-          <p className="lms-muted tmpl-grid__full" style={{ fontSize: 'var(--font-size-xs)', margin: 0 }}>
-            After creating, add as many questions as you need from this module's question bank. Trainers assign this test — they can't change the questions or duration.
-          </p>
+          {!isEdit && (
+            <p className="lms-muted tmpl-grid__full" style={{ fontSize: 'var(--font-size-xs)', margin: 0 }}>
+              After creating, add as many questions as you need from this module's question bank. Trainers assign this test — they can't change the questions or duration.
+            </p>
+          )}
           {err && <span className="field__error tmpl-grid__full">{err}</span>}
         </form>
       </Modal>

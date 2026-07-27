@@ -481,6 +481,10 @@
 .bank-foot { display: flex; align-items: center; justify-content: flex-end; gap: var(--space-2); flex-wrap: wrap; }
 .bank-foot__added { margin-right: auto; font-size: var(--font-size-sm); }
 
+/* Ready-made tests table: every column centered; topics stacked in their column. */
+.table--center th, .table--center td { text-align: center; vertical-align: middle; }
+.tmpl-topic-list { display: inline-flex; flex-direction: column; align-items: center; gap: 4px; }
+
 /* Ready-made test editor: name/description + format/duration in ONE card (no dividers). */
 .editor-split { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-6) var(--space-8); align-items: start; }
 .editor-split__col { min-width: 0; }
