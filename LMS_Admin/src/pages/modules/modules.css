@@ -482,8 +482,8 @@
 .bank-foot__added { margin-right: auto; font-size: var(--font-size-sm); }
 
 /* Ready-made test editor: name/description + format/duration side by side. */
-.editor-2col { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-6); margin-bottom: var(--space-6); align-items: start; }
-.editor-2col__card { margin-bottom: 0; }
+.editor-2col { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-6); margin-bottom: var(--space-6); align-items: stretch; }
+.editor-2col__card { margin-bottom: 0; height: 100%; }
 @media (max-width: 900px) { .editor-2col { grid-template-columns: 1fr; } }
 
 /* Editor questions list: show ~5, scroll the rest; grouped by type. */
