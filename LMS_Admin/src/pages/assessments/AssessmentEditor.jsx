@@ -114,17 +114,23 @@ export function AssessmentEditor() {
         )}
       </div>
 
-      {isTemplate ? <DescriptionCard a={a} /> : (
-        a.description && (
-          <Card style={{ marginBottom: 'var(--space-6)' }}>
-            <div className="lms-secondary-text">{a.description}</div>
-          </Card>
-        )
+      {isTemplate ? (
+        // Ready-made test: name/description and format/duration sit side by side.
+        <div className="editor-2col">
+          <DescriptionCard a={a} />
+          <ProctoringCard a={a} isTemplate />
+        </div>
+      ) : (
+        <>
+          {a.description && (
+            <Card style={{ marginBottom: 'var(--space-6)' }}>
+              <div className="lms-secondary-text">{a.description}</div>
+            </Card>
+          )}
+          <ProctoringCard a={a} isTemplate={false} />
+          <AllowedStudentsCard a={a} />
+        </>
       )}
-
-      <ProctoringCard a={a} isTemplate={isTemplate} />
-
-      {!isTemplate && <AllowedStudentsCard a={a} />}
 
       <Card style={{ marginBottom: 'var(--space-6)' }}>
         <div className="panel-head">
@@ -255,7 +261,7 @@ function DescriptionCard({ a }) {
   }
 
   return (
-    <Card style={{ marginBottom: 'var(--space-6)' }}>
+    <Card className="editor-2col__card">
       <CardHeader title="Name & description" subtitle="Shown with the test to trainers and students." />
       <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)', marginTop: 'var(--space-3)' }}>
         <Input label="Test name" value={title} onChange={(e) => setTitle(e.target.value)} />
@@ -331,7 +337,7 @@ function ProctoringCard({ a, isTemplate }) {
   // ── Template: format + duration ─────────────────────────────────────────────
   if (isTemplate) {
     return (
-      <Card style={{ marginBottom: 'var(--space-6)' }}>
+      <Card className="editor-2col__card">
         <CardHeader title="Format & duration" subtitle="How this ready-made test is invigilated. Trainers can't change this." />
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)', marginTop: 'var(--space-3)' }}>
           <div style={{ maxWidth: '24rem' }}>
