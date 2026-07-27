@@ -356,6 +356,7 @@ function AllowedStudentsCard({ a }) {
   const [selected, setSelected] = useState(() => new Set((a.allowedStudents ?? []).map(String)));
   const [importMsg, setImportMsg] = useState('');
   const [err, setErr] = useState('');
+  const [q, setQ] = useState('');
 
   // Legacy assessment with no batch → nothing to scope.
   if (!a.batch) {
@@ -439,16 +440,32 @@ function AllowedStudentsCard({ a }) {
       {students.length === 0 ? (
         <EmptyState icon={<Users size={24} />} title="No students in this batch yet" />
       ) : (
-        <div className="allow-chips">
-          {students.map((s) => {
-            const on = selected.has(s.id);
-            return (
-              <button type="button" key={s.id} className={`allow-chip${on ? ' allow-chip--on' : ''}`} onClick={() => toggle(s.id)} title={s.email}>
-                <span className="allow-chip__dot" /> {s.name}
-              </button>
-            );
-          })}
-        </div>
+        <>
+          {students.length > 6 && (
+            <Input className="stu-search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search students by name or email…" />
+          )}
+          <div className="stu-list">
+            {students
+              .filter((s) => {
+                const needle = q.trim().toLowerCase();
+                return !needle || s.name.toLowerCase().includes(needle) || s.email.toLowerCase().includes(needle);
+              })
+              .map((s) => {
+                const on = selected.has(s.id);
+                const initials = s.name.split(' ').filter(Boolean).slice(0, 2).map((w) => w[0]).join('').toUpperCase();
+                return (
+                  <button type="button" key={s.id} className={`stu-row${on ? ' is-on' : ''}`} onClick={() => toggle(s.id)} aria-pressed={on}>
+                    <span className="stu-row__avatar">{initials}</span>
+                    <span className="stu-row__info">
+                      <span className="stu-row__name">{s.name}</span>
+                      <span className="stu-row__email">{s.email}</span>
+                    </span>
+                    <span className="stu-row__check">{on && <Check size={13} strokeWidth={3} />}</span>
+                  </button>
+                );
+              })}
+          </div>
+        </>
       )}
 
       {importMsg && <p style={{ fontSize: 'var(--font-size-xs)', marginTop: 'var(--space-2)', color: 'var(--color-success)' }}>{importMsg}</p>}
