@@ -25,7 +25,6 @@ import {
   QUESTION_TYPE_LABEL,
   VIOLATION_OPTIONS,
 } from './assessmentsUi';
-import { useModules } from '@/lib/modules';
 import { combineDateTime, splitDateTime, validateExamWindow } from './examWindow';
 import { BankPicker } from './BankPicker';
 import { formatDate } from '@/lib/format';
@@ -248,24 +247,14 @@ function ProctoringCell({ s }) {
  */
 function TemplateBasicsCard({ a }) {
   const update = useUpdateAssessment();
-  const { data: modules } = useModules();
   const [title, setTitle] = useState(a.title);
   const [description, setDescription] = useState(a.description ?? '');
-  const [topicIds, setTopicIds] = useState(() => (a.topics ?? []).map((t) => String(t.topic ?? t.id)).filter(Boolean));
   const [proctoring, setProctoring] = useState(a.proctoring ?? ProctoringMode.NONE);
   const [durationMinutes, setDurationMinutes] = useState(a.durationMinutes ?? '');
   const [violationLimit, setViolationLimit] = useState(String(a.violationLimit ?? 0));
   const [msg, setMsg] = useState('');
   const [err, setErr] = useState('');
   const timed = proctoring !== ProctoringMode.NONE;
-
-  // The module's topics, so the admin can add/remove which this test covers.
-  const moduleObj = (modules ?? []).find((m) => m.id === (a.module?.id ?? a.module));
-  const topics = moduleObj?.topics ?? [];
-  const availableTopics = topics.filter((t) => !topicIds.includes(String(t.id)));
-  const selectedTopics = topics.filter((t) => topicIds.includes(String(t.id)));
-  const addTopic = (id) => setTopicIds((prev) => (prev.includes(id) ? prev : [...prev, id]));
-  const removeTopic = (id) => setTopicIds((prev) => prev.filter((x) => x !== id));
 
   async function save() {
     setMsg(''); setErr('');
@@ -274,7 +263,6 @@ function TemplateBasicsCard({ a }) {
         id: a.id,
         title,
         description,
-        topics: topicIds,
         proctoring,
         durationMinutes: timed && durationMinutes ? Number(durationMinutes) : null,
         violationLimit: timed ? Number(violationLimit) || 0 : 0,
@@ -296,31 +284,6 @@ function TemplateBasicsCard({ a }) {
               onChange={(e) => setDescription(e.target.value)}
               placeholder="e.g. Covers Prompt Patterns, Chain of Thought, and Structured Outputs."
             />
-            <div className="field">
-              <label className="field__label">Topics covered <span className="lms-muted">— pick from this module</span></label>
-              {topics.length === 0 ? (
-                <p className="lms-muted" style={{ fontSize: 'var(--font-size-sm)', margin: 0 }}>This module has no topics yet.</p>
-              ) : (
-                <>
-                  <Select
-                    value=""
-                    onChange={(e) => { if (e.target.value) addTopic(e.target.value); }}
-                    options={[{ value: '', label: 'Add a topic…' }, ...availableTopics.map((t) => ({ value: t.id, label: t.title }))]}
-                  />
-                  <div className="tmpl-topics-box" style={{ marginTop: 'var(--space-2)' }}>
-                    {selectedTopics.length > 0 ? (
-                      selectedTopics.map((t) => (
-                        <button type="button" key={t.id} className="allow-chip allow-chip--on" onClick={() => removeTopic(String(t.id))} title={`${t.title} — remove`}>
-                          <span className="allow-chip__dot" /> {t.title} ×
-                        </button>
-                      ))
-                    ) : (
-                      <span className="lms-muted" style={{ fontSize: 'var(--font-size-sm)' }}>No topics selected.</span>
-                    )}
-                  </div>
-                </>
-              )}
-            </div>
           </div>
         </div>
 
