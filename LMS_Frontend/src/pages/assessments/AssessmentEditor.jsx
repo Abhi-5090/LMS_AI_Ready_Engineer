@@ -76,30 +76,43 @@ export function AssessmentEditor() {
         subtitle={<Link to="/app/assessments" className="lms-muted">← All assessments</Link>}
       />
 
-      <div className="module-card__meta" style={{ marginBottom: 'var(--space-6)' }}>
-        <Badge tone="neutral">{a.module?.name}</Badge>
-        {(a.topics ?? []).map((t) => <Badge key={t.id ?? t.topic ?? t.title} tone="primary">{t.title}</Badge>)}
-        {isTemplate && <Badge tone="primary">Ready-made test</Badge>}
-        {a.batch && <Badge tone="primary">Batch: {a.batch.name}</Badge>}
-        <Badge tone={ASSESSMENT_TYPE_TONE[a.type]}>{ASSESSMENT_TYPE_LABEL[a.type]}</Badge>
-        {a.durationMinutes ? <Badge tone="neutral">{a.durationMinutes} min</Badge> : null}
-        <Badge tone="neutral">Pass ≥ {a.passingScore}%</Badge>
-        <Badge tone={PROCTORING_TONE[a.proctoring] ?? 'neutral'}>{PROCTORING_LABEL[a.proctoring] ?? 'No proctoring'}</Badge>
-        {!isTemplate && (
-          <>
-            <Badge tone={unlocked ? 'success' : 'neutral'}>{unlocked ? 'Live' : 'Locked'}</Badge>
-            <Button
-              size="sm"
-              variant={unlocked ? 'outline' : 'primary'}
-              loading={setAvailability.isPending}
-              disabled={!unlocked && a.questions.length === 0}
-              onClick={() => setAvailability.mutate({ id: a.id, unlock: !unlocked })}
-            >
-              {unlocked ? 'Lock' : 'Make live'}
-            </Button>
-          </>
-        )}
-      </div>
+      <Card className="asmt-overview">
+        <div className="asmt-overview__head">
+          <div className="asmt-overview__lead">
+            <span className="asmt-overview__module">{a.module?.name}</span>
+            {(a.topics ?? []).length > 0 && (
+              <div className="asmt-overview__topics">
+                {a.topics.map((t) => <Badge key={t.id ?? t.topic ?? t.title} tone="primary">{t.title}</Badge>)}
+              </div>
+            )}
+          </div>
+          {isTemplate ? (
+            <Badge tone="primary">Ready-made test</Badge>
+          ) : (
+            <div className="asmt-overview__status">
+              <Badge tone={unlocked ? 'success' : 'neutral'}>{unlocked ? 'Live' : 'Locked'}</Badge>
+              <Button
+                size="sm"
+                variant={unlocked ? 'outline' : 'primary'}
+                loading={setAvailability.isPending}
+                disabled={!unlocked && a.questions.length === 0}
+                onClick={() => setAvailability.mutate({ id: a.id, unlock: !unlocked })}
+              >
+                {unlocked ? 'Lock' : 'Make live'}
+              </Button>
+            </div>
+          )}
+        </div>
+
+        <div className="asmt-overview__facts">
+          <div className="asmt-fact"><span className="asmt-fact__label">Type</span><span className="asmt-fact__value"><Badge tone={ASSESSMENT_TYPE_TONE[a.type]}>{ASSESSMENT_TYPE_LABEL[a.type]}</Badge></span></div>
+          <div className="asmt-fact"><span className="asmt-fact__label">Questions</span><span className="asmt-fact__value">{a.questions.length}</span></div>
+          <div className="asmt-fact"><span className="asmt-fact__label">Duration</span><span className="asmt-fact__value">{a.durationMinutes ? `${a.durationMinutes} min` : 'Untimed'}</span></div>
+          <div className="asmt-fact"><span className="asmt-fact__label">Pass mark</span><span className="asmt-fact__value">{a.passingScore}%</span></div>
+          <div className="asmt-fact"><span className="asmt-fact__label">Proctoring</span><span className="asmt-fact__value"><Badge tone={PROCTORING_TONE[a.proctoring] ?? 'neutral'}>{PROCTORING_LABEL[a.proctoring] ?? 'No proctoring'}</Badge></span></div>
+          {a.batch && <div className="asmt-fact"><span className="asmt-fact__label">Batch</span><span className="asmt-fact__value">{a.batch.name}</span></div>}
+        </div>
+      </Card>
 
       {isTemplate ? <DescriptionCard a={a} /> : (
         a.description && (
