@@ -91,11 +91,7 @@ export function BatchDetailPage() {
               description="No students enrolled yet."
             />
           ) : (
-            <div className="chip-list">
-              {students.map((s) => (
-                <span className="chip chip--lg" key={s.id}>{s.name}</span>
-              ))}
-            </div>
+            <MemberTable rows={students} />
           )}
         </Card>
 
@@ -108,11 +104,7 @@ export function BatchDetailPage() {
               description="No trainers assigned yet."
             />
           ) : (
-            <div className="chip-list">
-              {trainers.map((t) => (
-                <span className="chip chip--lg" key={t.id}>{t.name}</span>
-              ))}
-            </div>
+            <MemberTable rows={trainers} />
           )}
         </Card>
       </div>
@@ -157,6 +149,26 @@ export function BatchDetailPage() {
         {topicModule && <TopicTaughtPanel batch={batch} module={topicModule} />}
       </Modal>
     </>
+  );
+}
+
+/** Members (students/trainers) as a scrollable table — ~10 rows visible, then scroll. */
+function MemberTable({ rows }) {
+  return (
+    <div className="member-scroll">
+      <table className="table member-table">
+        <thead><tr><th className="member-table__no">#</th><th>Name</th><th>Email</th></tr></thead>
+        <tbody>
+          {rows.map((m, i) => (
+            <tr key={m.id}>
+              <td className="member-table__no">{i + 1}</td>
+              <td>{m.name}</td>
+              <td className="lms-muted">{m.email}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 }
 

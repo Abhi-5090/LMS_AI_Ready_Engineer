@@ -365,6 +365,12 @@
   gap: var(--space-2);
   margin-top: var(--space-3);
 }
+
+/* Members as a scrollable table — ~10 rows visible, then scroll. */
+.member-scroll { max-height: 26rem; overflow-y: auto; border: 1px solid var(--color-border); border-radius: var(--radius-lg); margin-top: var(--space-3); }
+.member-scroll .table { margin: 0; }
+.member-scroll thead th { position: sticky; top: 0; z-index: 1; background: var(--color-surface); }
+.member-table__no { width: 3rem; text-align: center; color: var(--color-text-secondary); }
 .chip {
   display: inline-flex;
   align-items: center;

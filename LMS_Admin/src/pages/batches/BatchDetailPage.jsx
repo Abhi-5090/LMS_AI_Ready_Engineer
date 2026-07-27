@@ -152,19 +152,31 @@ function StudentsPanel({ batch, isAdmin }) {
           )}
         </div>
 
-        <div className="chip-list">
-          {enrolled.length === 0 && <span className="lms-muted">No students enrolled yet.</span>}
-          {enrolled.map((s) => (
-            <span className="chip chip--lg" key={s.id}>
-              {s.name}
-              {isAdmin && (
-                <button type="button" className="chip__x" aria-label={`Remove ${s.name}`} onClick={() => remove.mutateAsync({ id: batch.id, memberId: s.id })}>
-                  <X size={13} strokeWidth={2.5} />
-                </button>
-              )}
-            </span>
-          ))}
-        </div>
+        {enrolled.length === 0 ? (
+          <p className="lms-muted" style={{ margin: 0 }}>No students enrolled yet.</p>
+        ) : (
+          <div className="member-scroll">
+            <table className="table member-table">
+              <thead><tr><th className="member-table__no">#</th><th>Name</th><th>Email</th>{isAdmin && <th className="member-table__no" />}</tr></thead>
+              <tbody>
+                {enrolled.map((s, i) => (
+                  <tr key={s.id}>
+                    <td className="member-table__no">{i + 1}</td>
+                    <td>{s.name}</td>
+                    <td className="lms-muted">{s.email}</td>
+                    {isAdmin && (
+                      <td className="member-table__no">
+                        <button type="button" className="chip__x member-table__x" aria-label={`Remove ${s.name}`} onClick={() => remove.mutateAsync({ id: batch.id, memberId: s.id })}>
+                          <X size={14} strokeWidth={2.5} />
+                        </button>
+                      </td>
+                    )}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </Card>
 
       <Modal open={bulk} title="Bulk upload students to this batch" onClose={() => setBulk(false)}>
