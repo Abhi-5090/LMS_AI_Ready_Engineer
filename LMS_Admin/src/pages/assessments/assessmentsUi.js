@@ -54,6 +54,14 @@ export const QUESTION_TYPE_LABEL = {
   [QuestionType.CODING]: 'Repo Evaluation',
 };
 
+/** Short codes used in compact chips/strips. */
+export const QUESTION_TYPE_SHORT = {
+  [QuestionType.MCQ]: 'MCQ',
+  [QuestionType.SCENARIO]: 'SB',
+  [QuestionType.PROMPT_WRITING]: 'PW',
+  [QuestionType.CODING]: 'RE',
+};
+
 export const QUESTION_TYPE_OPTIONS = Object.values(QuestionType).map((v) => ({
   value: v,
   label: QUESTION_TYPE_LABEL[v],

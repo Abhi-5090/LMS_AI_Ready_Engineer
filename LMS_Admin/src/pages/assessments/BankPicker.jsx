@@ -4,7 +4,7 @@ import { Badge, Button, EmptyState, Input, Select, SkeletonText } from '@/compon
 import { apiErrorMessage } from '@/lib/api';
 import { useQuestionBank } from '@/lib/questionBank';
 import { useAddQuestionsFromBank } from '@/lib/assessments';
-import { QUESTION_TYPE_LABEL, QUESTION_TYPE_OPTIONS } from './assessmentsUi';
+import { QUESTION_TYPE_LABEL, QUESTION_TYPE_OPTIONS, QUESTION_TYPE_SHORT } from './assessmentsUi';
 import { pickEvenlyByTopic, shuffle } from './bankRandom';
 
 const TYPE_FILTER_OPTIONS = [{ value: 'ALL', label: 'All types' }, ...QUESTION_TYPE_OPTIONS];
@@ -193,8 +193,8 @@ export function BankPicker({ assessment, onClose }) {
               </div>
               <div className="bank-types__row">
                 {typeCaps.map((c) => (
-                  <label key={c.type} className="bank-type" title={`${c.cap} ${c.label} question${c.cap === 1 ? '' : 's'} available`}>
-                    <span className="bank-type__name">{c.label}</span>
+                  <label key={c.type} className="bank-type" title={`${c.label} — ${c.cap} in the bank`}>
+                    <span className="bank-type__name">{QUESTION_TYPE_SHORT[c.type] ?? c.label}</span>
                     <Input
                       type="number"
                       min={0}
@@ -203,7 +203,7 @@ export function BankPicker({ assessment, onClose }) {
                       onChange={(e) => setTypeCount(c.type, e.target.value)}
                       className="bank-type__input"
                     />
-                    <span className="bank-type__cap">of {c.cap} available</span>
+                    <span className="bank-type__cap">of {c.cap}</span>
                   </label>
                 ))}
                 <span className="bank-types__total">Total to pick: <strong>{perTypeTotal}</strong></span>
