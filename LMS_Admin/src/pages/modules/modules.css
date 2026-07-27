@@ -477,6 +477,10 @@
 
 @media (prefers-reduced-motion: reduce) { .stepper__btn:active { transform: none; } }
 
+/* Bank picker footer: [N added so far] … Cancel/Done · Add & pick more · Add N */
+.bank-foot { display: flex; align-items: center; justify-content: flex-end; gap: var(--space-2); flex-wrap: wrap; }
+.bank-foot__added { margin-right: auto; font-size: var(--font-size-sm); }
+
 /* Per-topic groups */
 .bank-group { display: flex; flex-direction: column; gap: var(--space-2); }
 .bank-group + .bank-group { margin-top: var(--space-4); }

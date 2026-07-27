@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Database, Minus, Plus, Shuffle } from 'lucide-react';
-import { Badge, Button, EmptyState, Select, SkeletonText } from '@/components/ui';
+import { Badge, Button, EmptyState, Select, SkeletonText, useToast } from '@/components/ui';
 import { apiErrorMessage } from '@/lib/api';
 import { useQuestionBank } from '@/lib/questionBank';
 import { useAddQuestionsFromBank } from '@/lib/assessments';
@@ -30,7 +30,11 @@ export function BankPicker({ assessment, onClose }) {
   const moduleId = assessment.module?.id ?? assessment.module;
   const { data: items, isLoading } = useQuestionBank({ module: moduleId });
   const addFromBank = useAddQuestionsFromBank();
+  const toast = useToast();
   const [selected, setSelected] = useState(() => new Set());
+  // Questions committed to the test during THIS session — filtered out immediately
+  // so the picker refreshes in place without waiting for the parent to refetch.
+  const [addedIds, setAddedIds] = useState(() => new Set());
   const [err, setErr] = useState('');
 
   // The topics this test covers (multi-select; fall back to the legacy single topic).
@@ -41,7 +45,7 @@ export function BankPicker({ assessment, onClose }) {
 
   const alreadyAdded = new Set((assessment.questions ?? []).map((q) => q.sourceId).filter(Boolean));
   const scoped = topicSet.size > 0 ? (items ?? []).filter((q) => topicSet.has(String(q.topic))) : (items ?? []);
-  const available = scoped.filter((q) => !alreadyAdded.has(q.id));
+  const available = scoped.filter((q) => !alreadyAdded.has(q.id) && !addedIds.has(q.id));
 
   // Type filter — "All types" plus each type that actually has questions.
   const [typeFilter, setTypeFilter] = useState('ALL');
@@ -73,11 +77,19 @@ export function BankPicker({ assessment, onClose }) {
     setSelected(new Set(picks));
   }
 
-  async function add() {
+  // Commit the checked questions to the test. When `close` is false the picker
+  // stays open (selection cleared, added ones removed) so the admin can add
+  // another type in the same session.
+  async function commit(close) {
+    if (selected.size === 0) return;
     setErr('');
+    const ids = [...selected];
     try {
-      await addFromBank.mutateAsync({ id: assessment.id, questionIds: [...selected] });
-      onClose();
+      await addFromBank.mutateAsync({ id: assessment.id, questionIds: ids });
+      setAddedIds((prev) => new Set([...prev, ...ids]));
+      setSelected(new Set());
+      toast.success(`${ids.length} question${ids.length === 1 ? '' : 's'} added to the test.`);
+      if (close) onClose();
     } catch (e) {
       setErr(apiErrorMessage(e));
     }
@@ -158,9 +170,15 @@ export function BankPicker({ assessment, onClose }) {
       )}
 
       {err && <span className="field__error">{err}</span>}
-      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--space-2)' }}>
-        <Button variant="outline" onClick={onClose}>Cancel</Button>
-        <Button onClick={add} loading={addFromBank.isPending} disabled={selected.size === 0}>
+      <div className="bank-foot">
+        {addedIds.size > 0 && (
+          <span className="lms-muted bank-foot__added">{addedIds.size} added to this test so far</span>
+        )}
+        <Button variant="outline" onClick={onClose}>{addedIds.size > 0 ? 'Done' : 'Cancel'}</Button>
+        <Button variant="outline" onClick={() => commit(false)} loading={addFromBank.isPending} disabled={selected.size === 0}>
+          Add &amp; pick more
+        </Button>
+        <Button onClick={() => commit(true)} loading={addFromBank.isPending} disabled={selected.size === 0}>
           Add {selected.size || ''} question{selected.size === 1 ? '' : 's'}
         </Button>
       </div>
