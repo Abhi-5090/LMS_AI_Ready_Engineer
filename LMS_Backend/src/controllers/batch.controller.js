@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { UserRole } from '#shared';
-import { Announcement, Assessment, Batch, ClassSchedule, User } from '../models/index.js';
+import { Announcement, Assessment, Batch, ClassSchedule, Module, User } from '../models/index.js';
 import { ApiError } from '../utils/ApiError.js';
 import { ok } from '../utils/http.js';
 
@@ -61,6 +61,23 @@ async function syncTrainersFromMapping(batch) {
   }
   if (removed.length) {
     await User.updateMany({ _id: { $in: removed } }, { $pull: { assignedBatches: batch._id } });
+  }
+}
+
+/**
+ * Keep a module's `assignedTrainers` in step with the batch mappings. This list
+ * drives the trainer's "My modules", module access, and assessment management —
+ * so a trainer who delivers the module in ANY batch must be assigned to it.
+ * `added` trainers are assigned; `dropped` trainers are unassigned only once
+ * they no longer deliver this module in any batch. Call AFTER the batch is saved.
+ */
+async function syncModuleTrainerAssignments(moduleId, { added = [], dropped = [] } = {}) {
+  if (added.length) {
+    await Module.updateOne({ _id: moduleId }, { $addToSet: { assignedTrainers: { $each: added } } });
+  }
+  for (const trainerId of dropped) {
+    const stillDelivers = await Batch.exists({ moduleTrainers: { $elemMatch: { module: moduleId, trainers: trainerId } } });
+    if (!stillDelivers) await Module.updateOne({ _id: moduleId }, { $pull: { assignedTrainers: trainerId } });
   }
 }
 
@@ -234,9 +251,14 @@ export async function removeModule(req, res) {
   const batch = await Batch.findById(id);
   if (!batch) throw ApiError.notFound('Batch not found');
 
+  const droppedEntry = batch.moduleTrainers.find((mt) => mt.module.toString() === memberId);
+  const droppedTrainers = droppedEntry ? droppedEntry.trainers.map((t) => t.toString()) : [];
   batch.modules = batch.modules.filter((m) => m.toString() !== memberId);
   batch.moduleTrainers = batch.moduleTrainers.filter((mt) => mt.module.toString() !== memberId);
   await syncTrainersFromMapping(batch); // drops trainers no longer delivering anything
+
+  // Unassign these trainers from the module unless they still deliver it elsewhere.
+  await syncModuleTrainerAssignments(memberId, { dropped: droppedTrainers });
 
   const updated = await Batch.findById(id).populate(POP);
   ok(res, updated.toJSON());
@@ -260,10 +282,19 @@ export async function setModuleTrainers(req, res) {
   }
 
   const entry = batch.moduleTrainers.find((mt) => mt.module.toString() === moduleId);
+  const prevForModule = entry ? entry.trainers.map((t) => t.toString()) : [];
   if (entry) entry.trainers = trainerIds;
   else batch.moduleTrainers.push({ module: moduleId, trainers: trainerIds });
 
   await syncTrainersFromMapping(batch);
+
+  // Mirror this mapping onto the module's assignedTrainers so the mapped
+  // trainers actually see the module (My modules), can open it, and manage its
+  // assessments.
+  await syncModuleTrainerAssignments(moduleId, {
+    added: trainerIds.filter((t) => !prevForModule.includes(t)),
+    dropped: prevForModule.filter((t) => !trainerIds.includes(t)),
+  });
 
   const updated = await Batch.findById(id).populate(POP);
   ok(res, updated.toJSON());
