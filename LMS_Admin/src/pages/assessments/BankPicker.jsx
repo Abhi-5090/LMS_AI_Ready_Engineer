@@ -5,9 +5,24 @@ import { apiErrorMessage } from '@/lib/api';
 import { useQuestionBank } from '@/lib/questionBank';
 import { useAddQuestionsFromBank } from '@/lib/assessments';
 import { QUESTION_TYPE_LABEL, QUESTION_TYPE_OPTIONS } from './assessmentsUi';
+import { pickEvenlyByTopic, shuffle } from './bankRandom';
 
 const TYPE_FILTER_OPTIONS = [{ value: 'ALL', label: 'All types' }, ...QUESTION_TYPE_OPTIONS];
-import { pickEvenlyByTopic, shuffle } from './bankRandom';
+
+// Split `total` as evenly as possible across the given types, capped by each
+// type's available count; any leftover from a capped type spills to the others.
+// caps: [{ type, cap }] → returns { [type]: count }.
+function splitEven(total, caps) {
+  const counts = Object.fromEntries(caps.map((c) => [c.type, 0]));
+  let remaining = Math.max(0, total);
+  while (remaining > 0 && caps.some((c) => counts[c.type] < c.cap)) {
+    for (const c of caps) {
+      if (remaining <= 0) break;
+      if (counts[c.type] < c.cap) { counts[c.type] += 1; remaining -= 1; }
+    }
+  }
+  return counts;
+}
 
 /**
  * Pick questions from the module's bank to add to a test. Questions are scoped to
@@ -43,6 +58,30 @@ export function BankPicker({ assessment, onClose }) {
   const maxTarget = visible.length;
   const [target, setTarget] = useState(() => String(Math.min(10, available.length) || ''));
 
+  // Per-type availability (only types that actually have questions), in a
+  // consistent order (MCQ → Scenario → Prompt Writing → Repo Evaluation).
+  const poolOf = (t) => available.filter((q) => q.type === t);
+  const typeCaps = QUESTION_TYPE_OPTIONS
+    .map((o) => ({ type: o.value, label: o.label, cap: poolOf(o.value).length }))
+    .filter((c) => c.cap > 0);
+
+  // When "All types" is chosen, the admin can dial how many of EACH type to pull.
+  // Default = an even split of the Auto-pick total; editing a box overrides it.
+  const [perType, setPerType] = useState({}); // {} → follow the even-split default
+  const defaultSplit = splitEven(Number(target) || 0, typeCaps);
+  const countFor = (t) => (perType[t] !== undefined ? perType[t] : String(defaultSplit[t] ?? 0));
+  const perTypeTotal = typeCaps.reduce((sum, c) => sum + (Number(countFor(c.type)) || 0), 0);
+
+  // Auto-pick total change → redistribute evenly (drop manual per-type edits).
+  function changeTarget(v) { setTarget(v); setPerType({}); }
+  // Editing one type's box overrides just that type; others keep their shown value.
+  function setTypeCount(t, v) {
+    setPerType((prev) => {
+      const base = Object.keys(prev).length ? prev : Object.fromEntries(typeCaps.map((c) => [c.type, String(defaultSplit[c.type] ?? 0)]));
+      return { ...base, [t]: v };
+    });
+  }
+
   function toggle(id) {
     setSelected((s) => {
       const n = new Set(s);
@@ -51,14 +90,29 @@ export function BankPicker({ assessment, onClose }) {
     });
   }
 
+  // Pick `n` ids from a pool, split evenly across the test's topics when it spans more than one.
+  const pickFrom = (pool, n) => (topicSet.size > 1
+    ? pickEvenlyByTopic(pool, testTopics, n)
+    : shuffle(pool).slice(0, n).map((q) => q.id));
+
   function selectRandomly() {
     setErr('');
+    if (typeFilter === 'ALL') {
+      // Pull the requested count of each type at random.
+      const picks = [];
+      for (const { type } of typeCaps) {
+        const pool = poolOf(type);
+        const n = Math.min(Number(countFor(type)) || 0, pool.length);
+        if (n > 0) picks.push(...pickFrom(pool, n));
+      }
+      if (picks.length === 0) return;
+      setSelected(new Set(picks));
+      return;
+    }
+    // A single type is filtered — pick N of it.
     const n = Math.min(Number(target) || 0, visible.length);
     if (n <= 0) return;
-    const picks = topicSet.size > 1
-      ? pickEvenlyByTopic(visible, testTopics, n)
-      : shuffle(visible).slice(0, n).map((q) => q.id);
-    setSelected(new Set(picks));
+    setSelected(new Set(pickFrom(visible, n)));
   }
 
   async function add() {
@@ -108,10 +162,10 @@ export function BankPicker({ assessment, onClose }) {
             <span className="lms-muted">Auto-pick</span>
             <Input
               type="number"
-              min={1}
-              max={maxTarget || undefined}
+              min={0}
+              max={(typeFilter === 'ALL' ? available.length : maxTarget) || undefined}
               value={target}
-              onChange={(e) => setTarget(e.target.value)}
+              onChange={(e) => changeTarget(e.target.value)}
               style={{ width: '4.5rem' }}
             />
             <span className="lms-muted">at random</span>
@@ -119,7 +173,7 @@ export function BankPicker({ assessment, onClose }) {
             <Select
               options={TYPE_FILTER_OPTIONS}
               value={typeFilter}
-              onChange={(e) => { setTypeFilter(e.target.value); setSelected(new Set()); }}
+              onChange={(e) => { setTypeFilter(e.target.value); setSelected(new Set()); setPerType({}); }}
               className="bank-random__type"
             />
             {topicSet.size > 1 && <span className="lms-muted">split evenly across {topicSet.size} topics</span>}
@@ -128,6 +182,31 @@ export function BankPicker({ assessment, onClose }) {
             </Button>
             {selected.size > 0 && <span className="lms-muted" style={{ marginLeft: 'auto' }}>{selected.size} selected</span>}
           </div>
+
+          {/* All-types split: how many of EACH type to pull (defaults to an even
+              share of the Auto-pick total; the admin can rebalance per type). */}
+          {typeFilter === 'ALL' && typeCaps.length > 1 && (
+            <div className="bank-types">
+              <div className="bank-types__label">How many of each type to pick at random</div>
+              <div className="bank-types__row">
+                {typeCaps.map((c) => (
+                  <label key={c.type} className="bank-type">
+                    <span className="bank-type__name">{c.label}</span>
+                    <Input
+                      type="number"
+                      min={0}
+                      max={c.cap}
+                      value={countFor(c.type)}
+                      onChange={(e) => setTypeCount(c.type, e.target.value)}
+                      className="bank-type__input"
+                    />
+                    <span className="bank-type__cap">/ {c.cap}</span>
+                  </label>
+                ))}
+                <span className="bank-types__total">Total <strong>{perTypeTotal}</strong></span>
+              </div>
+            </div>
+          )}
 
           <div className="q-list" style={{ maxHeight: '24rem', overflowY: 'auto' }}>
             {testTopics.length > 0 ? (
