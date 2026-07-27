@@ -481,15 +481,11 @@
 .bank-foot { display: flex; align-items: center; justify-content: flex-end; gap: var(--space-2); flex-wrap: wrap; }
 .bank-foot__added { margin-right: auto; font-size: var(--font-size-sm); }
 
-/* Ready-made test editor: name/description + format/duration in ONE card. */
-.editor-split { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-6); align-items: start; }
+/* Ready-made test editor: name/description + format/duration in ONE card (no dividers). */
+.editor-split { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-6) var(--space-8); align-items: start; }
 .editor-split__col { min-width: 0; }
-.editor-split__col + .editor-split__col { border-left: 1px solid var(--color-border); padding-left: var(--space-6); }
-.editor-split__foot { display: flex; align-items: center; gap: var(--space-3); justify-content: flex-end; margin-top: var(--space-4); padding-top: var(--space-4); border-top: 1px solid var(--color-border); }
-@media (max-width: 900px) {
-  .editor-split { grid-template-columns: 1fr; }
-  .editor-split__col + .editor-split__col { border-left: none; padding-left: 0; border-top: 1px solid var(--color-border); padding-top: var(--space-4); }
-}
+.editor-split__foot { display: flex; align-items: center; gap: var(--space-3); justify-content: flex-end; margin-top: var(--space-4); }
+@media (max-width: 900px) { .editor-split { grid-template-columns: 1fr; } }
 
 /* Editor questions list: show ~5, scroll the rest; grouped by type. */
 .q-scroll { max-height: 32rem; overflow-y: auto; margin-top: var(--space-2); padding-right: var(--space-1); }

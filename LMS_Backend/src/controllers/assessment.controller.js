@@ -71,6 +71,7 @@ export const updateAssessmentSchema = z
   .object({
     title: z.string().min(2).optional(),
     description: z.string().max(2000).optional(),
+    topics: z.array(objectId).optional(),
     passingScore: z.number().int().min(0).max(100).optional(),
     availableFrom: z.coerce.date().optional().nullable(),
     deadline: z.coerce.date().optional().nullable(),
@@ -468,9 +469,19 @@ export async function assignTemplate(req, res) {
 
 export async function updateAssessment(req, res) {
   const assessment = await loadAssessmentForManage(req);
-  const { title, description, passingScore, availableFrom, deadline, durationMinutes, proctoring, violationLimit } = req.body;
+  const { title, description, topics, passingScore, availableFrom, deadline, durationMinutes, proctoring, violationLimit } = req.body;
   if (title !== undefined) assessment.title = title;
   if (description !== undefined) assessment.description = description;
+  if (topics !== undefined) {
+    // Resolve the selected topic ids to {topic, title}, in the module's order.
+    const module = await Module.findById(assessment.module).select('topics');
+    const wanted = new Set((topics ?? []).map(String));
+    const resolved = (module?.topics ?? [])
+      .filter((t) => wanted.has(String(t._id)))
+      .map((t) => ({ topic: t._id, title: t.title }));
+    if (resolved.length !== wanted.size) throw ApiError.badRequest('One or more topics are not in this module');
+    assessment.topics = resolved;
+  }
   if (passingScore !== undefined) assessment.passingScore = passingScore;
   if (availableFrom !== undefined) assessment.availableFrom = availableFrom ?? undefined;
   if (deadline !== undefined) assessment.deadline = deadline ?? undefined;
