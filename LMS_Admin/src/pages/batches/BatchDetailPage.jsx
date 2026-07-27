@@ -254,6 +254,7 @@ function ModuleTrainersPanel({ batch, isAdmin }) {
 function ModuleRow({ batch, module, assignedTrainers, isAdmin }) {
   const setTrainers = useSetModuleTrainers();
   const removeModule = useRemoveModule();
+  const toast = useToast();
 
   // Assigned trainers can arrive as populated objects or bare ids, and an
   // anonymized/removed account can surface without a usable id. Normalize to real
@@ -267,12 +268,16 @@ function ModuleRow({ batch, module, assignedTrainers, isAdmin }) {
 
   // Add any number of trainers to this module: pick from a search over ALL org
   // trainers (already-assigned ones are excluded), appending each to the set.
+  const save = (trainerIds, okMsg) =>
+    setTrainers.mutateAsync({ id: batch.id, moduleId: module.id, trainerIds })
+      .then(() => { if (okMsg) toast.success(okMsg); })
+      .catch((e) => toast.error(apiErrorMessage(e)));
+
   const addTrainer = (tid) => {
-    if (!tid || currentIds.includes(tid)) return;
-    return setTrainers.mutateAsync({ id: batch.id, moduleId: module.id, trainerIds: [...currentIds, tid] });
+    if (!tid || currentIds.includes(tid)) return undefined;
+    return save([...currentIds, tid], 'Trainer assigned to this module.');
   };
-  const removeTrainer = (tid) =>
-    setTrainers.mutateAsync({ id: batch.id, moduleId: module.id, trainerIds: currentIds.filter((x) => x !== tid) });
+  const removeTrainer = (tid) => save(currentIds.filter((x) => x !== tid), 'Trainer removed from this module.');
 
   return (
     <div className="map-row">
