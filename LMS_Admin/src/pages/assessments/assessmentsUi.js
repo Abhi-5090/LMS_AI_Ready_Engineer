@@ -67,6 +67,29 @@ export const QUESTION_TYPE_OPTIONS = Object.values(QuestionType).map((v) => ({
   label: QUESTION_TYPE_LABEL[v],
 }));
 
+/** Canonical order for grouping a test's questions by type. */
+const TYPE_ORDER = [QuestionType.MCQ, QuestionType.SCENARIO, QuestionType.PROMPT_WRITING, QuestionType.CODING];
+
+/**
+ * Group a test's questions by type (Multiple Choice → Scenario Based → Prompt
+ * Writing → Repo Evaluation), keeping order within each type and numbering
+ * continuously across the whole test. Returns [{ type, label, items:[{q,number}] }].
+ */
+export function groupQuestionsByType(questions = []) {
+  const rank = (t) => { const i = TYPE_ORDER.indexOf(t); return i === -1 ? TYPE_ORDER.length : i; };
+  const ordered = questions
+    .map((q, i) => ({ q, i }))
+    .sort((a, b) => rank(a.q.type) - rank(b.q.type) || a.i - b.i)
+    .map(({ q }, idx) => ({ q, number: idx + 1 }));
+  const groups = [];
+  for (const item of ordered) {
+    const last = groups[groups.length - 1];
+    if (last && last.type === item.q.type) last.items.push(item);
+    else groups.push({ type: item.q.type, label: QUESTION_TYPE_LABEL[item.q.type] ?? 'Questions', items: [item] });
+  }
+  return groups;
+}
+
 /** Only MCQ is auto-graded today; others await the AI evaluation engine. */
 export function isAutoGraded(type) {
   return type === QuestionType.MCQ;

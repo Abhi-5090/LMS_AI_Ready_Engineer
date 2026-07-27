@@ -18,6 +18,7 @@ import {
   assessmentLabel,
   ASSESSMENT_TYPE_LABEL,
   ASSESSMENT_TYPE_TONE,
+  groupQuestionsByType,
   PROCTORING_LABEL,
   PROCTORING_OPTIONS,
   PROCTORING_TONE,
@@ -41,6 +42,18 @@ export function AssessmentEditor() {
     if (await confirm({ title: 'Remove this question?', message: 'It stays in the question bank — only this test loses it.', confirmLabel: 'Remove', tone: 'danger' })) {
       del.mutate({ id, questionId });
     }
+  }
+
+  // Remove every question of one type in a single confirm (they stay in the bank).
+  async function onRemoveType(group) {
+    const ok = await confirm({
+      title: `Remove all ${group.label} questions?`,
+      message: `All ${group.items.length} ${group.label} question${group.items.length === 1 ? '' : 's'} will be removed from this test. They stay in the question bank.`,
+      confirmLabel: 'Remove all',
+      tone: 'danger',
+    });
+    if (!ok) return;
+    for (const { q } of group.items) await del.mutateAsync({ id, questionId: q.id });
   }
 
   if (isLoading && !a) {
@@ -134,35 +147,54 @@ export function AssessmentEditor() {
             action={isTemplate ? <Button onClick={() => setPickerOpen(true)}><Database size={15} style={{ marginRight: 6 }} /> Add from question bank</Button> : undefined}
           />
         )}
-        {a.questions.map((q, i) => (
-          <div key={q.id} className="topic-row" style={{ alignItems: 'flex-start' }}>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontWeight: 'var(--font-weight-medium)' }}>
-                {i + 1}. {q.prompt}
+        {a.questions.length > 0 && (
+          <div className="q-scroll">
+            {groupQuestionsByType(a.questions).map((g) => (
+              <div key={g.type} className="q-group">
+                <div className="q-group__head">
+                  <span className="q-group__title">
+                    {g.label} <span className="lms-muted">· {g.items.length} question{g.items.length === 1 ? '' : 's'}</span>
+                  </span>
+                  {isTemplate && (
+                    <Button size="sm" variant="ghost" title={`Remove all ${g.label} questions`} onClick={() => onRemoveType(g)} loading={del.isPending}>
+                      <Trash2 size={14} style={{ marginRight: 4 }} /> Remove all
+                    </Button>
+                  )}
+                </div>
+                {g.items.map(({ q, number }) => (
+                  <div key={q.id} className="topic-row" style={{ alignItems: 'flex-start' }}>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: 'var(--font-weight-medium)' }}>
+                        {number}. {q.prompt}
+                      </div>
+                      <div className="class-meta" style={{ marginTop: 4 }}>
+                        <Badge tone="neutral">{QUESTION_TYPE_LABEL[q.type]}</Badge>
+                        {q.topicTitle && <Badge tone="primary">{q.topicTitle}</Badge>}
+                        <span>{q.points} pt{q.points > 1 ? 's' : ''}</span>
+                      </div>
+                      {q.type === QuestionType.MCQ && (
+                        <ul style={{ margin: 'var(--space-2) 0 0 var(--space-4)', fontSize: 'var(--font-size-sm)' }}>
+                          {q.options?.map((opt, oi) => (
+                            <li key={oi} style={{ color: oi === q.correctOption ? 'var(--color-success)' : 'var(--color-text-secondary)', display: 'flex', alignItems: 'center', gap: 4 }}>
+                              {opt} {oi === q.correctOption ? <Check size={14} strokeWidth={3} /> : null}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                    {isTemplate && (
+                      <div className="list-actions">
+                        <Button size="sm" variant="ghost" title="Remove from this test" onClick={() => onRemoveQuestion(q.id)}>
+                          <Trash2 size={15} />
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                ))}
               </div>
-              <div className="class-meta" style={{ marginTop: 4 }}>
-                <Badge tone="neutral">{QUESTION_TYPE_LABEL[q.type]}</Badge>
-                <span>{q.points} pt{q.points > 1 ? 's' : ''}</span>
-              </div>
-              {q.type === QuestionType.MCQ && (
-                <ul style={{ margin: 'var(--space-2) 0 0 var(--space-4)', fontSize: 'var(--font-size-sm)' }}>
-                  {q.options?.map((opt, oi) => (
-                    <li key={oi} style={{ color: oi === q.correctOption ? 'var(--color-success)' : 'var(--color-text-secondary)', display: 'flex', alignItems: 'center', gap: 4 }}>
-                      {opt} {oi === q.correctOption ? <Check size={14} strokeWidth={3} /> : null}
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-            {isTemplate && (
-              <div className="list-actions">
-                <Button size="sm" variant="ghost" title="Remove from this test" onClick={() => onRemoveQuestion(q.id)}>
-                  <Trash2 size={15} />
-                </Button>
-              </div>
-            )}
+            ))}
           </div>
-        ))}
+        )}
       </Card>
 
       {!isTemplate && <CompletionCard a={a} />}
