@@ -114,13 +114,7 @@ export function AssessmentEditor() {
         </div>
       </Card>
 
-      {isTemplate ? <DescriptionCard a={a} /> : (
-        a.description && (
-          <Card style={{ marginBottom: 'var(--space-6)' }}>
-            <div className="lms-secondary-text">{a.description}</div>
-          </Card>
-        )
-      )}
+      {isTemplate && <DescriptionCard a={a} />}
 
       <ProctoringCard a={a} isTemplate={isTemplate} />
 
