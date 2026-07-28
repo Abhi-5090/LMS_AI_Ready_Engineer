@@ -193,6 +193,7 @@ function TimedExam({ assessment, questions, endsAt, serverNow, initialStream }) 
   const stopTimerRef = useRef(null);
   const scheduledRef = useRef(false);
   const lastWarnRef = useRef(0); // throttle so a held key doesn't flood the count
+  const warningsRef = useRef(0); // synchronous mirror of the warning count (for the auto-submit check)
   const toastTimerRef = useRef(null);
   // Mutations are held in refs so the lifecycle effects can use stable, run-ONCE
   // deps. (The 1s countdown re-renders constantly — without this the camera effect
@@ -254,16 +255,15 @@ function TimedExam({ assessment, questions, endsAt, serverNow, initialStream }) 
     const now = Date.now();
     if (now - lastWarnRef.current < 600) return; // throttle floods (held keys / rapid events)
     lastWarnRef.current = now;
-    let reached = false;
-    setWarnings((n) => {
-      const next = n + 1;
-      // Auto-submit once the admin-set violation limit is hit.
-      if (violationLimit > 0 && next >= violationLimit) reached = true;
-      return next;
-    });
+    // Count synchronously via a ref — a value read back from a setState updater is
+    // NOT observable in the same tick, so the auto-submit check must not depend on it.
+    const next = warningsRef.current + 1;
+    warningsRef.current = next;
+    setWarnings(next);
     warnMutRef.current.mutate({ id: assessment.id, reason });
     if (snapshot) uploadShot();
-    if (reached) {
+    // Auto-submit once the admin-set violation limit is hit.
+    if (violationLimit > 0 && next >= violationLimit) {
       setWarnToast('Violation limit reached — your test is being submitted.');
       if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
       setTimeout(() => doSubmitRef.current(), 400); // let the toast paint first
