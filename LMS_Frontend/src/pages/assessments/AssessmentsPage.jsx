@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CalendarClock, ChevronLeft, ClipboardList, FolderOpen, Layers, Plus, Send, Users } from 'lucide-react';
+import { CalendarClock, Check, ChevronLeft, ClipboardList, FolderOpen, Layers, Plus, Send, Users } from 'lucide-react';
 import { AssessmentAvailability, AssessmentType, ProctoringMode, UserRole } from '@/shared';
 import { Badge, Button, Card, EmptyState, ErrorState, Input, Modal, Select, SkeletonCards, SkeletonTable, useConfirm, useToast } from '@/components/ui';
 import { PageHeader } from '@/components/PageHeader';
@@ -558,12 +558,21 @@ function AssignModal({ template, moduleId, onClose }) {
             {students.length === 0 ? (
               <p className="lms-muted" style={{ fontSize: 'var(--font-size-sm)' }}>This batch has no students yet.</p>
             ) : (
-              <div className="allow-chips">
-                {students.map((s) => (
-                  <button type="button" key={s.id} className={`allow-chip${selected.has(s.id) ? ' allow-chip--on' : ''}`} onClick={() => toggle(s.id)} title={s.email}>
-                    <span className="allow-chip__dot" /> {s.name}
-                  </button>
-                ))}
+              <div className="stu-list">
+                {students.map((s) => {
+                  const on = selected.has(s.id);
+                  const initials = s.name.split(' ').filter(Boolean).slice(0, 2).map((w) => w[0]).join('').toUpperCase();
+                  return (
+                    <button type="button" key={s.id} className={`stu-row${on ? ' is-on' : ''}`} onClick={() => toggle(s.id)} aria-pressed={on}>
+                      <span className="stu-row__avatar">{initials}</span>
+                      <span className="stu-row__info">
+                        <span className="stu-row__name">{s.name}</span>
+                        <span className="stu-row__email">{s.email}</span>
+                      </span>
+                      <span className="stu-row__check">{on && <Check size={13} strokeWidth={3} />}</span>
+                    </button>
+                  );
+                })}
               </div>
             )}
             <p className="lms-muted" style={{ fontSize: 'var(--font-size-xs)', marginTop: 6 }}>Leave all unselected to assign to the whole batch.</p>
