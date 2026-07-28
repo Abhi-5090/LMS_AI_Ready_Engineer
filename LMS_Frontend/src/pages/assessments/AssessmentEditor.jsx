@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import * as XLSX from 'xlsx';
-import { Check, Database, Download, HelpCircle, ScrollText, Trash2, UploadCloud, Users } from 'lucide-react';
+import { BarChart3, Check, Database, Download, HelpCircle, ScrollText, Trash2, UploadCloud, Users } from 'lucide-react';
 import { AssessmentAvailability, AssessmentType, ProctoringMode, QuestionType } from '@/shared';
 import { Badge, Button, Card, CardHeader, EmptyState, ErrorState, Input, Modal, Select, SkeletonTable, SkeletonText, useConfirm, useToast } from '@/components/ui';
 import { PageHeader } from '@/components/PageHeader';
@@ -118,8 +118,15 @@ export function AssessmentEditor() {
 
       <ProctoringCard a={a} isTemplate={isTemplate} />
 
+      {!isTemplate && <AnalyticsCard a={a} />}
+
       {!isTemplate && <AllowedStudentsCard a={a} />}
 
+      {!isTemplate && <CompletionCard a={a} />}
+
+      {!isTemplate && <SubmissionsCard id={a.id} />}
+
+      {/* Questions last — a scrollable box showing ~4–5 at a time. */}
       <Card style={{ marginBottom: 'var(--space-6)' }}>
         <div className="panel-head">
           <CardHeader
@@ -133,48 +140,47 @@ export function AssessmentEditor() {
           )}
         </div>
 
-        {a.questions.length === 0 && (
+        {a.questions.length === 0 ? (
           <EmptyState
             icon={<HelpCircle size={26} />}
             title="No questions yet"
             description={isTemplate ? 'Add some from the question bank to build this test.' : 'This test has no questions.'}
             action={isTemplate ? <Button onClick={() => setPickerOpen(true)}><Database size={15} style={{ marginRight: 6 }} /> Add from question bank</Button> : undefined}
           />
-        )}
-        {a.questions.map((q, i) => (
-          <div key={q.id} className="topic-row" style={{ alignItems: 'flex-start' }}>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontWeight: 'var(--font-weight-medium)' }}>
-                {i + 1}. {q.prompt}
+        ) : (
+          <div className="q-scroll">
+            {a.questions.map((q, i) => (
+              <div key={q.id} className="topic-row" style={{ alignItems: 'flex-start' }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontWeight: 'var(--font-weight-medium)' }}>
+                    {i + 1}. {q.prompt}
+                  </div>
+                  <div className="class-meta" style={{ marginTop: 4 }}>
+                    <Badge tone="neutral">{QUESTION_TYPE_LABEL[q.type]}</Badge>
+                    <span>{q.points} pt{q.points > 1 ? 's' : ''}</span>
+                  </div>
+                  {q.type === QuestionType.MCQ && (
+                    <ul style={{ margin: 'var(--space-2) 0 0 var(--space-4)', fontSize: 'var(--font-size-sm)' }}>
+                      {q.options?.map((opt, oi) => (
+                        <li key={oi} style={{ color: oi === q.correctOption ? 'var(--color-success)' : 'var(--color-text-secondary)', display: 'flex', alignItems: 'center', gap: 4 }}>
+                          {opt} {oi === q.correctOption ? <Check size={14} strokeWidth={3} /> : null}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+                {isTemplate && (
+                  <div className="list-actions">
+                    <Button size="sm" variant="ghost" title="Remove from this test" onClick={() => onRemoveQuestion(q.id)}>
+                      <Trash2 size={15} />
+                    </Button>
+                  </div>
+                )}
               </div>
-              <div className="class-meta" style={{ marginTop: 4 }}>
-                <Badge tone="neutral">{QUESTION_TYPE_LABEL[q.type]}</Badge>
-                <span>{q.points} pt{q.points > 1 ? 's' : ''}</span>
-              </div>
-              {q.type === QuestionType.MCQ && (
-                <ul style={{ margin: 'var(--space-2) 0 0 var(--space-4)', fontSize: 'var(--font-size-sm)' }}>
-                  {q.options?.map((opt, oi) => (
-                    <li key={oi} style={{ color: oi === q.correctOption ? 'var(--color-success)' : 'var(--color-text-secondary)', display: 'flex', alignItems: 'center', gap: 4 }}>
-                      {opt} {oi === q.correctOption ? <Check size={14} strokeWidth={3} /> : null}
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-            {isTemplate && (
-              <div className="list-actions">
-                <Button size="sm" variant="ghost" title="Remove from this test" onClick={() => onRemoveQuestion(q.id)}>
-                  <Trash2 size={15} />
-                </Button>
-              </div>
-            )}
+            ))}
           </div>
-        ))}
+        )}
       </Card>
-
-      {!isTemplate && <CompletionCard a={a} />}
-
-      {!isTemplate && <SubmissionsCard id={a.id} />}
 
       <Modal open={pickerOpen} title="Add questions from the bank" size="lg" onClose={() => setPickerOpen(false)}>
         <BankPicker assessment={a} onClose={() => setPickerOpen(false)} />
@@ -479,6 +485,70 @@ function AllowedStudentsCard({ a }) {
 }
 
 /** Who's completed it: every assigned student's status (incl. those who haven't started). */
+/** Best-in-class analytics for an assigned assessment: reach, completion, scores. */
+function AnalyticsCard({ a }) {
+  const { data: subs, isLoading } = useSubmissions(a.id);
+  const roster = a.batch?.students ?? [];
+  const allow = (a.allowedStudents ?? []).map(String);
+  const assigned = allow.length ? roster.filter((s) => allow.includes(String(s.id))) : roster;
+  const byStudent = new Map((subs ?? []).map((s) => [String(s.student?.id ?? s.student), s]));
+  const DONE = ['submitted', 'evaluating', 'graded'];
+
+  let submitted = 0, inProgress = 0, notStarted = 0, graded = 0, passed = 0, scoreSum = 0, disqualified = 0;
+  for (const s of assigned) {
+    const sub = byStudent.get(String(s.id));
+    if (!sub) { notStarted += 1; continue; }
+    if (sub.disqualified) { disqualified += 1; submitted += 1; continue; }
+    if (DONE.includes(sub.status)) {
+      submitted += 1;
+      if (sub.status === 'graded') { graded += 1; scoreSum += sub.score ?? 0; if (sub.passed) passed += 1; }
+    } else if (sub.status === 'in_progress') { inProgress += 1; } else { notStarted += 1; }
+  }
+  const total = assigned.length;
+  const avgScore = graded ? Math.round(scoreSum / graded) : null;
+  const passRate = graded ? Math.round((passed / graded) * 100) : null;
+  const completionPct = total ? Math.round((submitted / total) * 100) : 0;
+
+  const tiles = [
+    { label: 'Students assigned', value: total, tone: 'primary' },
+    { label: 'Questions', value: a.questions.length, tone: 'primary' },
+    { label: 'Submitted', value: submitted, tone: 'success' },
+    { label: 'In progress', value: inProgress, tone: 'warning' },
+    { label: 'Not started', value: notStarted, tone: 'neutral' },
+    { label: 'Avg score', value: avgScore == null ? '—' : `${avgScore}%`, tone: 'primary' },
+    { label: 'Pass rate', value: passRate == null ? '—' : `${passRate}%`, tone: 'success' },
+  ];
+  if (disqualified > 0) tiles.push({ label: 'Disqualified', value: disqualified, tone: 'error' });
+
+  return (
+    <Card style={{ marginBottom: 'var(--space-6)' }}>
+      <CardHeader
+        title={<span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}><BarChart3 size={18} style={{ color: 'var(--color-primary)' }} /> Analytics</span>}
+        subtitle={total ? `${submitted} of ${total} submitted · ${completionPct}% complete` : 'No students assigned yet'}
+      />
+      {isLoading && !subs ? (
+        <SkeletonText lines={3} />
+      ) : total === 0 ? (
+        <EmptyState icon={<BarChart3 size={24} />} title="No data yet" description="Assign students (on the schedule / allow-list) to see analytics." />
+      ) : (
+        <>
+          <div className="module-card__progress-track" style={{ margin: 'var(--space-2) 0 var(--space-4)' }}>
+            <div className="module-card__progress-fill" style={{ width: `${completionPct}%` }} />
+          </div>
+          <div className="astat-grid">
+            {tiles.map((t) => (
+              <div key={t.label} className={`astat astat--${t.tone}`}>
+                <div className="astat__num">{t.value}</div>
+                <div className="astat__label">{t.label}</div>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+    </Card>
+  );
+}
+
 function CompletionCard({ a }) {
   const { data: subs, isLoading } = useSubmissions(a.id);
   const roster = a.batch?.students ?? [];

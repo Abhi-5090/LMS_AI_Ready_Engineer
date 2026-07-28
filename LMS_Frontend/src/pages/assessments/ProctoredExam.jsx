@@ -181,6 +181,7 @@ function TimedExam({ assessment, questions, endsAt, serverNow, initialStream }) 
   const [remaining, setRemaining] = useState(0);
   const [warnings, setWarnings] = useState(0);
   const [warnToast, setWarnToast] = useState('');
+  const [outOfFs, setOutOfFs] = useState(false); // shown when the student leaves full screen
 
   // Clock-skew-corrected timing.
   const skewRef = useRef(Date.now() - new Date(serverNow).getTime());
@@ -328,7 +329,15 @@ function TimedExam({ assessment, questions, endsAt, serverNow, initialStream }) 
   useEffect(() => {
     enterFullscreen(); // ensure we're in full screen on entry
 
-    const onFs = () => { if (armedRef.current && !document.fullscreenElement) warn('You left full screen', { snapshot: true }); };
+    const onFs = () => {
+      if (!armedRef.current) return;
+      if (!document.fullscreenElement) {
+        warn('You left full screen', { snapshot: true }); // one violation per exit
+        setOutOfFs(true); // block the exam until they return to full screen
+      } else {
+        setOutOfFs(false);
+      }
+    };
     const onVis = () => { if (armedRef.current && document.hidden) warn('You switched tab or minimised the window', { snapshot: true }); };
     const onBlur = () => { if (armedRef.current) warn('You moved to another window', { snapshot: true }); };
 
@@ -482,6 +491,20 @@ function TimedExam({ assessment, questions, endsAt, serverNow, initialStream }) 
       {warnToast && (
         <div className="exam-toast" role="alert">
           <AlertTriangle size={18} /> <span>{warnToast}. This is recorded (warning {warnings}).</span>
+        </div>
+      )}
+
+      {outOfFs && !submittedRef.current && (
+        <div className="exam-warn" role="alertdialog" aria-modal="true">
+          <div className="exam-warn__card">
+            <Maximize size={30} className="exam-warn__icon" />
+            <h3 style={{ margin: '0 0 var(--space-2)' }}>You left full screen</h3>
+            <p className="lms-muted" style={{ marginBottom: 'var(--space-4)' }}>
+              This exam must stay in full screen — leaving is recorded as a violation
+              {violationLimit > 0 ? ` (${warnings}/${violationLimit})` : ` (${warnings} so far)`}. Return to continue.
+            </p>
+            <Button onClick={() => enterFullscreen()}><Expand size={16} style={{ marginRight: 6 }} /> Return to full screen</Button>
+          </div>
         </div>
       )}
     </div>

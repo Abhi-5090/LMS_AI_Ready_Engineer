@@ -366,6 +366,20 @@
   margin-top: var(--space-3);
 }
 
+/* Questions list — show ~4–5, scroll the rest. */
+.q-scroll { max-height: 28rem; overflow-y: auto; margin-top: var(--space-2); padding-right: var(--space-1); }
+.q-scroll .topic-row:last-child { border-bottom: none; }
+
+/* Assessment analytics — stat tiles. */
+.astat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr)); gap: var(--space-3); }
+.astat { border: 1px solid var(--color-border); border-radius: var(--radius-lg); padding: var(--space-3) var(--space-4); background: var(--color-surface); }
+.astat__num { font-size: var(--font-size-2xl, 1.6rem); font-weight: var(--font-weight-bold); line-height: 1.1; font-variant-numeric: tabular-nums; }
+.astat__label { font-size: var(--font-size-xs); color: var(--color-text-secondary); text-transform: uppercase; letter-spacing: 0.04em; margin-top: 4px; }
+.astat--success .astat__num { color: var(--color-success); }
+.astat--warning .astat__num { color: var(--color-warning, #b8730a); }
+.astat--error .astat__num { color: var(--color-error); }
+.astat--primary .astat__num { color: var(--color-primary); }
+
 /* Members as a scrollable table — ~10 rows visible, then scroll. */
 .member-scroll { max-height: 26rem; overflow-y: auto; border: 1px solid var(--color-border); border-radius: var(--radius-lg); margin-top: var(--space-3); }
 .member-scroll .table { margin: 0; }
