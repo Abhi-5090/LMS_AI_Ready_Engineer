@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { DoubtStatus, UserRole } from '#shared';
-import { Doubt, User } from '../models/index.js';
+import { Batch, Doubt, User } from '../models/index.js';
 import { ApiError } from '../utils/ApiError.js';
 import { ok } from '../utils/http.js';
 
@@ -49,11 +49,16 @@ const POP = [
   { path: 'answeredBy', select: 'name' },
 ];
 
-/** Can this trainer act on / see this doubt? (assigned to its module or batch) */
-function trainerOwns(trainer, doubt) {
-  const inModule = doubt.module && trainer.assignedModules?.some((m) => m.toString() === doubt.module.toString());
-  const inBatch = doubt.batch && trainer.assignedBatches?.some((b) => b.toString() === doubt.batch.toString());
-  return Boolean(inModule || inBatch);
+/**
+ * Can this trainer act on / see this doubt? Only the trainer(s) who deliver the
+ * doubt's MODULE in the student's BATCH (the batch's per-module mapping) — not
+ * every module trainer, and not every trainer of the batch.
+ */
+async function trainerDeliversModuleInBatch(userId, moduleId, batchId) {
+  if (!moduleId || !batchId) return false;
+  const batch = await Batch.findById(batchId).select('moduleTrainers');
+  const entry = (batch?.moduleTrainers ?? []).find((mt) => String(mt.module) === String(moduleId));
+  return Boolean(entry && (entry.trainers ?? []).some((t) => String(t) === String(userId)));
 }
 
 // ── Create (student) ──────────────────────────────────────────────────────────
@@ -97,11 +102,18 @@ export async function listDoubts(req, res) {
   if (role === UserRole.STUDENT) {
     filter.student = userId;
   } else if (role === UserRole.TRAINER) {
-    const me = await User.findById(userId).select('assignedModules assignedBatches');
-    filter.$or = [
-      { module: { $in: me?.assignedModules ?? [] } },
-      { batch: { $in: me?.assignedBatches ?? [] } },
-    ];
+    // Only the exact (module, batch) pairs this trainer delivers.
+    const batches = await Batch.find({ 'moduleTrainers.trainers': userId }).select('moduleTrainers');
+    const pairs = [];
+    for (const b of batches) {
+      for (const mt of b.moduleTrainers ?? []) {
+        if (mt.module && (mt.trainers ?? []).some((t) => String(t) === String(userId))) {
+          pairs.push({ batch: b._id, module: mt.module });
+        }
+      }
+    }
+    if (pairs.length === 0) { ok(res, []); return; } // delivers nothing → no doubts
+    filter.$or = pairs;
   }
   // admin: no extra filter (all doubts)
 
@@ -119,9 +131,12 @@ async function loadViewable(req) {
     if (doubt.student._id.toString() !== userId) throw ApiError.forbidden('Not your doubt');
     return doubt;
   }
-  // trainer
-  const me = await User.findById(userId).select('assignedModules assignedBatches');
-  if (!trainerOwns(me, doubt)) throw ApiError.forbidden('This doubt is outside your modules/batches');
+  // trainer — must deliver this module in the student's batch
+  const moduleId = doubt.module?._id ?? doubt.module;
+  const batchId = doubt.batch?._id ?? doubt.batch;
+  if (!(await trainerDeliversModuleInBatch(userId, moduleId, batchId))) {
+    throw ApiError.forbidden('This doubt is outside the modules you deliver for this batch');
+  }
   return doubt;
 }
 
@@ -140,8 +155,9 @@ export async function addReply(req, res) {
   if (role === UserRole.STUDENT) {
     if (doubt.student.toString() !== userId) throw ApiError.forbidden('Not your doubt');
   } else if (role === UserRole.TRAINER) {
-    const me = await User.findById(userId).select('assignedModules assignedBatches');
-    if (!trainerOwns(me, doubt)) throw ApiError.forbidden('This doubt is outside your modules/batches');
+    if (!(await trainerDeliversModuleInBatch(userId, doubt.module, doubt.batch))) {
+      throw ApiError.forbidden('This doubt is outside the modules you deliver for this batch');
+    }
   }
 
   doubt.messages.push({ author: userId, authorRole: role, body: req.body.body });

@@ -54,8 +54,20 @@ test('doubts: rate-anytime after an unrated resolve, and auto-close after 24h', 
   const { req, models } = ctx;
   const m1 = await models.Module.create({ name: 'D1', code: 'DB1', order: 1, level: 'beginner' });
   const m2 = await models.Module.create({ name: 'D2', code: 'DB2', order: 2, level: 'beginner' });
-  await ctx.mkUser('Trainer', 'tr@x.local', 'trainer', { assignedModules: [m1._id, m2._id] });
-  await ctx.mkUser('Stud', 'stud@x.local', 'student');
+  const trainer = await ctx.mkUser('Trainer', 'tr@x.local', 'trainer');
+  const student = await ctx.mkUser('Stud', 'stud@x.local', 'student');
+  // New rule: a trainer only handles doubts for a module they deliver IN THE
+  // student's batch. Put the student in a batch that maps this trainer to m1 & m2.
+  const batch = await models.Batch.create({
+    name: 'Batch 1', code: 'BATCH1', startDate: new Date(), endDate: new Date(Date.now() + 30 * 864e5),
+    students: [student._id], trainers: [trainer._id], modules: [m1._id, m2._id],
+    moduleTrainers: [
+      { module: m1._id, trainers: [trainer._id] },
+      { module: m2._id, trainers: [trainer._id] },
+    ],
+    organization: ctx.defaultOrg._id,
+  });
+  await models.User.updateOne({ _id: student._id }, { $set: { batch: batch._id } });
   const T = await ctx.login('tr@x.local');
   const S = await ctx.login('stud@x.local');
 
