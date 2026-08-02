@@ -26,7 +26,7 @@ import {
   useUpdateModule,
   useUpdateObjectives,
 } from '@/lib/modules';
-import { useCertTemplate, usePutCertTemplate, useDeleteCertTemplate, openCertPreview } from '@/lib/certificateTemplates';
+import { useCertTemplate, usePutCertTemplate, useDeleteCertTemplate, useIssueModuleCertificates, openCertPreview } from '@/lib/certificateTemplates';
 import { useToast } from '@/components/ui';
 import { SyllabusBoard } from './SyllabusBoard';
 import { LEVEL_OPTIONS, levelTone, titleCase, topicProgress } from './moduleUi';
@@ -359,6 +359,7 @@ function CertificateTemplateCard({ moduleId, moduleName }) {
   const { data: tpl, isLoading } = useCertTemplate(moduleId);
   const put = usePutCertTemplate();
   const del = useDeleteCertTemplate();
+  const issueAll = useIssueModuleCertificates();
   const toast = useToast();
   const [file, setFile] = useState(null);
   const [nameY, setNameY] = useState(55);
@@ -383,6 +384,13 @@ function CertificateTemplateCard({ moduleId, moduleName }) {
   }
   async function preview() {
     try { await openCertPreview(moduleId, 'Student Name'); } catch (e) { toast.error(apiErrorMessage(e)); }
+  }
+  async function issueToPassers() {
+    try {
+      const r = await issueAll.mutateAsync(moduleId);
+      if (!r.hasFinal) toast.error('This module has no final test yet.');
+      else toast.success(`${r.issued} certificate${r.issued === 1 ? '' : 's'} issued · ${r.totalPassed} student${r.totalPassed === 1 ? '' : 's'} passed the final.`);
+    } catch (e) { toast.error(apiErrorMessage(e)); }
   }
 
   return (
@@ -411,6 +419,12 @@ function CertificateTemplateCard({ moduleId, moduleName }) {
             <Button onClick={save} loading={put.isPending}>{tpl ? 'Save changes' : 'Upload template'}</Button>
             {tpl && <Button variant="outline" onClick={preview}>Preview</Button>}
             {tpl && <Button variant="ghost" onClick={onDelete} loading={del.isPending}>Remove</Button>}
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', flexWrap: 'wrap', borderTop: '1px solid var(--color-border)', paddingTop: 'var(--space-3)' }}>
+            <Button variant="outline" onClick={issueToPassers} loading={issueAll.isPending}>Issue to all who passed the final</Button>
+            <span className="lms-muted" style={{ fontSize: 'var(--font-size-xs)' }}>
+              Issues this module's certificate to every student who passed the final test (score ≥ pass mark). Safe to run repeatedly.
+            </span>
           </div>
           <p className="lms-muted" style={{ fontSize: 'var(--font-size-xs)', margin: 0 }}>
             The name is centered horizontally. Use <strong>Preview</strong> to check the placement, adjust the position/size, then Save.

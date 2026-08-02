@@ -33,6 +33,13 @@ export function useDeleteCertTemplate() {
   });
 }
 
+/** Admin: issue the module certificate to everyone who passed its final test. */
+export function useIssueModuleCertificates() {
+  return useMutation({
+    mutationFn: (moduleId) => unwrap(api.post(`/certificates/templates/${moduleId}/issue`)),
+  });
+}
+
 /** Render the template preview PDF (auth-carried) and open it in a new tab. */
 export async function openCertPreview(moduleId, name = 'Student Name') {
   const res = await api.get(`/certificates/templates/${moduleId}/preview`, { params: { name }, responseType: 'blob' });

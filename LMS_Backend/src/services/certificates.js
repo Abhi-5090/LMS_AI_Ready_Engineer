@@ -1,5 +1,6 @@
 import QRCode from 'qrcode';
-import { Certificate } from '../models/index.js';
+import { AssessmentType, SubmissionStatus } from '#shared';
+import { Assessment, Certificate, Module, Submission } from '../models/index.js';
 import { env } from '../config/env.js';
 import { computeProgress } from './progression.js';
 
@@ -67,9 +68,9 @@ export async function issueEligibleCertificates(studentId) {
   let issued = 0;
 
   for (const entry of progress.modules) {
-    // A module certificate is earned by MASTERY (passing the final + attendance),
-    // not by merely advancing past the module when the syllabus is complete.
-    if (!entry.passed) continue;
+    // A module certificate is earned by PASSING THE MODULE'S FINAL TEST
+    // (attendance is tracked separately and does not gate the certificate).
+    if (!entry.finalPassed) continue;
     const exists = await Certificate.findOne({
       student: studentId,
       module: entry.module.id,
@@ -101,6 +102,39 @@ export async function issueEligibleCertificates(studentId) {
   }
 
   return { issued };
+}
+
+/**
+ * Issue the module certificate to EVERY student who passed that module's final
+ * test (score ≥ pass mark). Idempotent — students who already have it are
+ * skipped. Used by the admin "issue to all who passed" action. Returns how many
+ * passed and how many new certificates were issued.
+ */
+export async function issueModuleCertificatesForPassers(moduleId) {
+  const finals = await Assessment.find({ module: moduleId, type: AssessmentType.FINAL }).select('_id');
+  const finalIds = finals.map((f) => f._id);
+  if (finalIds.length === 0) return { totalPassed: 0, issued: 0, hasFinal: false };
+
+  const module = await Module.findById(moduleId).select('code name');
+  const passedSubs = await Submission
+    .find({ assessment: { $in: finalIds }, status: SubmissionStatus.GRADED, passed: true })
+    .select('student');
+  const studentIds = [...new Set(passedSubs.map((s) => s.student.toString()))];
+
+  let issued = 0;
+  for (const studentId of studentIds) {
+    const exists = await Certificate.findOne({ student: studentId, module: moduleId, isProgramCertificate: false });
+    if (exists) continue;
+    try {
+      await createCertificate({ student: studentId, module: moduleId, code: module?.code ?? 'MOD' });
+      issued += 1;
+      const { notify } = await import('./notify.js');
+      notify(studentId, { type: 'certificate', title: `Certificate earned: ${module?.name ?? 'Module'}`, body: 'Congratulations! Your module certificate is ready.', link: '/app/certificates' });
+    } catch (err) {
+      if (!isAlreadyIssued(err)) throw err;
+    }
+  }
+  return { totalPassed: studentIds.length, issued, hasFinal: true };
 }
 
 /** Fetch a student's certificates (module populated), newest first. */

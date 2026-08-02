@@ -58,5 +58,11 @@ router.delete(
   validate({ params: certs.moduleIdParam }),
   asyncHandler(certs.deleteCertificateTemplate),
 );
+router.post(
+  '/templates/:moduleId/issue',
+  requireRole(UserRole.ADMIN),
+  validate({ params: certs.moduleIdParam }),
+  asyncHandler(certs.issueModuleCertificates),
+);
 
 export default router;

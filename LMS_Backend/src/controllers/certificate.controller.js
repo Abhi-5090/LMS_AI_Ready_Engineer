@@ -2,7 +2,7 @@ import { z } from 'zod';
 import multer from 'multer';
 import { UserRole } from '#shared';
 import { Certificate, CertificateTemplate, Module, User } from '../models/index.js';
-import { issueEligibleCertificates, listStudentCertificates } from '../services/certificates.js';
+import { issueEligibleCertificates, issueModuleCertificatesForPassers, listStudentCertificates } from '../services/certificates.js';
 import { saveBuffer, readFileBuffer, deleteByUrl } from '../services/fileStore.js';
 import { renderCertificatePdf, renderDefaultCertificatePdf } from '../services/certificateRender.js';
 import { ApiError } from '../utils/ApiError.js';
@@ -57,6 +57,14 @@ export async function putCertificateTemplate(req, res) {
 export async function getCertificateTemplate(req, res) {
   const tpl = await CertificateTemplate.findOne({ module: req.params.moduleId });
   ok(res, tpl ? tpl.toJSON() : null);
+}
+
+/** Admin: issue the module certificate to everyone who passed its final test. */
+export async function issueModuleCertificates(req, res) {
+  const module = await Module.findById(req.params.moduleId).select('_id');
+  if (!module) throw ApiError.notFound('Module not found');
+  const result = await issueModuleCertificatesForPassers(req.params.moduleId);
+  ok(res, result);
 }
 
 /** Admin: remove a module's template. */
