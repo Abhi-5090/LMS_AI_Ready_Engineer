@@ -13,6 +13,7 @@ export { SyllabusImportRequest } from './SyllabusImportRequest.js';
 export { Submission } from './Submission.js';
 export { Resource } from './Resource.js';
 export { Certificate } from './Certificate.js';
+export { CertificateTemplate } from './CertificateTemplate.js';
 export { ExternalCertificate } from './ExternalCertificate.js';
 export { Project } from './Project.js';
 export { ModuleProgress } from './ModuleProgress.js';

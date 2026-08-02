@@ -126,6 +126,20 @@ export async function findFile(filename) {
   return getBucket().find({ filename }).limit(1).next();
 }
 
+/** Read a GridFS-stored file (by name or `/api/uploads/<name>` URL) into a Buffer. */
+export async function readFileBuffer(urlOrName) {
+  const filename = typeof urlOrName === 'string' && urlOrName.startsWith(UPLOADS_URL_PREFIX)
+    ? path.basename(urlOrName)
+    : urlOrName;
+  return new Promise((resolve, reject) => {
+    const chunks = [];
+    const stream = getBucket().openDownloadStreamByName(filename);
+    stream.on('data', (c) => chunks.push(c));
+    stream.on('error', reject);
+    stream.on('end', () => resolve(Buffer.concat(chunks)));
+  });
+}
+
 /** Delete every stored version of `filename` (S3 + GridFS). Best-effort. */
 export async function deleteByName(filename) {
   if (s3Enabled()) {

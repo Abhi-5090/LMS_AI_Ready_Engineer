@@ -1,10 +1,10 @@
 import { useState } from 'react';
-import { Award, ExternalLink, FileText, Share2, Trash2, Upload } from 'lucide-react';
+import { Award, Download, ExternalLink, FileText, Share2, Trash2, Upload } from 'lucide-react';
 import { Badge, Button, Card, CardHeader, EmptyState, ErrorState, Input, Modal, Skeleton, SkeletonCards, useConfirm } from '@/components/ui';
 import { PageHeader } from '@/components/PageHeader';
 import { apiErrorMessage, fileSrc } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
-import { useMyCertificates } from '@/lib/certificates';
+import { useMyCertificates, openCertificatePdf } from '@/lib/certificates';
 import {
   useAddExternalCertificate,
   useDeleteExternalCertificate,
@@ -94,6 +94,9 @@ function StudentCertificates() {
                       onClick={() => shareLink(`${window.location.origin}/verify/${c.certificateId}`, `${certTitle(c)} — AI Ready Engineer certificate`)}
                     >
                       <Share2 size={14} style={{ marginRight: 4 }} /> Share
+                    </Button>
+                    <Button size="sm" variant="outline" title="Download PDF" onClick={() => openCertificatePdf(c.certificateId).catch(() => {})}>
+                      <Download size={14} style={{ marginRight: 4 }} /> Download
                     </Button>
                     <Button size="sm" onClick={() => setView(c)}>View</Button>
                   </div>

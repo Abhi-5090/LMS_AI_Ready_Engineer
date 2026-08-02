@@ -7,6 +7,14 @@ export const certificateKeys = {
   verify: (id) => ['certificates', 'verify', id],
 };
 
+/** Fetch the rendered certificate PDF (template + name) and open it in a new tab. */
+export async function openCertificatePdf(certificateId) {
+  const res = await api.get(`/certificates/${certificateId}/download`, { responseType: 'blob' });
+  const url = URL.createObjectURL(res.data);
+  window.open(url, '_blank', 'noopener,noreferrer');
+  setTimeout(() => URL.revokeObjectURL(url), 60_000);
+}
+
 /** Student's own certificates (server issues any newly-earned ones first). */
 export function useMyCertificates({ enabled = true } = {}) {
   return useQuery({

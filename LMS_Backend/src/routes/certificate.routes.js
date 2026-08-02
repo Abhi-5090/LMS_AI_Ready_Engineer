@@ -25,4 +25,38 @@ router.get(
   asyncHandler(certs.studentCertificates),
 );
 
+// Download a rendered certificate PDF (student's own, or staff for anyone).
+router.get(
+  '/:certificateId/download',
+  validate({ params: certs.certIdParam }),
+  asyncHandler(certs.downloadCertificate),
+);
+
+// ── Admin: certificate templates, one per module ──────────────────────────────
+router.get(
+  '/templates/:moduleId',
+  requireRole(UserRole.ADMIN),
+  validate({ params: certs.moduleIdParam }),
+  asyncHandler(certs.getCertificateTemplate),
+);
+router.get(
+  '/templates/:moduleId/preview',
+  requireRole(UserRole.ADMIN),
+  validate({ params: certs.moduleIdParam }),
+  asyncHandler(certs.previewCertificateTemplate),
+);
+router.put(
+  '/templates/:moduleId',
+  requireRole(UserRole.ADMIN),
+  certs.uploadTemplateFile,
+  validate({ params: certs.moduleIdParam }),
+  asyncHandler(certs.putCertificateTemplate),
+);
+router.delete(
+  '/templates/:moduleId',
+  requireRole(UserRole.ADMIN),
+  validate({ params: certs.moduleIdParam }),
+  asyncHandler(certs.deleteCertificateTemplate),
+);
+
 export default router;

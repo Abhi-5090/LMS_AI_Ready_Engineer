@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { ChevronRight, X } from 'lucide-react';
 import { UserRole } from '@/shared';
@@ -26,6 +26,8 @@ import {
   useUpdateModule,
   useUpdateObjectives,
 } from '@/lib/modules';
+import { useCertTemplate, usePutCertTemplate, useDeleteCertTemplate, openCertPreview } from '@/lib/certificateTemplates';
+import { useToast } from '@/components/ui';
 import { SyllabusBoard } from './SyllabusBoard';
 import { LEVEL_OPTIONS, levelTone, titleCase, topicProgress } from './moduleUi';
 import './modules.css';
@@ -112,6 +114,8 @@ export function ModuleDetailPage() {
           <p className="lms-secondary-text">{module.description}</p>
         </Card>
       )}
+
+      {isAdmin && <CertificateTemplateCard moduleId={module.id} moduleName={module.name} />}
 
       <div className={`detail-grid${editingTemplate ? ' detail-grid--full' : ''}`}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-6)' }}>
@@ -344,6 +348,73 @@ function TrainersPanel({ module, isAdmin }) {
           >
             Assign trainer
           </Button>
+        </div>
+      )}
+    </Card>
+  );
+}
+
+/** Admin: upload/manage this module's completion-certificate template. */
+function CertificateTemplateCard({ moduleId, moduleName }) {
+  const { data: tpl, isLoading } = useCertTemplate(moduleId);
+  const put = usePutCertTemplate();
+  const del = useDeleteCertTemplate();
+  const toast = useToast();
+  const [file, setFile] = useState(null);
+  const [nameY, setNameY] = useState(55);
+  const [fontScale, setFontScale] = useState(6);
+  const fileRef = useRef(null);
+
+  useEffect(() => {
+    if (tpl) { setNameY(tpl.nameYPercent ?? 55); setFontScale(tpl.fontScale ?? 6); }
+  }, [tpl]);
+
+  async function save() {
+    if (!tpl && !file) { toast.error('Choose a template file (PDF, PNG or JPG).'); return; }
+    try {
+      await put.mutateAsync({ moduleId, file, nameYPercent: nameY, fontScale });
+      setFile(null);
+      if (fileRef.current) fileRef.current.value = '';
+      toast.success('Certificate template saved.');
+    } catch (e) { toast.error(apiErrorMessage(e)); }
+  }
+  async function onDelete() {
+    try { await del.mutateAsync(moduleId); toast.success('Template removed.'); } catch (e) { toast.error(apiErrorMessage(e)); }
+  }
+  async function preview() {
+    try { await openCertPreview(moduleId, 'Student Name'); } catch (e) { toast.error(apiErrorMessage(e)); }
+  }
+
+  return (
+    <Card style={{ marginBottom: 'var(--space-6)' }}>
+      <CardHeader
+        title="Completion certificate"
+        subtitle={`Issued to students who pass the ${moduleName} final. Upload a PDF or image — the student's name is drawn on it.`}
+      />
+      {isLoading ? (
+        <SkeletonText lines={2} />
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)', marginTop: 'var(--space-3)' }}>
+          <div style={{ display: 'flex', gap: 'var(--space-3)', alignItems: 'center', flexWrap: 'wrap' }}>
+            <input ref={fileRef} type="file" accept=".pdf,.png,.jpg,.jpeg" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
+            {tpl ? <Badge tone="success">Template set{tpl.fileName ? `: ${tpl.fileName}` : ''}</Badge>
+              : (!file && <span className="lms-muted" style={{ fontSize: 'var(--font-size-sm)' }}>No template yet.</span>)}
+          </div>
+          <div style={{ display: 'flex', gap: 'var(--space-4)', flexWrap: 'wrap', alignItems: 'flex-end' }}>
+            <label className="field" style={{ maxWidth: '20rem', flex: 1 }}>
+              <span className="field__label">Name position — {nameY}% from top</span>
+              <input type="range" min="0" max="100" value={nameY} onChange={(e) => setNameY(Number(e.target.value))} />
+            </label>
+            <Input label="Font size (% of height)" type="number" min="1" max="20" value={fontScale} onChange={(e) => setFontScale(Number(e.target.value) || 6)} style={{ maxWidth: '12rem' }} />
+          </div>
+          <div style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
+            <Button onClick={save} loading={put.isPending}>{tpl ? 'Save changes' : 'Upload template'}</Button>
+            {tpl && <Button variant="outline" onClick={preview}>Preview</Button>}
+            {tpl && <Button variant="ghost" onClick={onDelete} loading={del.isPending}>Remove</Button>}
+          </div>
+          <p className="lms-muted" style={{ fontSize: 'var(--font-size-xs)', margin: 0 }}>
+            The name is centered horizontally. Use <strong>Preview</strong> to check the placement, adjust the position/size, then Save.
+          </p>
         </div>
       )}
     </Card>
