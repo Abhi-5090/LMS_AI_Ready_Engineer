@@ -1,12 +1,12 @@
-import { useRef, useState } from 'react';
-import { CalendarCheck, Camera, ExternalLink, FileText, FolderOpen, Github, Globe, MessageCircleQuestion, Plus, Star, Trash2, Upload, Video } from 'lucide-react';
-import { ProjectStatus, SOCIAL_PLATFORMS, UserRole } from '@/shared';
+import { useMemo, useRef, useState } from 'react';
+import { CalendarCheck, Camera, ExternalLink, FileText, FolderOpen, Github, Globe, MessageCircleQuestion, Plus, Star, Trash2, Upload, Video, X } from 'lucide-react';
+import { ProjectStatus, SOCIAL_PLATFORMS, TECH_STACK, UserRole } from '@/shared';
 import { Badge, Button, Card, CardHeader, EmptyState, FullPageSpinner, Input, Modal, Skeleton, Textarea, useConfirm, useToast } from '@/components/ui';
 import { PageHeader, Stat } from '@/components/PageHeader';
 import { apiErrorMessage, downloadFile, fileSrc } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { useTrainerStats, useUpdateProfile, useUploadAvatar, useUploadResume } from '@/lib/profile';
-import { useAddProject, useDeleteProject, useMyProjects } from '@/lib/projects';
+import { useAddProject, useDeleteProject, useMyProjects, useTechTags } from '@/lib/projects';
 import { ProjectDetailModal } from '@/pages/projects/ProjectDetailModal';
 import '@/pages/projects/projects.css';
 import '@/pages/modules/modules.css';
@@ -326,9 +326,52 @@ function ProjectsCard() {
 const STATUS_LABEL = { pending: 'Pending', approved: 'Approved', rejected: 'Rejected' };
 const STATUS_TONE = { pending: 'warning', approved: 'success', rejected: 'error' };
 
+/** Searchable tech-stack tags; new tags are added on submit (pending approval). */
+function TechStackPicker({ value, onChange }) {
+  const { data: approved } = useTechTags();
+  const all = useMemo(() => {
+    const m = new Map();
+    [...TECH_STACK, ...(approved ?? [])].forEach((t) => m.set(t.toLowerCase(), t));
+    return [...m.values()];
+  }, [approved]);
+  const [q, setQ] = useState('');
+  const selectedKeys = new Set(value.map((t) => t.toLowerCase()));
+  const needle = q.trim().toLowerCase();
+  const matches = needle ? all.filter((t) => t.toLowerCase().includes(needle) && !selectedKeys.has(t.toLowerCase())).slice(0, 24) : [];
+  const exact = needle ? all.some((t) => t.toLowerCase() === needle) : false;
+  const add = (t) => { if (t && !selectedKeys.has(t.toLowerCase())) onChange([...value, t]); setQ(''); };
+
+  return (
+    <div className="field">
+      <label className="field__label">Tech stack <span className="lms-muted">— search & add; new ones need trainer/admin approval</span></label>
+      {value.length > 0 && (
+        <div className="tech-chips">
+          {value.map((t) => (
+            <span key={t} className="tech-chip">
+              {t}
+              <button type="button" onClick={() => onChange(value.filter((x) => x !== t))} aria-label={`Remove ${t}`}><X size={12} strokeWidth={3} /></button>
+            </span>
+          ))}
+        </div>
+      )}
+      <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Type a technology (e.g. React, Python)…" />
+      {needle && (
+        <div className="tech-options">
+          {matches.map((t) => <button key={t} type="button" className="tech-option" onClick={() => add(t)}>{t}</button>)}
+          {!exact && !selectedKeys.has(needle) && (
+            <button type="button" className="tech-option tech-option--new" onClick={() => add(q.trim())}>+ Add “{q.trim()}” (new)</button>
+          )}
+          {matches.length === 0 && exact && <span className="lms-muted" style={{ fontSize: 'var(--font-size-sm)', padding: '2px 6px' }}>Already selected.</span>}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function AddProjectModal({ onClose }) {
   const add = useAddProject();
-  const [form, setForm] = useState({ title: '', repoUrl: '', description: '', videoUrl: '' });
+  const [form, setForm] = useState({ title: '', repoUrl: '', description: '', videoUrl: '', role: '' });
+  const [tech, setTech] = useState([]);
   const [doc, setDoc] = useState(null);
   const [err, setErr] = useState('');
 
@@ -338,12 +381,14 @@ function AddProjectModal({ onClose }) {
     if (form.title.trim().length < 2) return setErr('Enter a project title.');
     if (!form.repoUrl.trim()) return setErr('Add your GitHub repository link.');
     if (form.description.trim().length < 10) return setErr('Add a short description (at least 10 characters).');
-    if (!doc) return setErr('Upload the project document (PDF).');
+    if (!doc) return setErr('Upload the project document (PDF, max 10 MB).');
     const fd = new FormData();
     fd.append('title', form.title.trim());
     fd.append('repoUrl', form.repoUrl.trim());
     fd.append('description', form.description.trim());
     if (form.videoUrl.trim()) fd.append('videoUrl', form.videoUrl.trim());
+    if (form.role.trim()) fd.append('role', form.role.trim());
+    fd.append('techStack', JSON.stringify(tech));
     fd.append('document', doc);
     try {
       await add.mutateAsync(fd);
@@ -369,11 +414,16 @@ function AddProjectModal({ onClose }) {
     >
       <form id="add-project-form" onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
         <Input label="Project title" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="e.g. AI Resume Screener" required />
-        <Input label="GitHub repository URL" value={form.repoUrl} onChange={(e) => setForm({ ...form, repoUrl: e.target.value })} placeholder="https://github.com/you/project" required />
-        <Input label="Demo video URL (optional)" value={form.videoUrl} onChange={(e) => setForm({ ...form, videoUrl: e.target.value })} placeholder="https://youtube.com/watch?v=…" />
-        <Textarea label="Description" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="What it does, the tech stack, your role…" style={{ minHeight: '6rem' }} />
+        {/* Repo + demo video on one row. */}
+        <div className="project-form-row">
+          <Input label="GitHub repository URL" value={form.repoUrl} onChange={(e) => setForm({ ...form, repoUrl: e.target.value })} placeholder="https://github.com/you/project" required />
+          <Input label="Demo video URL (optional)" value={form.videoUrl} onChange={(e) => setForm({ ...form, videoUrl: e.target.value })} placeholder="https://youtube.com/watch?v=…" />
+        </div>
+        <Textarea label="Description" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="What it does, the problem it solves, key features…" style={{ minHeight: '6rem' }} />
+        <Input label="Your role in the project" value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })} placeholder="e.g. Full-stack developer · built the backend & the model" />
+        <TechStackPicker value={tech} onChange={setTech} />
         <label className="field">
-          <span className="field__label">Project document (PDF)</span>
+          <span className="field__label">Project document (PDF, max 10 MB)</span>
           <input type="file" accept="application/pdf,.pdf" onChange={(e) => setDoc(e.target.files?.[0] ?? null)} />
           {doc && <span className="lms-muted" style={{ fontSize: 'var(--font-size-xs)', marginTop: 4, display: 'block' }}>{doc.name}</span>}
         </label>

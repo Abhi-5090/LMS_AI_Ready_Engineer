@@ -8,6 +8,24 @@ export function useMyProjects() {
   return useQuery({ queryKey: KEY, queryFn: () => unwrap(api.get('/projects')) });
 }
 
+/** Approved custom tech tags (merged with the predefined TECH_STACK on the client). */
+export function useTechTags() {
+  return useQuery({ queryKey: ['tech-tags'], queryFn: () => unwrap(api.get('/tech-tags')) });
+}
+
+/** Trainer/admin: custom tech tags awaiting approval. */
+export function usePendingTechTags(enabled = true) {
+  return useQuery({ queryKey: ['tech-tags', 'pending'], queryFn: () => unwrap(api.get('/tech-tags/pending')), enabled });
+}
+
+export function useReviewTechTag() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, decision }) => unwrap(api.post(`/tech-tags/${id}/review`, { decision })),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['tech-tags'] }),
+  });
+}
+
 /** Student: submit a new project (FormData with title, description, repoUrl, images[]). */
 export function useAddProject() {
   const qc = useQueryClient();

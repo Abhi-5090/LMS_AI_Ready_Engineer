@@ -41,3 +41,17 @@ export const SOCIAL_PLATFORMS = [
 
 /** Max screenshots a student may attach to a profile project. */
 export const PROJECT_MAX_IMAGES = 5;
+
+// Predefined tech-stack tags students can pick when submitting a project. New
+// tags a student adds via "Other" go to a trainer/admin for approval before
+// joining this list.
+export const TECH_STACK = [
+  'JavaScript', 'TypeScript', 'Python', 'Java', 'C', 'C++', 'C#', 'Go', 'Rust', 'Ruby', 'PHP', 'Swift', 'Kotlin', 'Dart', 'R', 'Scala', 'SQL',
+  'React', 'Angular', 'Vue', 'Svelte', 'Next.js', 'Node.js', 'Express', 'Django', 'Flask', 'FastAPI', 'Spring Boot', 'Laravel', 'Ruby on Rails', '.NET',
+  'Flutter', 'React Native', 'Android', 'iOS',
+  'HTML', 'CSS', 'Tailwind CSS', 'Bootstrap', 'Sass',
+  'MongoDB', 'PostgreSQL', 'MySQL', 'SQLite', 'Redis', 'Firebase', 'Supabase',
+  'Docker', 'Kubernetes', 'AWS', 'Azure', 'GCP', 'Git', 'GitHub', 'CI/CD', 'Linux',
+  'TensorFlow', 'PyTorch', 'scikit-learn', 'Pandas', 'NumPy', 'OpenAI API', 'LangChain', 'Hugging Face',
+  'GraphQL', 'REST API', 'WebSockets', 'Kafka', 'Figma',
+];

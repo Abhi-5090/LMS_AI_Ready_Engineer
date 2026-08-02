@@ -1,8 +1,8 @@
 import path from 'node:path';
 import multer from 'multer';
 import { z } from 'zod';
-import { ProjectStatus, UserRole } from '#shared';
-import { Batch, Project } from '../models/index.js';
+import { ProjectStatus, TECH_STACK, UserRole } from '#shared';
+import { Batch, Project, TechTag } from '../models/index.js';
 import { ApiError } from '../utils/ApiError.js';
 import { ok } from '../utils/http.js';
 import { gridfsStorage, deleteByUrl } from '../services/fileStore.js';
@@ -14,10 +14,10 @@ export const reviewSchema = z.object({
   note: z.string().max(500).optional(),
 });
 
-// ── Multer (a single project PDF → MongoDB/GridFS) ───────────────────────────
+// ── Multer (a single project PDF ≤ 10 MB → MongoDB/GridFS) ────────────────────
 export const uploadProjectDoc = multer({
   storage: gridfsStorage('project'),
-  limits: { fileSize: 20 * 1024 * 1024, files: 1 }, // 20 MB
+  limits: { fileSize: 10 * 1024 * 1024, files: 1 }, // 10 MB
   fileFilter: (_req, file, cb) => {
     const ext = path.extname(file.originalname).toLowerCase();
     if (ext !== '.pdf' && file.mimetype !== 'application/pdf') {
@@ -32,7 +32,21 @@ const createSchema = z.object({
   description: z.string().min(10, 'Add a short description (at least 10 characters)').max(4000),
   repoUrl: z.string().url('Enter a valid GitHub repository URL').max(1000),
   videoUrl: z.string().url('Enter a valid video URL').max(1000).optional().or(z.literal('')),
+  role: z.string().max(120).optional().or(z.literal('')),
 });
+
+const KNOWN_TAGS = new Set(TECH_STACK.map((t) => t.toLowerCase()));
+
+/** Any custom tag (not predefined, not already known) becomes a pending TechTag. */
+async function submitNewTechTags(names, userId) {
+  for (const name of names) {
+    const key = name.toLowerCase();
+    if (KNOWN_TAGS.has(key)) continue;
+    if (await TechTag.findOne({ key })) continue; // already submitted/approved
+    try { await TechTag.create({ name, key, status: 'pending', createdBy: userId }); }
+    catch { /* concurrent duplicate — ignore */ }
+  }
+}
 
 function cleanupFiles(project) {
   for (const url of project.images ?? []) deleteByUrl(url);
@@ -51,6 +65,12 @@ export async function create(req, res) {
   if (!parsed.success) throw ApiError.badRequest('Validation failed', parsed.error.flatten());
   if (!req.file) throw ApiError.badRequest('Upload the project document (PDF).');
 
+  let techStack = [];
+  try {
+    const raw = JSON.parse(req.body.techStack || '[]');
+    if (Array.isArray(raw)) techStack = [...new Set(raw.map((t) => String(t).trim()).filter(Boolean))].slice(0, 30);
+  } catch { /* no/invalid tags */ }
+
   const project = await Project.create({
     student: req.auth.userId,
     title: parsed.data.title,
@@ -58,7 +78,10 @@ export async function create(req, res) {
     repoUrl: parsed.data.repoUrl,
     documentUrl: req.file.url,
     ...(parsed.data.videoUrl ? { videoUrl: parsed.data.videoUrl } : {}),
+    ...(parsed.data.role?.trim() ? { role: parsed.data.role.trim() } : {}),
+    techStack,
   });
+  await submitNewTechTags(techStack, req.auth.userId); // queue brand-new tags for approval
   ok(res, project.toJSON(), 201);
 }
 

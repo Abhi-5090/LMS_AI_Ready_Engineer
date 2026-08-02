@@ -97,3 +97,25 @@
 .resume-fmt__actions { display: flex; align-items: center; gap: var(--space-3); margin-top: auto; }
 .resume-fmt__open { display: inline-flex; align-items: center; gap: 4px; font-size: var(--font-size-sm); color: var(--color-primary); text-decoration: none; }
 .resume-fmt__open:hover { text-decoration: underline; }
+
+/* Project form: repo + video on one row. */
+.project-form-row { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3); }
+@media (max-width: 640px) { .project-form-row { grid-template-columns: 1fr; } }
+
+/* Tech-stack picker. */
+.tech-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: var(--space-2); }
+.tech-chip { display: inline-flex; align-items: center; gap: 4px; padding: 3px 6px 3px 10px; border-radius: var(--radius-full); background: color-mix(in srgb, var(--color-primary) 12%, transparent); color: var(--color-primary-hover); font-size: var(--font-size-sm); font-weight: var(--font-weight-medium); }
+.tech-chip button { display: grid; place-items: center; border: none; background: none; cursor: pointer; color: inherit; padding: 2px; border-radius: 50%; }
+.tech-chip button:hover { background: color-mix(in srgb, var(--color-primary) 22%, transparent); }
+.tech-options { display: flex; flex-wrap: wrap; gap: 6px; margin-top: var(--space-2); max-height: 12rem; overflow-y: auto; }
+.tech-option { border: 1px solid var(--color-border); background: var(--color-surface); border-radius: var(--radius-md); padding: 4px 10px; cursor: pointer; font-size: var(--font-size-sm); color: var(--color-text); transition: background 120ms var(--ease-out, ease), border-color 120ms var(--ease-out, ease); }
+.tech-option:hover { border-color: var(--color-primary); background: color-mix(in srgb, var(--color-primary) 6%, var(--color-surface)); }
+.tech-option--new { color: var(--color-primary); border-style: dashed; }
+
+/* Tech-tag review pill (approvals). */
+.techtag-review { display: inline-flex; align-items: center; gap: 8px; padding: 4px 6px 4px 12px; border: 1px solid var(--color-border); border-radius: var(--radius-full); background: var(--color-surface); }
+.techtag-review button { display: grid; place-items: center; border: none; background: none; cursor: pointer; padding: 2px; border-radius: 50%; }
+.techtag-review__ok { color: var(--color-success); }
+.techtag-review__no { color: var(--color-error); }
+.techtag-review button:hover { background: var(--color-background); }
+.techtag-review button:disabled { opacity: 0.5; cursor: default; }

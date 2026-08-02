@@ -15,6 +15,8 @@ const projectSchema = new Schema(
     repoUrl: { type: String, required: true },
     documentUrl: { type: String }, // a single project PDF under /api/uploads
     videoUrl: { type: String }, // optional YouTube (or other) demo link
+    role: { type: String, trim: true }, // the student's role in the project
+    techStack: { type: [String], default: [] }, // tech tags used in the project
     images: { type: [String], default: [] }, // legacy screenshot URLs (older projects)
     status: {
       type: String,

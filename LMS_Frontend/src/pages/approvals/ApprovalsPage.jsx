@@ -4,9 +4,11 @@ import { Badge, Button, Card, CardHeader, EmptyState, ErrorState, SkeletonCards,
 import { PageHeader } from '@/components/PageHeader';
 import { apiErrorMessage, fileSrc } from '@/lib/api';
 import { useCertReviews, useReviewCert } from '@/lib/externalCertificates';
+import { usePendingTechTags, useReviewTechTag } from '@/lib/projects';
 import { ProjectsApprovalSection } from '@/pages/projects/ProjectsApprovalSection';
 import { formatDate } from '@/lib/format';
 import '../certificates/certificates.css';
+import '../projects/projects.css';
 import '../modules/modules.css';
 
 const isImage = (url = '') => /\.(png|jpe?g|gif|webp)(\?|$)/i.test(url);
@@ -124,6 +126,37 @@ export function ApprovalsPage() {
       )}
 
       <ProjectsApprovalSection />
+
+      <TechTagsApprovalSection />
     </>
+  );
+}
+
+/** Trainer/admin: approve or reject student-suggested tech-stack tags. */
+function TechTagsApprovalSection() {
+  const { data: pending, isLoading } = usePendingTechTags();
+  const review = useReviewTechTag();
+  const list = pending ?? [];
+
+  return (
+    <Card style={{ marginTop: 'var(--space-6)' }}>
+      <CardHeader title={`Tech tags · Pending (${list.length})`} subtitle="New technologies students added — approve to add them to the suggestion list." />
+      {isLoading && !pending ? (
+        <SkeletonCards count={2} height="3rem" />
+      ) : list.length === 0 ? (
+        <EmptyState icon={<Inbox size={24} />} title="No pending tags" />
+      ) : (
+        <div className="tech-chips" style={{ marginBottom: 0, gap: 'var(--space-2)' }}>
+          {list.map((t) => (
+            <span key={t.id} className="techtag-review">
+              <strong>{t.name}</strong>
+              {t.createdBy?.name && <span className="lms-muted" style={{ fontSize: 'var(--font-size-xs)' }}>by {t.createdBy.name}</span>}
+              <button type="button" className="techtag-review__ok" title="Approve" disabled={review.isPending} onClick={() => review.mutate({ id: t.id, decision: 'approve' })}><CheckCircle2 size={15} /></button>
+              <button type="button" className="techtag-review__no" title="Reject" disabled={review.isPending} onClick={() => review.mutate({ id: t.id, decision: 'reject' })}><XCircle size={15} /></button>
+            </span>
+          ))}
+        </div>
+      )}
+    </Card>
   );
 }

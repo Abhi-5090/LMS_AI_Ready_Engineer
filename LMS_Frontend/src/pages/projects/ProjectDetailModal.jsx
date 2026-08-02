@@ -51,6 +51,15 @@ export function ProjectDetailModal({ project, onClose, onApprove, onReject, busy
 
         <p className="project-detail__desc">{project.description}</p>
 
+        {project.role && (
+          <p className="lms-secondary-text" style={{ fontSize: 'var(--font-size-sm)' }}><strong>Role:</strong> {project.role}</p>
+        )}
+        {project.techStack?.length > 0 && (
+          <div className="tech-chips" style={{ marginBottom: 0 }}>
+            {project.techStack.map((t) => <span key={t} className="tech-chip" style={{ paddingRight: 10 }}>{t}</span>)}
+          </div>
+        )}
+
         {project.status === 'rejected' && project.note && (
           <p className="lms-muted">Reviewer note: “{project.note}”</p>
         )}
