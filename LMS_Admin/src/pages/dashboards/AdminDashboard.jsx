@@ -7,6 +7,7 @@ import { BarChart } from '@/components/charts/BarChart';
 import { DonutChart } from '@/components/charts/DonutChart';
 import { GaugeRing } from '@/components/charts/GaugeRing';
 import { StackedBarChart } from '@/components/charts/StackedBarChart';
+import { TrendChart } from '@/components/charts/TrendChart';
 import { useAdminAnalytics } from '@/lib/analytics';
 
 const C = {
@@ -148,7 +149,7 @@ export function AdminDashboard() {
           <div className="dash-grid-2">
             <Card>
               <CardHeader title="Certificates Issued" subtitle="Last 8 weeks" />
-              <BarChart data={certTrend} emptyText="No certificates issued recently." />
+              <TrendChart data={certTrend} color={C.success} emptyText="No certificates issued recently." />
             </Card>
             <Card>
               <CardHeader title="Students at Risk" subtitle={`Below ${low.threshold}% attendance`} />

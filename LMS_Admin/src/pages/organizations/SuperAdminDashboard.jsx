@@ -5,6 +5,7 @@ import { Badge, Button, Card, CardHeader, EmptyState, ErrorState, SkeletonCards 
 import { PageHeader, Stat } from '@/components/PageHeader';
 import { BarChart } from '@/components/charts/BarChart';
 import { DonutChart } from '@/components/charts/DonutChart';
+import { TrendChart } from '@/components/charts/TrendChart';
 import { apiErrorMessage } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { useOrganizations, useOverview } from '@/lib/organizations';
@@ -78,7 +79,7 @@ export function SuperAdminDashboard() {
             </Card>
             <Card>
               <CardHeader title="New Students / Month" subtitle="Platform growth, last 6 months" />
-              <BarChart data={growth} emptyText="No growth data yet." />
+              <TrendChart data={growth} emptyText="No growth data yet." />
             </Card>
           </div>
 

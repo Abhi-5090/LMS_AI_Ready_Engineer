@@ -1,70 +1,61 @@
-import { useLayoutEffect, useRef } from 'react';
-import gsap from 'gsap';
-import { prefersReducedMotion } from '@/lib/anim';
+import { ResponsiveContainer, BarChart as RBarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
+import { useTheme } from '@/theme/ThemeProvider';
+import { resolveColor, gridColor, surfaceColor, axisTick } from './chartTheme';
+import { ChartTooltip } from './ChartTooltip';
 import './charts.css';
 
 /**
- * Horizontal stacked bars. Each row has N series segments sharing one track,
- * scaled against a common ceiling so rows are comparable. Animated grow-in.
+ * Horizontal stacked bars. Each row has N segments (one per series), scaled on a
+ * shared axis so rows compare. A 2px surface gap separates stacked segments.
  *
- * @param {{ rows: {label:string, segments:{value:number}[]}[],
- *   series: {key:string,label:string,color:string}[], emptyText?:string }} props
+ * @param {{ rows:{label:string, segments:{value:number}[]}[],
+ *   series:{key:string,label:string,color:string}[], emptyText?:string }} props
  */
 export function StackedBarChart({ rows = [], series = [], emptyText = 'No data yet.' }) {
-  const ref = useRef(null);
-  const rowTotals = rows.map((r) => r.segments.reduce((s, seg) => s + (seg.value || 0), 0));
-  const ceiling = Math.max(1, ...rowTotals);
-
-  useLayoutEffect(() => {
-    if (prefersReducedMotion || !ref.current) return undefined;
-    const ctx = gsap.context(() => {
-      gsap.from(ref.current.querySelectorAll('.sbar__seg'), {
-        scaleX: 0,
-        transformOrigin: 'left center',
-        duration: 0.7,
-        ease: 'power3.out',
-        stagger: 0.04,
-      });
-    }, ref);
-    return () => ctx.revert();
-  }, [rows.length, ceiling]);
-
+  useTheme(); // re-render (and re-resolve colors) when the theme changes
   if (!rows.length) return <p className="chart-empty">{emptyText}</p>;
 
+  const data = rows.map((r) => {
+    const o = { label: r.label };
+    series.forEach((s, i) => { o[s.key] = r.segments[i]?.value ?? 0; });
+    return o;
+  });
+  const height = Math.max(150, rows.length * 40 + 24);
+  const gap = surfaceColor();
+
   return (
-    <div className="sbar" ref={ref}>
-      <div className="sbar__legend">
-        {series.map((s) => (
-          <span key={s.key} className="sbar__legend-item">
-            <span className="donut__dot" style={{ background: s.color }} />
-            {s.label}
-          </span>
-        ))}
-      </div>
-      {rows.map((r, ri) => {
-        const total = rowTotals[ri];
-        return (
-          <div className="sbar__row" key={`${r.label}-${ri}`}>
-            <span className="sbar__label" title={r.label}>{r.label}</span>
-            <span className="sbar__track">
-              {r.segments.map((seg, si) => (
-                (seg.value || 0) > 0 && (
-                  <span
-                    key={si}
-                    className="sbar__seg"
-                    style={{
-                      width: `${((seg.value || 0) / ceiling) * 100}%`,
-                      background: series[si]?.color ?? 'var(--color-primary)',
-                    }}
-                    title={`${series[si]?.label ?? ''}: ${seg.value}`}
-                  />
-                )
-              ))}
+    <div className="chart-block">
+      <ResponsiveContainer width="100%" height={height}>
+        <RBarChart layout="vertical" data={data} margin={{ top: 4, right: 24, bottom: 4, left: 4 }} barCategoryGap="26%">
+          <CartesianGrid horizontal={false} stroke={gridColor()} strokeDasharray="3 3" />
+          <XAxis type="number" tick={axisTick()} axisLine={false} tickLine={false} />
+          <YAxis type="category" dataKey="label" width={116} tick={axisTick()} axisLine={false} tickLine={false} />
+          <Tooltip cursor={{ fill: 'rgba(127,127,127,0.08)' }} content={<ChartTooltip />} />
+          {series.map((s, i) => (
+            <Bar
+              key={s.key}
+              dataKey={s.key}
+              name={s.label}
+              stackId="a"
+              fill={resolveColor(s.color)}
+              stroke={gap}
+              strokeWidth={2}
+              maxBarSize={26}
+              radius={i === series.length - 1 ? [0, 4, 4, 0] : [0, 0, 0, 0]}
+            />
+          ))}
+        </RBarChart>
+      </ResponsiveContainer>
+      {series.length > 1 && (
+        <div className="chart-legend">
+          {series.map((s) => (
+            <span key={s.key} className="chart-legend__item">
+              <span className="chart-legend__dot" style={{ background: resolveColor(s.color) }} />
+              {s.label}
             </span>
-            <span className="sbar__value">{total}</span>
-          </div>
-        );
-      })}
+          ))}
+        </div>
+      )}
     </div>
   );
 }
