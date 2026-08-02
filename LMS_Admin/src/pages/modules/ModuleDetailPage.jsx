@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { ChevronRight, X } from 'lucide-react';
+import { Award, ChevronRight, Eye, Trash2, UploadCloud, X } from 'lucide-react';
 import { UserRole } from '@/shared';
 import {
   Badge,
@@ -393,43 +393,65 @@ function CertificateTemplateCard({ moduleId, moduleName }) {
     } catch (e) { toast.error(apiErrorMessage(e)); }
   }
 
+  const currentName = file ? file.name : tpl ? (tpl.fileName || 'Template attached') : null;
+
   return (
-    <Card style={{ marginBottom: 'var(--space-6)' }}>
-      <CardHeader
-        title="Completion certificate"
-        subtitle={`Issued to students who pass the ${moduleName} final. Upload a PDF or image — the student's name is drawn on it.`}
-      />
-      {isLoading ? (
-        <SkeletonText lines={2} />
-      ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)', marginTop: 'var(--space-3)' }}>
-          <div style={{ display: 'flex', gap: 'var(--space-3)', alignItems: 'center', flexWrap: 'wrap' }}>
-            <input ref={fileRef} type="file" accept=".pdf,.png,.jpg,.jpeg" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
-            {tpl ? <Badge tone="success">Template set{tpl.fileName ? `: ${tpl.fileName}` : ''}</Badge>
-              : (!file && <span className="lms-muted" style={{ fontSize: 'var(--font-size-sm)' }}>No template yet.</span>)}
-          </div>
-          <div style={{ display: 'flex', gap: 'var(--space-4)', flexWrap: 'wrap', alignItems: 'flex-end' }}>
-            <label className="field" style={{ maxWidth: '20rem', flex: 1 }}>
-              <span className="field__label">Name position — {nameY}% from top</span>
-              <input type="range" min="0" max="100" value={nameY} onChange={(e) => setNameY(Number(e.target.value))} />
-            </label>
-            <Input label="Font size (% of height)" type="number" min="1" max="20" value={fontScale} onChange={(e) => setFontScale(Number(e.target.value) || 6)} style={{ maxWidth: '12rem' }} />
-          </div>
-          <div style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
-            <Button onClick={save} loading={put.isPending}>{tpl ? 'Save changes' : 'Upload template'}</Button>
-            {tpl && <Button variant="outline" onClick={preview}>Preview</Button>}
-            {tpl && <Button variant="ghost" onClick={onDelete} loading={del.isPending}>Remove</Button>}
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', flexWrap: 'wrap', borderTop: '1px solid var(--color-border)', paddingTop: 'var(--space-3)' }}>
-            <Button variant="outline" onClick={issueToPassers} loading={issueAll.isPending}>Issue to all who passed the final</Button>
-            <span className="lms-muted" style={{ fontSize: 'var(--font-size-xs)' }}>
-              Issues this module's certificate to every student who passed the final test (score ≥ pass mark). Safe to run repeatedly.
-            </span>
-          </div>
-          <p className="lms-muted" style={{ fontSize: 'var(--font-size-xs)', margin: 0 }}>
-            The name is centered horizontally. Use <strong>Preview</strong> to check the placement, adjust the position/size, then Save.
-          </p>
+    <Card className="certcard">
+      <div className="certcard__head">
+        <span className="certcard__icon"><Award size={20} /></span>
+        <div style={{ minWidth: 0 }}>
+          <div className="certcard__title">Completion certificate</div>
+          <div className="certcard__sub">Auto-issued to students who pass the {moduleName} final — their name is drawn onto your template.</div>
         </div>
+        <span className={`certcard__status${tpl ? ' is-on' : ''}`}>{tpl ? 'Template ready' : 'Not set'}</span>
+      </div>
+
+      {isLoading ? (
+        <SkeletonText lines={3} />
+      ) : (
+        <>
+          {/* Upload dropzone */}
+          <label className={`certdrop${currentName ? ' certdrop--set' : ''}`}>
+            <input ref={fileRef} type="file" accept=".pdf,.png,.jpg,.jpeg" onChange={(e) => setFile(e.target.files?.[0] ?? null)} hidden />
+            <span className="certdrop__icon"><UploadCloud size={22} /></span>
+            <span style={{ minWidth: 0 }}>
+              <span className="certdrop__name">{currentName ?? 'Click to upload a certificate template'}</span>
+              <span className="certdrop__hint">PDF, PNG or JPG · the student’s name is added automatically</span>
+            </span>
+            {file && <Badge tone="primary">New file</Badge>}
+          </label>
+
+          {/* Name placement */}
+          <div className="certfields">
+            <div className="certfield">
+              <span className="certfield__label">Name position — <b>{nameY}%</b> from top</span>
+              <input type="range" min="0" max="100" value={nameY} onChange={(e) => setNameY(Number(e.target.value))} />
+            </div>
+            <div className="certfield certfield--num">
+              <span className="certfield__label">Font size</span>
+              <div className="certfield__num">
+                <Input type="number" min="1" max="20" value={fontScale} onChange={(e) => setFontScale(Number(e.target.value) || 6)} />
+                <span className="certfield__unit">% of height</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Actions */}
+          <div className="certcard__actions">
+            <Button onClick={save} loading={put.isPending}>{tpl ? 'Save changes' : 'Upload template'}</Button>
+            {tpl && <Button variant="outline" onClick={preview}><Eye size={15} style={{ marginRight: 6 }} /> Preview</Button>}
+            {tpl && <Button variant="ghost" onClick={onDelete} loading={del.isPending}><Trash2 size={15} style={{ marginRight: 6 }} /> Remove</Button>}
+          </div>
+
+          {/* Bulk issue */}
+          <div className="certcard__issue">
+            <div style={{ minWidth: 0 }}>
+              <div className="certcard__issue-title">Issue to passed students</div>
+              <div className="certcard__issue-sub">Sends this certificate to everyone who passed the final (score ≥ pass mark). Safe to run again anytime.</div>
+            </div>
+            <Button variant="secondary" onClick={issueToPassers} loading={issueAll.isPending}>Issue certificates</Button>
+          </div>
+        </>
       )}
     </Card>
   );

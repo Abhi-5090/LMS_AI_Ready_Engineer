@@ -830,3 +830,59 @@
 /* Request card in the per-org grid: a full-height column with actions pinned bottom. */
 .req-card { display: flex; flex-direction: column; height: 100%; }
 .req-card__actions { display: flex; gap: var(--space-2); margin-top: auto; padding-top: var(--space-4); }
+
+/* ── Completion-certificate card ──────────────────────────────────────────── */
+.certcard { display: flex; flex-direction: column; gap: var(--space-4); margin-bottom: var(--space-6); }
+.certcard__head { display: flex; align-items: flex-start; gap: var(--space-3); }
+.certcard__icon {
+  flex: none; width: 2.5rem; height: 2.5rem; border-radius: var(--radius-lg); display: grid; place-items: center;
+  background: color-mix(in srgb, var(--color-primary) 12%, transparent); color: var(--color-primary);
+}
+.certcard__title { font-weight: var(--font-weight-semibold); font-size: var(--font-size-lg); }
+.certcard__sub { font-size: var(--font-size-sm); color: var(--color-text-secondary); margin-top: 2px; max-width: 42rem; }
+.certcard__status {
+  margin-left: auto; flex: none; align-self: flex-start; white-space: nowrap;
+  font-size: var(--font-size-xs); font-weight: var(--font-weight-semibold); padding: 4px 11px; border-radius: var(--radius-full);
+  background: var(--color-background); color: var(--color-text-secondary); border: 1px solid var(--color-border);
+}
+.certcard__status.is-on { background: color-mix(in srgb, var(--color-success) 15%, transparent); color: var(--color-success); border-color: transparent; }
+
+/* Upload dropzone */
+.certdrop {
+  display: flex; align-items: center; gap: var(--space-3);
+  padding: var(--space-4); border: 1.5px dashed var(--color-border); border-radius: var(--radius-lg);
+  background: var(--color-background); cursor: pointer;
+  transition: border-color 160ms var(--ease-out, ease), background 160ms var(--ease-out, ease);
+}
+.certdrop:hover { border-color: color-mix(in srgb, var(--color-primary) 45%, var(--color-border)); background: color-mix(in srgb, var(--color-primary) 4%, var(--color-background)); }
+.certdrop--set { border-style: solid; border-color: color-mix(in srgb, var(--color-primary) 30%, var(--color-border)); }
+.certdrop__icon { flex: none; color: var(--color-primary); display: grid; place-items: center; }
+.certdrop__name { display: block; font-weight: var(--font-weight-medium); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.certdrop__hint { display: block; font-size: var(--font-size-xs); color: var(--color-text-muted); margin-top: 2px; }
+.certdrop > span:nth-child(2) { flex: 1; min-width: 0; }
+
+/* Name-placement controls */
+.certfields {
+  display: grid; grid-template-columns: 1fr 12rem; gap: var(--space-4) var(--space-5); align-items: center;
+  padding: var(--space-3) var(--space-4); border: 1px solid var(--color-border); border-radius: var(--radius-lg);
+}
+.certfield__label { display: block; font-size: var(--font-size-sm); color: var(--color-text-secondary); margin-bottom: 8px; }
+.certfield__label b { color: var(--color-text); font-variant-numeric: tabular-nums; }
+.certfield input[type="range"] { width: 100%; accent-color: var(--color-primary); }
+.certfield--num .field { margin: 0; }
+.certfield__num { display: flex; align-items: center; gap: 8px; }
+.certfield__unit { font-size: var(--font-size-xs); color: var(--color-text-muted); white-space: nowrap; }
+
+.certcard__actions { display: flex; gap: var(--space-2); flex-wrap: wrap; }
+
+/* Bulk-issue banner */
+.certcard__issue {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); flex-wrap: wrap;
+  padding: var(--space-3) var(--space-4); border-radius: var(--radius-lg);
+  background: color-mix(in srgb, var(--color-primary) 6%, var(--color-surface));
+  border: 1px solid color-mix(in srgb, var(--color-primary) 20%, var(--color-border));
+}
+.certcard__issue-title { font-weight: var(--font-weight-semibold); }
+.certcard__issue-sub { font-size: var(--font-size-xs); color: var(--color-text-secondary); margin-top: 2px; max-width: 34rem; }
+
+@media (max-width: 640px) { .certfields { grid-template-columns: 1fr; } }
