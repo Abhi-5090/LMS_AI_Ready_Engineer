@@ -20,6 +20,7 @@ export const saveAttendanceSchema = z.object({
         student: objectId,
         status: z.nativeEnum(AttendanceStatus),
         remarks: z.string().max(500).optional(),
+        watchSeconds: z.number().int().min(0).nullable().optional(),
       }),
     )
     .min(1),
@@ -76,6 +77,7 @@ export async function getClassRoster(req, res) {
       joinedAt: joinByStudent.get(s._id.toString()) ?? null,
       status: a?.status ?? null,
       remarks: a?.remarks ?? '',
+      watchSeconds: a?.watchSeconds ?? null,
     };
   });
 
@@ -114,6 +116,7 @@ export async function saveAttendance(req, res) {
           $set: {
             status: r.status,
             remarks: r.remarks ?? '',
+            watchSeconds: r.watchSeconds ?? null,
             batch: cls.batch,
             module: cls.module,
             markedBy: req.auth.userId,

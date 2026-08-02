@@ -29,3 +29,12 @@
   font-size: var(--font-size-sm);
   color: var(--color-text);
 }
+
+/* Roster tools row: quick-set buttons + a search bar. */
+.roster-tools { display: flex; gap: var(--space-2); margin-bottom: var(--space-4); flex-wrap: wrap; align-items: center; }
+.roster-tools .roster-search { margin-left: auto; min-width: 16rem; }
+.roster-tools .field { margin: 0; }
+
+/* Show ~10 students, scroll the rest; keep the header pinned. */
+.roster-scroll { max-height: 32rem; overflow-y: auto; }
+.roster-scroll thead th { position: sticky; top: 0; z-index: 1; background: var(--color-surface); }

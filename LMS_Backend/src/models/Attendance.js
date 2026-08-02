@@ -10,6 +10,8 @@ const attendanceSchema = new Schema(
     module: { type: Schema.Types.ObjectId, ref: 'Module', required: true },
     status: { type: String, enum: Object.values(AttendanceStatus), required: true },
     remarks: String,
+    // In-meeting watch time (seconds), captured from the Teams attendance import.
+    watchSeconds: { type: Number, default: null, min: 0 },
     markedBy: { type: Schema.Types.ObjectId, ref: 'User', required: true },
     markedAt: { type: Date, default: () => new Date() },
     organization: { type: Schema.Types.ObjectId, ref: 'Organization', default: null, index: true },

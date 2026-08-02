@@ -10,19 +10,22 @@ const EMAIL_RE = /[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/i;
 // A cell that carries a calendar date (e.g. "6/12/2025", "2025-06-12", "12.06.2025").
 const HAS_DATE = /\d{1,4}[/.-]\d{1,2}[/.-]\d{1,4}/;
 
-/** Find the header row + the email/join columns in an array-of-arrays sheet. */
+/** Find the header row + the email/join (+ optional duration) columns. */
 function findColumns(rows) {
+  const isDuration = (k) => k.includes('inmeetingduration') || k === 'duration' || k.includes('duration');
   const scan = (test) => {
     for (let i = 0; i < rows.length; i++) {
       const row = rows[i] ?? [];
       let emailCol = -1;
       let joinCol = -1;
+      let durationCol = -1;
       row.forEach((cell, c) => {
         const k = norm(cell);
         if (emailCol < 0 && test.email(k)) emailCol = c;
         if (joinCol < 0 && test.join(k)) joinCol = c;
+        if (durationCol < 0 && isDuration(k)) durationCol = c;
       });
-      if (emailCol >= 0 && joinCol >= 0) return { headerRow: i, emailCol, joinCol };
+      if (emailCol >= 0 && joinCol >= 0) return { headerRow: i, emailCol, joinCol, durationCol };
     }
     return null;
   };
@@ -66,6 +69,16 @@ export function joinCellToMs(val, classDayIso) {
   return Number.isNaN(d.getTime()) ? null : d.getTime();
 }
 
+/** "6m 31s" / "1h 5m 20s" / "30s" → seconds (the In-Meeting Duration = watch time). */
+export function parseDurationToSeconds(val) {
+  const s = String(val ?? '').trim().toLowerCase();
+  if (!s) return null;
+  const m = s.match(/^(?:(\d+)\s*h)?\s*(?:(\d+)\s*m)?\s*(?:(\d+)\s*s)?$/);
+  if (!m || (m[1] === undefined && m[2] === undefined && m[3] === undefined)) return null;
+  const secs = Number(m[1] || 0) * 3600 + Number(m[2] || 0) * 60 + Number(m[3] || 0);
+  return secs > 0 ? secs : null;
+}
+
 /** Absolute ms of the class start (its calendar day at startTime, local time). */
 export function classStartMs(classDate, startTime) {
   const day = new Date(classDate).toISOString().slice(0, 10); // YYYY-MM-DD
@@ -96,6 +109,7 @@ export function parseTeamsAttendance(arrayBuffer, classDayIso) {
   if (!cols) throw new Error('Could not find an Email column and a Join-time column in that file.');
 
   const byEmail = new Map();
+  const byEmailWatch = new Map(); // email → total in-meeting seconds (watch time)
   for (let i = cols.headerRow + 1; i < rows.length; i++) {
     const row = rows[i] ?? [];
     const emailMatch = String(row[cols.emailCol] ?? '').match(EMAIL_RE);
@@ -105,7 +119,12 @@ export function parseTeamsAttendance(arrayBuffer, classDayIso) {
     if (ms == null) continue;
     // A participant may appear on several rows — keep their earliest join.
     if (!byEmail.has(email) || ms < byEmail.get(email)) byEmail.set(email, ms);
+    // Watch time: keep the largest duration seen (the Participants row holds the total).
+    if (cols.durationCol >= 0) {
+      const secs = parseDurationToSeconds(row[cols.durationCol]);
+      if (secs != null && secs > (byEmailWatch.get(email) ?? 0)) byEmailWatch.set(email, secs);
+    }
   }
   if (byEmail.size === 0) throw new Error('No participant rows with an email and join time were found.');
-  return { byEmail, participants: byEmail.size };
+  return { byEmail, byEmailWatch, participants: byEmail.size };
 }

@@ -9,17 +9,29 @@ import { ATT_OPTIONS } from './attendanceUi';
 import { formatDate } from '@/lib/format';
 import './attendance.css';
 
+/** Seconds → "6m 31s" / "45s" / "1h 5m"; em dash when unknown. */
+function fmtWatch(s) {
+  if (s == null) return '—';
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const sec = s % 60;
+  if (h) return `${h}h ${m}m`;
+  return m ? `${m}m ${sec}s` : `${sec}s`;
+}
+
 /** Per-session attendance entry: one row per enrolled student. */
 export function RosterEditor({ classId, onSaved }) {
   const { data, isLoading, isError, error, refetch } = useClassRoster(classId);
   const save = useSaveAttendance();
   const [rows, setRows] = useState([]);
   const [buffer, setBuffer] = useState(10);
-  const [teamsData, setTeamsData] = useState(null); // Map<email, joinMinutes> from the import
+  const [teamsData, setTeamsData] = useState(null); // Map<email, joinMs> from the import
+  const [teamsWatch, setTeamsWatch] = useState(null); // Map<email, watchSeconds>
   const [importInfo, setImportInfo] = useState(null);
   const [importError, setImportError] = useState('');
   const [saveError, setSaveError] = useState('');
   const [saved, setSaved] = useState(false);
+  const [q, setQ] = useState(''); // roster search
   const fileRef = useRef(null);
 
   useEffect(() => {
@@ -32,13 +44,16 @@ export function RosterEditor({ classId, onSaved }) {
         email: r.student.email,
         status: r.status ?? AttendanceStatus.PRESENT,
         remarks: r.remarks ?? '',
+        watchSeconds: r.watchSeconds ?? null,
       })),
     );
     setBuffer(data.class.bufferMinutes ?? 10);
     setTeamsData(null);
+    setTeamsWatch(null);
     setImportInfo(null);
     setImportError('');
     setSaved(false);
+    setQ('');
   }, [data]);
 
   function setRow(id, patch) {
@@ -53,15 +68,18 @@ export function RosterEditor({ classId, onSaved }) {
    * class start + buffer: on time → Present, after the buffer → Late, not in the
    * sheet → Absent. Runs on import and whenever the buffer changes.
    */
-  function applyTeams(byEmail, bufferVal, currentRows) {
+  function applyTeams(byEmail, bufferVal, currentRows, watchMap) {
     const startMs = classStartMs(data.class.date, data.class.startTime);
     const counts = { present: 0, late: 0, absent: 0, matched: 0 };
     const next = currentRows.map((r) => {
-      const join = r.email ? byEmail.get(r.email.toLowerCase()) : undefined;
+      const key = r.email?.toLowerCase();
+      const join = key ? byEmail.get(key) : undefined;
       const status = classifyJoin(join ?? null, startMs, bufferVal);
       if (status === AttendanceStatus.ABSENT) counts.absent += 1;
       else { counts.matched += 1; if (status === AttendanceStatus.PRESENT) counts.present += 1; else counts.late += 1; }
-      return { ...r, status };
+      // Only overwrite watch time when a fresh import provides it.
+      const watchSeconds = watchMap ? (key ? (watchMap.get(key) ?? null) : null) : r.watchSeconds;
+      return { ...r, status, watchSeconds };
     });
     setRows(next);
     const rosterEmails = new Set(currentRows.map((r) => r.email?.toLowerCase()).filter(Boolean));
@@ -76,11 +94,13 @@ export function RosterEditor({ classId, onSaved }) {
     if (!file) return;
     try {
       const classDayIso = new Date(data.class.date).toISOString().slice(0, 10);
-      const { byEmail } = parseTeamsAttendance(await file.arrayBuffer(), classDayIso);
+      const { byEmail, byEmailWatch } = parseTeamsAttendance(await file.arrayBuffer(), classDayIso);
       setTeamsData(byEmail);
-      applyTeams(byEmail, buffer, rows);
+      setTeamsWatch(byEmailWatch);
+      applyTeams(byEmail, buffer, rows, byEmailWatch);
     } catch (err) {
       setTeamsData(null);
+      setTeamsWatch(null);
       setImportInfo(null);
       setImportError(err.message || 'Could not read that file.');
     }
@@ -89,7 +109,7 @@ export function RosterEditor({ classId, onSaved }) {
   function onBufferChange(v) {
     const next = Math.max(0, Math.min(240, Number(v) || 0));
     setBuffer(next);
-    if (teamsData) applyTeams(teamsData, next, rows); // re-grade against the new grace window
+    if (teamsData) applyTeams(teamsData, next, rows, teamsWatch); // re-grade against the new grace window
   }
 
   async function submit() {
@@ -98,7 +118,7 @@ export function RosterEditor({ classId, onSaved }) {
       await save.mutateAsync({
         classId,
         bufferMinutes: buffer,
-        records: rows.map((r) => ({ student: r.student, status: r.status, remarks: r.remarks || undefined })),
+        records: rows.map((r) => ({ student: r.student, status: r.status, remarks: r.remarks || undefined, watchSeconds: r.watchSeconds ?? null })),
       });
       setSaved(true);
       onSaved?.();
@@ -163,7 +183,7 @@ export function RosterEditor({ classId, onSaved }) {
             )}
           </div>
 
-          <div style={{ display: 'flex', gap: 'var(--space-2)', marginBottom: 'var(--space-4)', flexWrap: 'wrap' }}>
+          <div className="roster-tools">
             <span className="lms-secondary-text" style={{ fontSize: 'var(--font-size-sm)', alignSelf: 'center' }}>
               Quick set:
             </span>
@@ -172,39 +192,57 @@ export function RosterEditor({ classId, onSaved }) {
                 All {o.label}
               </Button>
             ))}
+            <Input
+              className="roster-search"
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="Search students by name or email…"
+            />
           </div>
 
-          <div className="table-wrap">
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>Student</th>
-                  <th style={{ width: 160 }}>Status</th>
-                  <th>Remarks</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((r) => (
-                  <tr key={r.student}>
-                    <td>
-                      {r.name}
-                      <div className="lms-muted" style={{ fontSize: 'var(--font-size-xs)' }}>{r.email}</div>
-                    </td>
-                    <td>
-                      <Select value={r.status} onChange={(e) => setRow(r.student, { status: e.target.value })} options={ATT_OPTIONS} />
-                    </td>
-                    <td>
-                      <Input
-                        placeholder="Optional…"
-                        value={r.remarks}
-                        onChange={(e) => setRow(r.student, { remarks: e.target.value })}
-                      />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          {(() => {
+            const needle = q.trim().toLowerCase();
+            const shown = needle
+              ? rows.filter((r) => r.name.toLowerCase().includes(needle) || r.email.toLowerCase().includes(needle))
+              : rows;
+            return (
+              <div className="roster-scroll table-wrap">
+                <table className="table">
+                  <thead>
+                    <tr>
+                      <th>Student</th>
+                      <th style={{ width: 160 }}>Status</th>
+                      <th style={{ width: 110 }}>Watch time</th>
+                      <th>Remarks</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {shown.length === 0 ? (
+                      <tr><td colSpan={4} className="lms-muted" style={{ textAlign: 'center' }}>No students match “{q}”.</td></tr>
+                    ) : shown.map((r) => (
+                      <tr key={r.student}>
+                        <td>
+                          {r.name}
+                          <div className="lms-muted" style={{ fontSize: 'var(--font-size-xs)' }}>{r.email}</div>
+                        </td>
+                        <td>
+                          <Select value={r.status} onChange={(e) => setRow(r.student, { status: e.target.value })} options={ATT_OPTIONS} />
+                        </td>
+                        <td className="lms-muted" style={{ fontVariantNumeric: 'tabular-nums' }}>{fmtWatch(r.watchSeconds)}</td>
+                        <td>
+                          <Input
+                            placeholder="Optional…"
+                            value={r.remarks}
+                            onChange={(e) => setRow(r.student, { remarks: e.target.value })}
+                          />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            );
+          })()}
 
           <div style={{ marginTop: 'var(--space-4)', display: 'flex', gap: 'var(--space-3)', alignItems: 'center' }}>
             <Button onClick={submit} loading={save.isPending}>
