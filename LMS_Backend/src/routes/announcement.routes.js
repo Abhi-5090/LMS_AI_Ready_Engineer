@@ -12,7 +12,7 @@ router.get('/', asyncHandler(ann.listAnnouncements));
 router.post(
   '/',
   requireRole(UserRole.ADMIN, UserRole.TRAINER),
-  validate({ body: ann.createAnnouncementSchema }),
+  ann.uploadAnnouncementImage, // multipart: image + fields (targets validated in the controller)
   asyncHandler(ann.createAnnouncement),
 );
 router.delete(

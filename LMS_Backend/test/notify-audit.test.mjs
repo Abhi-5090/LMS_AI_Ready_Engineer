@@ -26,7 +26,7 @@ after(async () => { await ctx.stop(); });
 test('announcement to a batch notifies its students', async () => {
   const { req } = ctx;
   assert.equal((await req('GET', '/notifications', S)).data.length, 0);
-  const a = await req('POST', '/announcements', T, { title: 'Heads up', body: 'Class moved to 5pm', batch: batch._id.toString() });
+  const a = await req('POST', '/announcements', T, { title: 'Heads up', body: 'Class moved to 5pm', targets: JSON.stringify([{ batch: batch._id.toString(), modules: [] }]) });
   assert.equal(a.status, 201);
   const notes = (await req('GET', '/notifications', S)).data;
   assert.equal(notes.length, 1);

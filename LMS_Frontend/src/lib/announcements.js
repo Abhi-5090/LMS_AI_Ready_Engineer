@@ -15,7 +15,7 @@ export function useAnnouncements({ enabled = true } = {}) {
 export function useCreateAnnouncement() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (body) => unwrap(api.post('/announcements', body)),
+    mutationFn: (formData) => unwrap(api.post('/announcements', formData, { headers: { 'Content-Type': 'multipart/form-data' } })),
     onSuccess: () => qc.invalidateQueries({ queryKey: announcementKeys.all }),
   });
 }

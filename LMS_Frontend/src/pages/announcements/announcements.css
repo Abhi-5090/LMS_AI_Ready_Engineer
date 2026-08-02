@@ -1,0 +1,38 @@
+/* Announcement targeting chips (batches + per-batch modules). */
+.ann-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.ann-chip {
+  border: 1px solid var(--color-border); background: var(--color-surface);
+  border-radius: var(--radius-full); padding: 4px 12px; cursor: pointer;
+  font-size: var(--font-size-sm); color: var(--color-text);
+  transition: background 120ms var(--ease-out, ease), border-color 120ms var(--ease-out, ease), color 120ms var(--ease-out, ease);
+}
+.ann-chip:hover { border-color: color-mix(in srgb, var(--color-primary) 45%, var(--color-border)); }
+.ann-chip.is-on { background: var(--color-primary); border-color: var(--color-primary); color: #fff; }
+.ann-chip--mod.is-on { background: var(--color-primary-hover, var(--color-primary)); }
+
+/* Per-batch module block (the "split" form). */
+.ann-batchblock { margin-top: var(--space-3); padding: var(--space-3); border: 1px solid var(--color-border); border-radius: var(--radius-lg); background: var(--color-background); }
+.ann-batchblock__head { font-weight: var(--font-weight-medium); margin-bottom: var(--space-2); }
+
+/* Target chips shown on posted announcements. */
+.ann-target { display: inline-flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+
+/* Image upload + preview. */
+.ann-drop {
+  display: inline-flex; align-items: center; gap: 8px; cursor: pointer;
+  padding: var(--space-3) var(--space-4); border: 1.5px dashed var(--color-border); border-radius: var(--radius-lg);
+  color: var(--color-text-secondary); background: var(--color-background);
+  transition: border-color 160ms var(--ease-out, ease), color 160ms var(--ease-out, ease);
+}
+.ann-drop:hover { border-color: color-mix(in srgb, var(--color-primary) 45%, var(--color-border)); color: var(--color-primary); }
+.ann-upload-preview { position: relative; display: inline-block; }
+.ann-upload-preview img { max-width: 100%; max-height: 12rem; border-radius: var(--radius-lg); border: 1px solid var(--color-border); display: block; }
+.ann-upload-preview__x {
+  position: absolute; top: 6px; right: 6px; display: grid; place-items: center;
+  width: 1.6rem; height: 1.6rem; border-radius: 50%; border: none; cursor: pointer;
+  background: color-mix(in srgb, #000 55%, transparent); color: #fff;
+}
+
+/* Announcement image in the feed. */
+.ann-img { display: inline-block; margin-top: var(--space-2); }
+.ann-img img { max-width: 100%; max-height: 20rem; border-radius: var(--radius-lg); border: 1px solid var(--color-border); display: block; }
