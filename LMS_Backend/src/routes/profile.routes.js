@@ -13,6 +13,7 @@ router.patch('/', validate({ body: profile.updateProfileSchema }), asyncHandler(
 router.get('/export', asyncHandler(profile.exportMe));
 // Multer parses the multipart image first, then the handler stores the URL.
 router.post('/avatar', profile.uploadAvatarFile, asyncHandler(profile.setAvatar));
+router.post('/resume', profile.uploadResumeFile, asyncHandler(profile.setResume));
 // Trainer scoreboard (classes conducted, doubts cleared, ratings).
 router.get('/trainer-stats', requireRole(UserRole.TRAINER), asyncHandler(profile.trainerStats));
 

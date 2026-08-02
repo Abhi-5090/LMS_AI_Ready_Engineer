@@ -86,3 +86,14 @@
   width: 4rem; height: 4rem; object-fit: cover; border-radius: var(--radius-md);
   border: 1px solid var(--color-border);
 }
+
+/* Resume: three formats (PDF · portfolio · video). */
+.resume-formats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-4); margin-top: var(--space-4); }
+@media (max-width: 820px) { .resume-formats { grid-template-columns: 1fr; } }
+.resume-fmt { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-4); border: 1px solid var(--color-border); border-radius: var(--radius-lg); background: var(--color-surface); }
+.resume-fmt__head { display: flex; align-items: center; gap: 8px; font-weight: var(--font-weight-semibold); }
+.resume-fmt__icon { display: grid; place-items: center; width: 1.9rem; height: 1.9rem; flex: none; border-radius: var(--radius-md); background: color-mix(in srgb, var(--color-primary) 12%, transparent); color: var(--color-primary); }
+.resume-fmt__hint { font-size: var(--font-size-xs); color: var(--color-text-secondary); margin: 0; }
+.resume-fmt__actions { display: flex; align-items: center; gap: var(--space-3); margin-top: auto; }
+.resume-fmt__open { display: inline-flex; align-items: center; gap: 4px; font-size: var(--font-size-sm); color: var(--color-primary); text-decoration: none; }
+.resume-fmt__open:hover { text-decoration: underline; }

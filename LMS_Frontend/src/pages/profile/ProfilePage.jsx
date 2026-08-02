@@ -1,14 +1,13 @@
 import { useRef, useState } from 'react';
-import { CalendarCheck, Camera, FileText, FolderOpen, Github, MessageCircleQuestion, Plus, Star, Trash2 } from 'lucide-react';
+import { CalendarCheck, Camera, ExternalLink, FileText, FolderOpen, Github, Globe, MessageCircleQuestion, Plus, Star, Trash2, Upload, Video } from 'lucide-react';
 import { ProjectStatus, SOCIAL_PLATFORMS, UserRole } from '@/shared';
 import { Badge, Button, Card, CardHeader, EmptyState, FullPageSpinner, Input, Modal, Skeleton, Textarea, useConfirm, useToast } from '@/components/ui';
 import { PageHeader, Stat } from '@/components/PageHeader';
 import { apiErrorMessage, downloadFile, fileSrc } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
-import { useTrainerStats, useUpdateProfile, useUploadAvatar } from '@/lib/profile';
+import { useTrainerStats, useUpdateProfile, useUploadAvatar, useUploadResume } from '@/lib/profile';
 import { useAddProject, useDeleteProject, useMyProjects } from '@/lib/projects';
 import { ProjectDetailModal } from '@/pages/projects/ProjectDetailModal';
-import { ResumeModal } from './ResumeModal';
 import '@/pages/projects/projects.css';
 import '@/pages/modules/modules.css';
 
@@ -34,17 +33,68 @@ export function ProfilePage() {
   );
 }
 
-// ── Resume generator ────────────────────────────────────────────────────────────
+// ── Resume: three formats a student can store ────────────────────────────────────
 
 function ResumeCard({ user }) {
-  const [open, setOpen] = useState(false);
+  const update = useUpdateProfile();
+  const uploadResume = useUploadResume();
+  const toast = useToast();
+  const fileRef = useRef(null);
+  const [portfolioUrl, setPortfolioUrl] = useState(user.resume?.portfolioUrl ?? '');
+  const [videoUrl, setVideoUrl] = useState(user.resume?.videoUrl ?? '');
+  const [err, setErr] = useState('');
+  const fileUrl = user.resume?.fileUrl;
+
+  async function onPickPdf(e) {
+    const file = e.target.files?.[0];
+    if (fileRef.current) fileRef.current.value = '';
+    if (!file) return;
+    try { await uploadResume.mutateAsync(file); toast.success('Resume uploaded.'); }
+    catch (e2) { toast.error(apiErrorMessage(e2)); }
+  }
+  async function saveLinks() {
+    setErr('');
+    try {
+      await update.mutateAsync({ resume: { portfolioUrl: portfolioUrl.trim(), videoUrl: videoUrl.trim() } });
+      toast.success('Resume links saved.');
+    } catch (e2) { setErr(apiErrorMessage(e2)); }
+  }
+
   return (
     <Card style={{ marginBottom: 'var(--space-6)' }}>
-      <CardHeader title="Resume" subtitle="Auto-generate a clean resume from your profile, links, projects & certifications." />
-      <Button size="sm" onClick={() => setOpen(true)} style={{ marginTop: 'var(--space-3)' }}>
-        <FileText size={15} /> Generate my resume
-      </Button>
-      <ResumeModal open={open} user={user} onClose={() => setOpen(false)} />
+      <CardHeader title="Resume" subtitle="Store your resume in up to three formats — a PDF, a portfolio, and a video." />
+      <div className="resume-formats">
+        {/* Soft copy (PDF) */}
+        <div className="resume-fmt">
+          <div className="resume-fmt__head"><span className="resume-fmt__icon"><FileText size={18} /></span> Soft copy (PDF)</div>
+          <p className="resume-fmt__hint">Your standard resume as a PDF.</p>
+          <input ref={fileRef} type="file" accept="application/pdf,.pdf" onChange={onPickPdf} hidden />
+          <div className="resume-fmt__actions">
+            <Button size="sm" variant="outline" onClick={() => fileRef.current?.click()} loading={uploadResume.isPending}>
+              <Upload size={14} style={{ marginRight: 6 }} /> {fileUrl ? 'Replace' : 'Upload PDF'}
+            </Button>
+            {fileUrl && <a className="resume-fmt__open" href={fileSrc(fileUrl)} target="_blank" rel="noreferrer">View <ExternalLink size={12} /></a>}
+          </div>
+        </div>
+
+        {/* Portfolio / digital resume */}
+        <div className="resume-fmt">
+          <div className="resume-fmt__head"><span className="resume-fmt__icon"><Globe size={18} /></span> Digital / portfolio</div>
+          <p className="resume-fmt__hint">A link to your portfolio site.</p>
+          <Input value={portfolioUrl} onChange={(e) => setPortfolioUrl(e.target.value)} placeholder="https://your-portfolio.com" />
+        </div>
+
+        {/* Video resume */}
+        <div className="resume-fmt">
+          <div className="resume-fmt__head"><span className="resume-fmt__icon"><Video size={18} /></span> Video resume</div>
+          <p className="resume-fmt__hint">A link to your video intro.</p>
+          <Input value={videoUrl} onChange={(e) => setVideoUrl(e.target.value)} placeholder="https://youtube.com/watch?v=…" />
+        </div>
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', marginTop: 'var(--space-4)' }}>
+        <Button onClick={saveLinks} loading={update.isPending}>Save resume links</Button>
+        {err && <span className="field__error">{err}</span>}
+      </div>
     </Card>
   );
 }
@@ -218,7 +268,7 @@ function ProjectsCard() {
   const approved = list.filter((p) => p.status === ProjectStatus.APPROVED).length;
 
   return (
-    <Card>
+    <Card style={{ marginBottom: 'var(--space-6)' }}>
       <div className="panel-head">
         <CardHeader
           title="Projects"

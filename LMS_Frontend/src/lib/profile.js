@@ -32,3 +32,16 @@ export function useUploadAvatar() {
     onSuccess: (user) => setUser(user),
   });
 }
+
+/** Upload/replace the soft-copy resume (PDF, multipart). */
+export function useUploadResume() {
+  const setUser = useAuth((s) => s.setUser);
+  return useMutation({
+    mutationFn: (file) => {
+      const fd = new FormData();
+      fd.append('resume', file);
+      return unwrap(api.post('/profile/resume', fd, { headers: { 'Content-Type': 'multipart/form-data' } }));
+    },
+    onSuccess: (user) => setUser(user),
+  });
+}

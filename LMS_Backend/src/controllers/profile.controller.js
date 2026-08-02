@@ -21,7 +21,22 @@ export const updateProfileSchema = z.object({
     .array(z.object({ label: z.string().min(1, 'Add a label').max(40), url: z.string().url('Enter a valid URL').max(500) }))
     .max(15)
     .optional(),
+  // Portfolio + video resume links (the soft-copy PDF is uploaded separately).
+  resume: z.object({ portfolioUrl: link, videoUrl: link }).partial().optional(),
 });
+
+// ── Resume soft-copy upload (single PDF → MongoDB/GridFS) ─────────────────────
+export const uploadResumeFile = multer({
+  storage: gridfsStorage('resume'),
+  limits: { fileSize: 15 * 1024 * 1024, files: 1 }, // 15 MB
+  fileFilter: (_req, file, cb) => {
+    const ext = path.extname(file.originalname).toLowerCase();
+    if (ext !== '.pdf' && file.mimetype !== 'application/pdf') {
+      return cb(new ApiError(400, 'UNSUPPORTED_FILE', 'Your resume must be a PDF.'));
+    }
+    cb(null, true);
+  },
+}).single('resume');
 
 // ── Avatar upload (single image → MongoDB/GridFS) ─────────────────────────────
 const ALLOWED_EXT = new Set(['.png', '.jpg', '.jpeg', '.gif', '.webp']);
@@ -42,7 +57,7 @@ export async function updateMe(req, res) {
   const user = await User.findById(req.auth.userId);
   if (!user) throw ApiError.notFound('User not found');
 
-  const { name, phone, bio, links, customLinks } = req.body;
+  const { name, phone, bio, links, customLinks, resume } = req.body;
   if (name !== undefined) user.name = name;
   if (phone !== undefined) user.phone = phone;
   if (bio !== undefined) user.bio = bio;
@@ -52,7 +67,22 @@ export async function updateMe(req, res) {
   if (customLinks !== undefined) {
     user.customLinks = customLinks.map((l) => ({ label: l.label.trim(), url: l.url.trim() }));
   }
+  if (resume) {
+    user.resume = { ...(user.resume?.toObject?.() ?? user.resume ?? {}), ...resume };
+  }
   await user.save();
+  ok(res, user.toJSON());
+}
+
+/** Upload/replace the signed-in student's soft-copy resume (PDF). */
+export async function setResume(req, res) {
+  if (!req.file) throw ApiError.badRequest('Choose a PDF to upload');
+  const user = await User.findById(req.auth.userId);
+  if (!user) throw ApiError.notFound('User not found');
+  const prev = user.resume?.fileUrl;
+  user.resume = { ...(user.resume?.toObject?.() ?? user.resume ?? {}), fileUrl: req.file.url };
+  await user.save();
+  if (prev) deleteByUrl(prev).catch(() => {}); // best-effort cleanup
   ok(res, user.toJSON());
 }
 

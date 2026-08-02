@@ -40,6 +40,13 @@ const userSchema = new Schema(
     },
     // Extra user-added links beyond the fixed platforms (label + url).
     customLinks: { type: [{ _id: false, label: String, url: String }], default: [] },
+    // Three resume formats the student can store: an uploaded soft copy (PDF),
+    // a digital resume / portfolio link, and a video resume link.
+    resume: {
+      fileUrl: String, // uploaded PDF under /api/uploads
+      portfolioUrl: String,
+      videoUrl: String,
+    },
     // Bumped to invalidate all outstanding refresh tokens (logout, password change,
     // suspension). Refresh tokens carrying an older `tv` are rejected.
     tokenVersion: { type: Number, default: 0 },
