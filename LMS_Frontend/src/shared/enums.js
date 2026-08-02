@@ -31,6 +31,7 @@ export const MeetingProvider = {
   ZOOM: 'zoom',
   GOOGLE_MEET: 'google_meet',
   MS_TEAMS: 'ms_teams',
+  OFFLINE: 'offline',
   OTHER: 'other',
 };
 

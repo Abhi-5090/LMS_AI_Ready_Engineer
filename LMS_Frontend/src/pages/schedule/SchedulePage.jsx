@@ -14,7 +14,7 @@ import { useTrainers } from '@/lib/users';
 import { ClassModal } from './ClassModal';
 import { ClassRatingModal } from './ClassRatingModal';
 import { MonthCalendar } from './MonthCalendar';
-import { STATUS_LABEL, STATUS_TONE, PROVIDER_LABEL, classHasEnded, groupByDay, todayISO } from './scheduleUi';
+import { STATUS_LABEL, STATUS_TONE, PROVIDER_LABEL, isOffline, classHasEnded, groupByDay, todayISO } from './scheduleUi';
 import { downloadIcs } from '@/lib/ics';
 import './schedule.css';
 
@@ -181,6 +181,7 @@ export function SchedulePage() {
                   <div className="class-title">{c.title}</div>
                   <div className="class-meta">
                     <Badge tone={STATUS_TONE[displayStatus]}>{STATUS_LABEL[displayStatus]}</Badge>
+                    <Badge tone={isOffline(c) ? "neutral" : "primary"}>{isOffline(c) ? "Offline" : "Online"}</Badge>
                     <span>{c.module?.name}</span>
                     <span>·</span>
                     <span>{c.batch?.name}</span>
@@ -280,6 +281,7 @@ export function SchedulePage() {
                     <div className="class-title">{c.title}</div>
                     <div className="class-meta">
                       <Badge tone={STATUS_TONE[displayStatus]}>{STATUS_LABEL[displayStatus]}</Badge>
+                      <Badge tone={isOffline(c) ? "neutral" : "primary"}>{isOffline(c) ? "Offline" : "Online"}</Badge>
                       <span>{c.module?.name}</span>
                       <span>·</span>
                       <span>{c.batch?.name}</span>

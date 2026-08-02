@@ -24,8 +24,12 @@ export const PROVIDER_LABEL = {
   [MeetingProvider.ZOOM]: 'Zoom',
   [MeetingProvider.GOOGLE_MEET]: 'Google Meet',
   [MeetingProvider.MS_TEAMS]: 'Microsoft Teams',
+  [MeetingProvider.OFFLINE]: 'Offline (in person)',
   [MeetingProvider.OTHER]: 'Other',
 };
+
+/** An offline / in-person class has no meeting link. */
+export const isOffline = (c) => c?.provider === MeetingProvider.OFFLINE;
 
 // Only two providers are supported: the in-app LiveKit classroom and Microsoft
 // Teams. (Older classes may still show another provider's label above; these are

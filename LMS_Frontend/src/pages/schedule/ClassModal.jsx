@@ -29,6 +29,7 @@ function blankForm() {
     date: `${start.getFullYear()}-${pad(start.getMonth() + 1)}-${pad(start.getDate())}`,
     startTime: hhmm(start),
     endTime: hhmm(end),
+    mode: 'online',
     provider: 'ms_teams',
     meetingLink: '',
     autoCreateMeeting: false,
@@ -58,7 +59,8 @@ export function ClassModal({ open, mode, initial, onClose, isAdmin, batches = []
         date: toDateInput(initial.date),
         startTime: initial.startTime,
         endTime: initial.endTime,
-        provider: initial.provider ?? 'ms_teams',
+        mode: initial.provider === 'offline' ? 'offline' : 'online',
+        provider: initial.provider === 'offline' ? 'ms_teams' : (initial.provider ?? 'ms_teams'),
         meetingLink: initial.meetingLink ?? '',
         recordingLink: initial.recordingLink ?? '',
         status: initial.status,
@@ -75,6 +77,7 @@ export function ClassModal({ open, mode, initial, onClose, isAdmin, batches = []
   async function submit(e) {
     e.preventDefault();
     setErr('');
+    const offline = form.mode === 'offline';
     try {
       if (isEdit) {
         await update.mutateAsync({
@@ -83,8 +86,8 @@ export function ClassModal({ open, mode, initial, onClose, isAdmin, batches = []
           date: form.date,
           startTime: form.startTime,
           endTime: form.endTime,
-          provider: form.provider,
-          meetingLink: form.meetingLink,
+          provider: offline ? 'offline' : form.provider,
+          meetingLink: offline ? '' : form.meetingLink,
           recordingLink: form.recordingLink,
           status: form.status,
         });
@@ -96,11 +99,11 @@ export function ClassModal({ open, mode, initial, onClose, isAdmin, batches = []
           date: form.date,
           startTime: form.startTime,
           endTime: form.endTime,
-          provider: form.provider,
+          provider: offline ? 'offline' : form.provider,
         };
-        const autoZoom = form.provider === 'zoom' && form.autoCreateMeeting && !form.meetingLink;
+        const autoZoom = !offline && form.provider === 'zoom' && form.autoCreateMeeting && !form.meetingLink;
         if (autoZoom) body.autoCreateMeeting = true;
-        else body.meetingLink = form.meetingLink || undefined;
+        else if (!offline) body.meetingLink = form.meetingLink || undefined;
         if (isAdmin) body.trainer = form.trainer;
 
         if (form.repeat) {
@@ -227,21 +230,38 @@ export function ClassModal({ open, mode, initial, onClose, isAdmin, batches = []
           </div>
         )}
 
-        <Select label="Meeting provider" value={form.provider} onChange={(e) => set('provider', e.target.value)} options={PROVIDER_OPTIONS} />
-        {form.provider === 'internal' ? (
+        {/* Online vs offline (in-person). Offline classes carry no meeting link. */}
+        <div className="field">
+          <label className="field__label">Session type</label>
+          <div className="mode-toggle">
+            <button type="button" className={`mode-toggle__btn${form.mode === 'online' ? ' is-active' : ''}`} onClick={() => set('mode', 'online')}>Online</button>
+            <button type="button" className={`mode-toggle__btn${form.mode === 'offline' ? ' is-active' : ''}`} onClick={() => set('mode', 'offline')}>Offline (in person)</button>
+          </div>
+        </div>
+
+        {form.mode === 'offline' ? (
           <p className="lms-muted" style={{ fontSize: 'var(--font-size-sm)', margin: 0 }}>
-            🎥 Students and the trainer join the live class right inside the app — no external link needed.
+            🏫 In-person class — no meeting link. It still appears on the calendar and you mark attendance for it.
           </p>
         ) : (
           <>
-            {!isEdit && form.provider === 'zoom' && (
-              <label style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', fontSize: 'var(--font-size-sm)' }}>
-                <input type="checkbox" checked={form.autoCreateMeeting} onChange={(e) => set('autoCreateMeeting', e.target.checked)} />
-                Auto-create Zoom meeting link <span className="lms-muted">(requires Zoom configured in Settings)</span>
-              </label>
-            )}
-            {!(form.provider === 'zoom' && form.autoCreateMeeting && !isEdit) && (
-              <Input label="Meeting link" value={form.meetingLink} onChange={(e) => set('meetingLink', e.target.value)} placeholder="https://…" />
+            <Select label="Meeting provider" value={form.provider} onChange={(e) => set('provider', e.target.value)} options={PROVIDER_OPTIONS} />
+            {form.provider === 'internal' ? (
+              <p className="lms-muted" style={{ fontSize: 'var(--font-size-sm)', margin: 0 }}>
+                🎥 Students and the trainer join the live class right inside the app — no external link needed.
+              </p>
+            ) : (
+              <>
+                {!isEdit && form.provider === 'zoom' && (
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', fontSize: 'var(--font-size-sm)' }}>
+                    <input type="checkbox" checked={form.autoCreateMeeting} onChange={(e) => set('autoCreateMeeting', e.target.checked)} />
+                    Auto-create Zoom meeting link <span className="lms-muted">(requires Zoom configured in Settings)</span>
+                  </label>
+                )}
+                {!(form.provider === 'zoom' && form.autoCreateMeeting && !isEdit) && (
+                  <Input label="Meeting link" value={form.meetingLink} onChange={(e) => set('meetingLink', e.target.value)} placeholder="https://…" />
+                )}
+              </>
             )}
           </>
         )}
