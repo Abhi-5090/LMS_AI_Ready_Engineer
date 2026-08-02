@@ -13,7 +13,9 @@ const projectSchema = new Schema(
     title: { type: String, required: true, trim: true },
     description: { type: String, required: true, trim: true },
     repoUrl: { type: String, required: true },
-    images: { type: [String], default: [] }, // screenshot URLs under /api/uploads
+    documentUrl: { type: String }, // a single project PDF under /api/uploads
+    videoUrl: { type: String }, // optional YouTube (or other) demo link
+    images: { type: [String], default: [] }, // legacy screenshot URLs (older projects)
     status: {
       type: String,
       enum: Object.values(ProjectStatus),

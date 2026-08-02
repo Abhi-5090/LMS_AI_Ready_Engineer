@@ -18,7 +18,7 @@ router.patch('/:id/review', reviewer, validate({ params: proj.projectIdParam, bo
 // Student — their own projects.
 router.get('/', studentOnly, asyncHandler(proj.listMine));
 // Multer parses the multipart images first, then the handler validates fields.
-router.post('/', studentOnly, proj.uploadProjectImages, asyncHandler(proj.create));
+router.post('/', studentOnly, proj.uploadProjectDoc, asyncHandler(proj.create));
 router.delete('/:id', studentOnly, validate({ params: proj.projectIdParam }), asyncHandler(proj.remove));
 
 export default router;

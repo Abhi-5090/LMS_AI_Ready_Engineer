@@ -1,7 +1,7 @@
 import path from 'node:path';
 import multer from 'multer';
 import { z } from 'zod';
-import { PROJECT_MAX_IMAGES, ProjectStatus, UserRole } from '#shared';
+import { ProjectStatus, UserRole } from '#shared';
 import { Batch, Project } from '../models/index.js';
 import { ApiError } from '../utils/ApiError.js';
 import { ok } from '../utils/http.js';
@@ -14,28 +14,29 @@ export const reviewSchema = z.object({
   note: z.string().max(500).optional(),
 });
 
-// ── Multer (up to PROJECT_MAX_IMAGES screenshots → MongoDB/GridFS) ────────────
-const ALLOWED_EXT = new Set(['.png', '.jpg', '.jpeg', '.gif', '.webp']);
-export const uploadProjectImages = multer({
+// ── Multer (a single project PDF → MongoDB/GridFS) ───────────────────────────
+export const uploadProjectDoc = multer({
   storage: gridfsStorage('project'),
-  limits: { fileSize: 10 * 1024 * 1024, files: PROJECT_MAX_IMAGES }, // 10 MB each
+  limits: { fileSize: 20 * 1024 * 1024, files: 1 }, // 20 MB
   fileFilter: (_req, file, cb) => {
     const ext = path.extname(file.originalname).toLowerCase();
-    if (!ALLOWED_EXT.has(ext)) {
-      return cb(new ApiError(400, 'UNSUPPORTED_FILE', `Screenshots must be images. Not allowed: ${ext || file.mimetype}`));
+    if (ext !== '.pdf' && file.mimetype !== 'application/pdf') {
+      return cb(new ApiError(400, 'UNSUPPORTED_FILE', 'The project document must be a PDF.'));
     }
     cb(null, true);
   },
-}).array('images', PROJECT_MAX_IMAGES);
+}).single('document');
 
 const createSchema = z.object({
   title: z.string().min(2, 'Title must be at least 2 characters').max(160),
   description: z.string().min(10, 'Add a short description (at least 10 characters)').max(4000),
   repoUrl: z.string().url('Enter a valid GitHub repository URL').max(1000),
+  videoUrl: z.string().url('Enter a valid video URL').max(1000).optional().or(z.literal('')),
 });
 
-function cleanupImages(images = []) {
-  for (const url of images) deleteByUrl(url);
+function cleanupFiles(project) {
+  for (const url of project.images ?? []) deleteByUrl(url);
+  if (project.documentUrl) deleteByUrl(project.documentUrl);
 }
 
 /** The signed-in student's own projects, newest first. */
@@ -44,29 +45,28 @@ export async function listMine(req, res) {
   ok(res, projects.map((p) => p.toJSON()));
 }
 
-/** Submit a new project (title, repo URL, description + screenshot images). */
+/** Submit a new project (title, repo URL, description, a PDF + optional video). */
 export async function create(req, res) {
   const parsed = createSchema.safeParse(req.body);
   if (!parsed.success) throw ApiError.badRequest('Validation failed', parsed.error.flatten());
-  if (!req.files?.length) throw ApiError.badRequest('Add at least one project screenshot');
+  if (!req.file) throw ApiError.badRequest('Upload the project document (PDF).');
 
-  // Files were streamed to GridFS by the multer engine; record their URLs.
-  const images = req.files.map((f) => f.url);
   const project = await Project.create({
     student: req.auth.userId,
     title: parsed.data.title,
     description: parsed.data.description,
     repoUrl: parsed.data.repoUrl,
-    images,
+    documentUrl: req.file.url,
+    ...(parsed.data.videoUrl ? { videoUrl: parsed.data.videoUrl } : {}),
   });
   ok(res, project.toJSON(), 201);
 }
 
-/** Delete one of the student's own projects (best-effort image cleanup). */
+/** Delete one of the student's own projects (best-effort file cleanup). */
 export async function remove(req, res) {
   const project = await Project.findOne({ _id: req.params.id, student: req.auth.userId });
   if (!project) throw ApiError.notFound('Project not found');
-  cleanupImages(project.images);
+  cleanupFiles(project);
   await project.deleteOne();
   ok(res, { id: req.params.id, deleted: true });
 }

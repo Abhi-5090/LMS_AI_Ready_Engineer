@@ -1,6 +1,6 @@
-import { useMemo, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { CalendarCheck, Camera, FileText, FolderOpen, Github, MessageCircleQuestion, Plus, Star, Trash2 } from 'lucide-react';
-import { PROJECT_MAX_IMAGES, ProjectStatus, SOCIAL_PLATFORMS, UserRole } from '@/shared';
+import { ProjectStatus, SOCIAL_PLATFORMS, UserRole } from '@/shared';
 import { Badge, Button, Card, CardHeader, EmptyState, FullPageSpinner, Input, Modal, Skeleton, Textarea, useConfirm, useToast } from '@/components/ui';
 import { PageHeader, Stat } from '@/components/PageHeader';
 import { apiErrorMessage, downloadFile, fileSrc } from '@/lib/api';
@@ -278,16 +278,9 @@ const STATUS_TONE = { pending: 'warning', approved: 'success', rejected: 'error'
 
 function AddProjectModal({ onClose }) {
   const add = useAddProject();
-  const [form, setForm] = useState({ title: '', repoUrl: '', description: '' });
-  const [files, setFiles] = useState([]);
+  const [form, setForm] = useState({ title: '', repoUrl: '', description: '', videoUrl: '' });
+  const [doc, setDoc] = useState(null);
   const [err, setErr] = useState('');
-
-  const previews = useMemo(() => files.map((f) => ({ name: f.name, url: URL.createObjectURL(f) })), [files]);
-
-  function onFiles(e) {
-    const picked = Array.from(e.target.files ?? []).slice(0, PROJECT_MAX_IMAGES);
-    setFiles(picked);
-  }
 
   async function submit(e) {
     e.preventDefault();
@@ -295,12 +288,13 @@ function AddProjectModal({ onClose }) {
     if (form.title.trim().length < 2) return setErr('Enter a project title.');
     if (!form.repoUrl.trim()) return setErr('Add your GitHub repository link.');
     if (form.description.trim().length < 10) return setErr('Add a short description (at least 10 characters).');
-    if (files.length === 0) return setErr('Add at least one screenshot (up to 5).');
+    if (!doc) return setErr('Upload the project document (PDF).');
     const fd = new FormData();
     fd.append('title', form.title.trim());
     fd.append('repoUrl', form.repoUrl.trim());
     fd.append('description', form.description.trim());
-    files.forEach((f) => fd.append('images', f));
+    if (form.videoUrl.trim()) fd.append('videoUrl', form.videoUrl.trim());
+    fd.append('document', doc);
     try {
       await add.mutateAsync(fd);
       onClose();
@@ -326,16 +320,13 @@ function AddProjectModal({ onClose }) {
       <form id="add-project-form" onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
         <Input label="Project title" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="e.g. AI Resume Screener" required />
         <Input label="GitHub repository URL" value={form.repoUrl} onChange={(e) => setForm({ ...form, repoUrl: e.target.value })} placeholder="https://github.com/you/project" required />
+        <Input label="Demo video URL (optional)" value={form.videoUrl} onChange={(e) => setForm({ ...form, videoUrl: e.target.value })} placeholder="https://youtube.com/watch?v=…" />
         <Textarea label="Description" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="What it does, the tech stack, your role…" style={{ minHeight: '6rem' }} />
         <label className="field">
-          <span className="field__label">Screenshots (up to {PROJECT_MAX_IMAGES})</span>
-          <input type="file" accept="image/*" multiple onChange={onFiles} />
+          <span className="field__label">Project document (PDF)</span>
+          <input type="file" accept="application/pdf,.pdf" onChange={(e) => setDoc(e.target.files?.[0] ?? null)} />
+          {doc && <span className="lms-muted" style={{ fontSize: 'var(--font-size-xs)', marginTop: 4, display: 'block' }}>{doc.name}</span>}
         </label>
-        {previews.length > 0 && (
-          <div className="project-upload-preview">
-            {previews.map((p, i) => <img key={i} src={p.url} alt={p.name} />)}
-          </div>
-        )}
         <p className="lms-muted" style={{ fontSize: 'var(--font-size-xs)', margin: 0 }}>
           Your project is submitted for trainer/admin approval and appears on your profile once approved.
         </p>

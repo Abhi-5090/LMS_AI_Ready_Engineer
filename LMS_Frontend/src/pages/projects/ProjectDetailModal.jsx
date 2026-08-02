@@ -1,4 +1,4 @@
-import { CheckCircle2, ExternalLink, Github, XCircle } from 'lucide-react';
+import { CheckCircle2, ExternalLink, FileText, Github, XCircle, Youtube } from 'lucide-react';
 import { Badge, Button, Modal } from '@/components/ui';
 import { fileSrc } from '@/lib/api';
 import './projects.css';
@@ -27,6 +27,16 @@ export function ProjectDetailModal({ project, onClose, onApprove, onReject, busy
           <a href={project.repoUrl} target="_blank" rel="noreferrer" className="ext-cert__open" style={{ display: 'inline-flex' }}>
             <Github size={14} /> Repository <ExternalLink size={12} />
           </a>
+          {project.documentUrl && (
+            <a href={fileSrc(project.documentUrl)} target="_blank" rel="noreferrer" className="ext-cert__open" style={{ display: 'inline-flex' }}>
+              <FileText size={14} /> Document (PDF) <ExternalLink size={12} />
+            </a>
+          )}
+          {project.videoUrl && (
+            <a href={project.videoUrl} target="_blank" rel="noreferrer" className="ext-cert__open" style={{ display: 'inline-flex' }}>
+              <Youtube size={14} /> Demo video <ExternalLink size={12} />
+            </a>
+          )}
         </div>
 
         {project.images?.length > 0 && (
