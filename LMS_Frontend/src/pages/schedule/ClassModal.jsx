@@ -196,9 +196,17 @@ export function ClassModal({ open, mode, initial, onClose, isAdmin, batches = []
         )}
 
         <Input label={form.repeat ? 'First class date' : 'Date'} type="date" value={form.date} onChange={(e) => set('date', e.target.value)} required />
-        <div style={{ display: 'flex', gap: 'var(--space-3)' }}>
-          <Input label="Start" type="time" value={form.startTime} onChange={(e) => set('startTime', e.target.value)} required />
-          <Input label="End" type="time" value={form.endTime} onChange={(e) => set('endTime', e.target.value)} required />
+        {/* Session type · Start · End — one row. */}
+        <div style={{ display: 'flex', gap: 'var(--space-3)', flexWrap: 'wrap' }}>
+          <Select
+            label="Session type"
+            value={form.mode}
+            onChange={(e) => set('mode', e.target.value)}
+            options={[{ value: 'online', label: 'Online' }, { value: 'offline', label: 'Offline (in person)' }]}
+            style={{ flex: '1 1 10rem' }}
+          />
+          <Input label="Start" type="time" value={form.startTime} onChange={(e) => set('startTime', e.target.value)} style={{ flex: '1 1 7rem' }} required />
+          <Input label="End" type="time" value={form.endTime} onChange={(e) => set('endTime', e.target.value)} style={{ flex: '1 1 7rem' }} required />
         </div>
 
         {!isEdit && (
@@ -230,15 +238,7 @@ export function ClassModal({ open, mode, initial, onClose, isAdmin, batches = []
           </div>
         )}
 
-        {/* Online vs offline (in-person). Offline classes carry no meeting link. */}
-        <div className="field">
-          <label className="field__label">Session type</label>
-          <div className="mode-toggle">
-            <button type="button" className={`mode-toggle__btn${form.mode === 'online' ? ' is-active' : ''}`} onClick={() => set('mode', 'online')}>Online</button>
-            <button type="button" className={`mode-toggle__btn${form.mode === 'offline' ? ' is-active' : ''}`} onClick={() => set('mode', 'offline')}>Offline (in person)</button>
-          </div>
-        </div>
-
+        {/* Offline carries no meeting link; online shows the provider/link fields. */}
         {form.mode === 'offline' ? (
           <p className="lms-muted" style={{ fontSize: 'var(--font-size-sm)', margin: 0 }}>
             🏫 In-person class — no meeting link. It still appears on the calendar and you mark attendance for it.

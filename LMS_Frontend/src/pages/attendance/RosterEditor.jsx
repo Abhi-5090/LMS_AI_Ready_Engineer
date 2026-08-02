@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Check, FileSpreadsheet, Users } from 'lucide-react';
+import { Check, FileSpreadsheet, UserCog, Users } from 'lucide-react';
 import { AttendanceStatus } from '@/shared';
 import { Button, Card, CardHeader, EmptyState, ErrorState, Input, Select, SkeletonTable } from '@/components/ui';
 import { apiErrorMessage } from '@/lib/api';
@@ -8,6 +8,12 @@ import { parseTeamsAttendance, classStartMs, classifyJoin } from '@/lib/teamsAtt
 import { ATT_OPTIONS } from './attendanceUi';
 import { formatDate } from '@/lib/format';
 import './attendance.css';
+
+/** Absolute ms → local clock time, e.g. "4:34 PM". */
+function fmtClock(ms) {
+  if (ms == null) return '—';
+  return new Date(ms).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+}
 
 /** Seconds → "6m 31s" / "45s" / "1h 5m"; em dash when unknown. */
 function fmtWatch(s) {
@@ -28,6 +34,7 @@ export function RosterEditor({ classId, onSaved }) {
   const [teamsData, setTeamsData] = useState(null); // Map<email, joinMs> from the import
   const [teamsWatch, setTeamsWatch] = useState(null); // Map<email, watchSeconds>
   const [importInfo, setImportInfo] = useState(null);
+  const [organizer, setOrganizer] = useState(null); // trainer who ran the session
   const [importError, setImportError] = useState('');
   const [saveError, setSaveError] = useState('');
   const [saved, setSaved] = useState(false);
@@ -51,6 +58,7 @@ export function RosterEditor({ classId, onSaved }) {
     setTeamsData(null);
     setTeamsWatch(null);
     setImportInfo(null);
+    setOrganizer(null);
     setImportError('');
     setSaved(false);
     setQ('');
@@ -94,13 +102,15 @@ export function RosterEditor({ classId, onSaved }) {
     if (!file) return;
     try {
       const classDayIso = new Date(data.class.date).toISOString().slice(0, 10);
-      const { byEmail, byEmailWatch } = parseTeamsAttendance(await file.arrayBuffer(), classDayIso);
+      const { byEmail, byEmailWatch, organizer: org } = parseTeamsAttendance(await file.arrayBuffer(), classDayIso);
       setTeamsData(byEmail);
       setTeamsWatch(byEmailWatch);
+      setOrganizer(org ?? null);
       applyTeams(byEmail, buffer, rows, byEmailWatch);
     } catch (err) {
       setTeamsData(null);
       setTeamsWatch(null);
+      setOrganizer(null);
       setImportInfo(null);
       setImportError(err.message || 'Could not read that file.');
     }
@@ -178,6 +188,15 @@ export function RosterEditor({ classId, onSaved }) {
                 <span>
                   {importInfo.present} present · {importInfo.late} late · {importInfo.absent} absent
                   {importInfo.unmatched > 0 && ` · ${importInfo.unmatched} sheet email(s) didn’t match an enrolled student`}
+                </span>
+              </div>
+            )}
+            {organizer && (
+              <div className="teams-organizer">
+                <span className="teams-organizer__icon"><UserCog size={16} /></span>
+                <span>
+                  Session led by <strong>{organizer.name}</strong> · started <strong>{fmtClock(organizer.joinMs)}</strong>
+                  {organizer.watchSeconds != null && <> · in the meeting for <strong>{fmtWatch(organizer.watchSeconds)}</strong></>}
                 </span>
               </div>
             )}

@@ -10,22 +10,28 @@ const EMAIL_RE = /[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/i;
 // A cell that carries a calendar date (e.g. "6/12/2025", "2025-06-12", "12.06.2025").
 const HAS_DATE = /\d{1,4}[/.-]\d{1,2}[/.-]\d{1,4}/;
 
-/** Find the header row + the email/join (+ optional duration) columns. */
+/** Find the header row + the email/join (+ optional duration/name/role) columns. */
 function findColumns(rows) {
   const isDuration = (k) => k.includes('inmeetingduration') || k === 'duration' || k.includes('duration');
+  const isName = (k) => k === 'name';
+  const isRole = (k) => k === 'role';
   const scan = (test) => {
     for (let i = 0; i < rows.length; i++) {
       const row = rows[i] ?? [];
       let emailCol = -1;
       let joinCol = -1;
       let durationCol = -1;
+      let nameCol = -1;
+      let roleCol = -1;
       row.forEach((cell, c) => {
         const k = norm(cell);
         if (emailCol < 0 && test.email(k)) emailCol = c;
         if (joinCol < 0 && test.join(k)) joinCol = c;
         if (durationCol < 0 && isDuration(k)) durationCol = c;
+        if (nameCol < 0 && isName(k)) nameCol = c;
+        if (roleCol < 0 && isRole(k)) roleCol = c;
       });
-      if (emailCol >= 0 && joinCol >= 0) return { headerRow: i, emailCol, joinCol, durationCol };
+      if (emailCol >= 0 && joinCol >= 0) return { headerRow: i, emailCol, joinCol, durationCol, nameCol, roleCol };
     }
     return null;
   };
@@ -110,6 +116,7 @@ export function parseTeamsAttendance(arrayBuffer, classDayIso) {
 
   const byEmail = new Map();
   const byEmailWatch = new Map(); // email → total in-meeting seconds (watch time)
+  let organizer = null; // the trainer who ran the session (Role = Organizer)
   for (let i = cols.headerRow + 1; i < rows.length; i++) {
     const row = rows[i] ?? [];
     const emailMatch = String(row[cols.emailCol] ?? '').match(EMAIL_RE);
@@ -119,12 +126,22 @@ export function parseTeamsAttendance(arrayBuffer, classDayIso) {
     if (ms == null) continue;
     // A participant may appear on several rows — keep their earliest join.
     if (!byEmail.has(email) || ms < byEmail.get(email)) byEmail.set(email, ms);
+    const secs = cols.durationCol >= 0 ? parseDurationToSeconds(row[cols.durationCol]) : null;
     // Watch time: keep the largest duration seen (the Participants row holds the total).
-    if (cols.durationCol >= 0) {
-      const secs = parseDurationToSeconds(row[cols.durationCol]);
-      if (secs != null && secs > (byEmailWatch.get(email) ?? 0)) byEmailWatch.set(email, secs);
+    if (secs != null && secs > (byEmailWatch.get(email) ?? 0)) byEmailWatch.set(email, secs);
+
+    // The organizer = when the trainer started/ran the session.
+    const role = cols.roleCol >= 0 ? String(row[cols.roleCol] ?? '').toLowerCase() : '';
+    if (role.includes('organizer')) {
+      const oname = cols.nameCol >= 0 ? String(row[cols.nameCol] ?? '').trim() : '';
+      if (!organizer) organizer = { name: oname || 'Organizer', email, joinMs: ms, watchSeconds: secs ?? null };
+      else {
+        if (ms < organizer.joinMs) organizer.joinMs = ms;
+        if (secs != null && (organizer.watchSeconds == null || secs > organizer.watchSeconds)) organizer.watchSeconds = secs;
+        if (oname && organizer.name === 'Organizer') organizer.name = oname;
+      }
     }
   }
   if (byEmail.size === 0) throw new Error('No participant rows with an email and join time were found.');
-  return { byEmail, byEmailWatch, participants: byEmail.size };
+  return { byEmail, byEmailWatch, organizer, participants: byEmail.size };
 }
