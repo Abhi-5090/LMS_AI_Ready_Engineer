@@ -5,7 +5,8 @@ import { BarChart3, Check, Database, Download, HelpCircle, ScrollText, Trash2, U
 import { AssessmentAvailability, AssessmentType, ProctoringMode, QuestionType } from '@/shared';
 import { Badge, Button, Card, CardHeader, EmptyState, ErrorState, Input, Modal, Select, SkeletonTable, SkeletonText, useConfirm, useToast } from '@/components/ui';
 import { PageHeader } from '@/components/PageHeader';
-import { apiErrorMessage, downloadFile, fileSrc } from '@/lib/api';
+import { apiErrorMessage, fileSrc } from '@/lib/api';
+import { exportSubmissionsExcel, exportSubmissionsPdf } from '@/lib/assessmentExports';
 import {
   useAssessment,
   useConsolidated,
@@ -125,7 +126,7 @@ export function AssessmentEditor() {
       {!isTemplate && <CompletionCard a={a} />}
       {!isTemplate && <ReattemptsCard a={a} />}
 
-      {!isTemplate && <SubmissionsCard id={a.id} />}
+      {!isTemplate && <SubmissionsCard id={a.id} title={a.title} />}
 
       {/* Questions last — a scrollable box showing ~4–5 at a time. */}
       <Card style={{ marginBottom: 'var(--space-6)' }}>
@@ -677,30 +678,51 @@ function ReattemptsCard({ a }) {
   );
 }
 
-function SubmissionsCard({ id }) {
+const SUB_STATUS_LABEL = { graded: 'Graded', submitted: 'Submitted', evaluating: 'Evaluating', in_progress: 'In progress', not_started: 'Not started' };
+
+function SubmissionsCard({ id, title }) {
   const toast = useToast();
   const { data, isLoading } = useConsolidated(id);
   const subs = data?.submissions ?? null;
-  const [exporting, setExporting] = useState(false);
+  const [exporting, setExporting] = useState('');
   const hasSubs = subs && subs.length > 0;
-  const onExport = async () => {
-    setExporting(true);
-    try {
-      await downloadFile(`/assessments/${id}/submissions.csv`, 'submissions.csv');
-    } catch (err) {
-      toast.error(apiErrorMessage(err));
-    } finally {
-      setExporting(false);
-    }
-  };
+
+  // Flatten the consolidated submissions into printable rows (every attempt).
+  const rows = (subs ?? []).map((s) => ({
+    student: s.student?.name ?? '',
+    email: s.student?.email ?? '',
+    attempt: `#${s.attempt}`,
+    status: SUB_STATUS_LABEL[s.status] ?? s.status,
+    score: s.score == null ? '—' : `${s.score}%`,
+    result: s.disqualified ? 'Disqualified' : s.status === 'graded' ? (s.passed ? 'Passed' : 'Failed') : '—',
+    warnings: s.warnings ?? 0,
+    submitted: s.submittedAt ? formatDate(s.submittedAt) : '—',
+  }));
+
+  async function onExcel() {
+    setExporting('excel');
+    try { await exportSubmissionsExcel(rows, { title }); }
+    catch (e) { toast.error(apiErrorMessage(e)); }
+    finally { setExporting(''); }
+  }
+  function onPdf() {
+    try { exportSubmissionsPdf(rows, { title, generatedAt: new Date().toLocaleString() }); }
+    catch (e) { toast.error(apiErrorMessage(e)); }
+  }
+
   return (
     <Card style={{ marginBottom: 'var(--space-6)' }}>
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem' }}>
-        <CardHeader title="Submissions" subtitle="Student attempts and scores" />
+        <CardHeader title="Submissions" subtitle="Every attempt across all assignments of this test" />
         {hasSubs && (
-          <Button variant="secondary" size="sm" onClick={onExport} loading={exporting} style={{ flexShrink: 0 }}>
-            <Download size={16} /> Export CSV
-          </Button>
+          <div style={{ display: 'flex', gap: 'var(--space-2)', flexShrink: 0 }}>
+            <Button variant="secondary" size="sm" onClick={onExcel} loading={exporting === 'excel'}>
+              <Download size={16} /> Excel
+            </Button>
+            <Button variant="outline" size="sm" onClick={onPdf}>
+              <Download size={16} /> PDF
+            </Button>
+          </div>
         )}
       </div>
       {isLoading && !subs ? (
