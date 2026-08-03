@@ -3,7 +3,7 @@ import { Check, Users, X } from 'lucide-react';
 import { Badge, Card, CardHeader, EmptyState, ErrorState, SkeletonCards } from '@/components/ui';
 import { PageHeader, Stat } from '@/components/PageHeader';
 import { apiErrorMessage } from '@/lib/api';
-import { useStudentProgress } from '@/lib/progress';
+import { useStudentProgress, useStudentSubmissions } from '@/lib/progress';
 import { useStudentAttendance } from '@/lib/attendance';
 import { useStudentCertificates } from '@/lib/certificates';
 import { levelTone, titleCase } from '@/pages/modules/moduleUi';
@@ -17,12 +17,15 @@ const STATUS = {
   locked: { tone: 'neutral', label: 'Locked' },
 };
 
+const A_TYPE = { practice: 'Practice', preparation: 'Preparation', final: 'Final' };
+
 /** Admin/trainer drill-down: one student's progression, attendance, certificates. */
 export function StudentDetailPage() {
   const { id } = useParams();
   const progress = useStudentProgress(id);
   const attendance = useStudentAttendance(id);
   const certs = useStudentCertificates(id);
+  const submissions = useStudentSubmissions(id);
 
   if (progress.isLoading && !progress.data) {
     return (
@@ -45,6 +48,7 @@ export function StudentDetailPage() {
   const student = p.student;
   const att = attendance.data?.summary;
   const certificates = certs.data?.certificates ?? [];
+  const subs = submissions.data ?? [];
 
   return (
     <>
@@ -56,8 +60,8 @@ export function StudentDetailPage() {
       <div className="stat-grid">
         <Stat label="Attendance" value={att ? `${att.percentage}%` : '—'} accent />
         <Stat label="Modules Completed" value={p.hasBatch ? `${p.completedCount} / ${p.total}` : '—'} />
+        <Stat label="Assessments Taken" value={subs.length} />
         <Stat label="Certificates" value={certificates.length} />
-        <Stat label="Program" value={p.eligibleForCertificate ? 'Complete' : 'In progress'} />
       </div>
 
       <Card style={{ marginBottom: 'var(--space-6)' }}>
@@ -94,6 +98,39 @@ export function StudentDetailPage() {
                     </tr>
                   );
                 })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Card>
+
+      <Card style={{ marginBottom: 'var(--space-6)' }}>
+        <CardHeader title="Completed assessments" subtitle="Tests this student has submitted, newest first." />
+        {subs.length === 0 ? (
+          <EmptyState icon={<Users size={26} />} title="No assessments taken yet" description="This student hasn't submitted any assessments." />
+        ) : (
+          <div className="table-wrap">
+            <table className="table">
+              <thead>
+                <tr><th>Assessment</th><th>Module</th><th>Type</th><th>Score</th><th>Result</th><th>Submitted</th></tr>
+              </thead>
+              <tbody>
+                {subs.map((s) => (
+                  <tr key={s.id}>
+                    <td>{s.assessment}</td>
+                    <td>{s.module || '—'}</td>
+                    <td><Badge tone="neutral">{A_TYPE[s.type] ?? s.type}</Badge></td>
+                    <td>{s.status === 'graded' && s.score != null ? `${s.score}%` : '—'}</td>
+                    <td>
+                      {s.status === 'graded' ? (
+                        <Badge tone={s.passed ? 'success' : 'error'}>{s.passed ? 'Passed' : 'Failed'}</Badge>
+                      ) : (
+                        <Badge tone="neutral">{s.status === 'evaluating' ? 'Grading…' : 'Submitted'}</Badge>
+                      )}
+                    </td>
+                    <td className="lms-muted" style={{ fontSize: 'var(--font-size-xs)' }}>{s.submittedAt ? formatDate(s.submittedAt) : '—'}</td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>

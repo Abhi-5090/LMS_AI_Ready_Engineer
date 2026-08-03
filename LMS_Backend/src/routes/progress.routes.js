@@ -15,5 +15,11 @@ router.get(
   validate({ params: progress.studentIdParam }),
   asyncHandler(progress.studentProgress),
 );
+router.get(
+  '/student/:studentId/submissions',
+  requireRole(UserRole.ADMIN, UserRole.TRAINER),
+  validate({ params: progress.studentIdParam }),
+  asyncHandler(progress.studentSubmissions),
+);
 
 export default router;

@@ -204,6 +204,26 @@ function EntryView() {
     );
   }
 
+  // ── Step 3: mark attendance for ONE class — its own page (Back → sessions) ──
+  if (selected) {
+    const sel = active.classes.find((c) => c.id === selected);
+    return (
+      <>
+        <div className="mod-att-head">
+          <Button variant="outline" size="sm" onClick={() => setSelected(null)}>
+            <ChevronLeft size={15} style={{ marginRight: 4 }} /> Back to sessions
+          </Button>
+          <div className="mod-att-head__title">
+            <strong>{active.name}</strong>
+            {active.code && <span className="lms-muted"> · {active.code}</span>}
+            {sel && <span className="lms-muted"> · {sel.title}</span>}
+          </div>
+        </div>
+        <RosterEditor classId={selected} />
+      </>
+    );
+  }
+
   // ── Step 2: sessions for the chosen module ──
   const total = active.classes.length;
   const pending = active.classes.filter((c) => !c.attendanceMarked).length;
@@ -299,8 +319,6 @@ function EntryView() {
           </table>
         </div>
       </Card>
-
-      {selected && <RosterEditor classId={selected} />}
     </>
   );
 }
