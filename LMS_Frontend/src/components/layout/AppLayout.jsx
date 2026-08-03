@@ -58,8 +58,8 @@ export function AppLayout() {
   const nav = NAV_BY_ROLE[user?.role] ?? [];
   // The group holding the current page — used to auto-open it on navigation.
   const activeGroup = nav.find((e) => e.group && e.items.some((it) => matchTo(location.pathname, it.to)))?.group ?? null;
-  // Re-glide the indicator on route change AND when the open group changes.
-  const { navRef, indicatorRef } = useSidebarMotion(`${location.pathname}|${openGroup ?? ''}`);
+  // Entrance stagger only; the active state is a pure-CSS pill (no gliding element).
+  const { navRef } = useSidebarMotion(`${location.pathname}|${openGroup ?? ''}`);
 
   // Close the mobile drawer whenever the route changes.
   useEffect(() => setNavOpen(false), [location.pathname]);
@@ -96,7 +96,6 @@ export function AppLayout() {
         </div>
 
         <nav className="sidebar__nav" ref={navRef}>
-          <span className="sidebar__indicator" ref={indicatorRef} aria-hidden />
           {nav.map((entry) => {
             if (!entry.group) {
               return <SidebarLink key={entry.to} item={entry} badge={badges[entry.to] ?? 0} onNavigate={() => setNavOpen(false)} />;
