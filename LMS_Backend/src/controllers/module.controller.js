@@ -62,12 +62,14 @@ const subtopicInput = z.object({
 export const topicSchema = z.object({
   title: z.string().min(1),
   description: z.string().optional(),
+  contentDeliverables: z.string().max(5000).optional(),
   subtopics: z.array(subtopicInput).max(100).optional(),
 });
 
 export const updateTopicSchema = z.object({
   title: z.string().min(1).optional(),
   description: z.string().optional(),
+  contentDeliverables: z.string().max(5000).optional(),
   order: z.number().int().min(0).optional(),
   completed: z.boolean().optional(),
   subtopics: z.array(subtopicInput).max(100).optional(),
@@ -177,6 +179,7 @@ function copyMasterSyllabus(target, src) {
   target.topics = (src.topics ?? []).map((t, i) => ({
     title: t.title,
     description: t.description ?? '',
+    contentDeliverables: t.contentDeliverables ?? '',
     order: t.order ?? i,
     completed: false,
     subtopics: (t.subtopics ?? []).map((s) => ({

@@ -33,7 +33,8 @@ export function SyllabusBoard({ module, canEdit, canMarkTaught = true }) {
   // Derive the open topic from the live module so it stays fresh after edits.
   const openTopic = module.topics.find((t) => t.id === openTopicId) ?? null;
   const countFor = (topicId) => (resources ?? []).filter((r) => (r.topic ?? null) === topicId).length;
-  const saveSubtopics = (subtopics) => updateTopic.mutateAsync({ id: module.id, topicId: openTopicId, subtopics });
+  const saveSubtopics = ({ subtopics, contentDeliverables }) =>
+    updateTopic.mutateAsync({ id: module.id, topicId: openTopicId, subtopics, contentDeliverables });
 
   async function add(e) {
     e.preventDefault();
@@ -170,6 +171,7 @@ export function SyllabusBoard({ module, canEdit, canMarkTaught = true }) {
               <SubtopicsHeader count={openTopic.subtopics?.length ?? 0} />
               <SubtopicsTable
                 subtopics={openTopic.subtopics ?? []}
+                contentDeliverables={openTopic.contentDeliverables ?? ''}
                 canEdit={canEdit}
                 onSave={saveSubtopics}
                 saving={updateTopic.isPending}

@@ -21,6 +21,8 @@ const topicSchema = new Schema(
     order: { type: Number, required: true, default: 0 },
     completed: { type: Boolean, default: false },
     subtopics: { type: [subtopicSchema], default: [] },
+    // One shared "what the trainer delivers" note covering all subtopics of this topic.
+    contentDeliverables: { type: String, default: '' },
   },
   subSchemaOptions,
 );
