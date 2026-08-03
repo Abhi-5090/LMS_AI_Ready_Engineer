@@ -14,9 +14,10 @@ export function useCertTemplate(moduleId) {
 export function usePutCertTemplate() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ moduleId, file, nameYPercent, fontScale }) => {
+    mutationFn: ({ moduleId, file, nameXPercent, nameYPercent, fontScale }) => {
       const fd = new FormData();
       if (file) fd.append('file', file);
+      if (nameXPercent != null) fd.append('nameXPercent', String(nameXPercent));
       if (nameYPercent != null) fd.append('nameYPercent', String(nameYPercent));
       if (fontScale != null) fd.append('fontScale', String(fontScale));
       return unwrap(api.put(`/certificates/templates/${moduleId}`, fd, { headers: { 'Content-Type': 'multipart/form-data' } }));
@@ -41,8 +42,12 @@ export function useIssueModuleCertificates() {
 }
 
 /** Render the template preview PDF (auth-carried) and open it in a new tab. */
-export async function openCertPreview(moduleId, name = 'Student Name') {
-  const res = await api.get(`/certificates/templates/${moduleId}/preview`, { params: { name }, responseType: 'blob' });
+export async function openCertPreview(moduleId, name = 'Student Name', opts = {}) {
+  const params = { name };
+  if (opts.nameXPercent != null) params.nameXPercent = opts.nameXPercent;
+  if (opts.nameYPercent != null) params.nameYPercent = opts.nameYPercent;
+  if (opts.fontScale != null) params.fontScale = opts.fontScale;
+  const res = await api.get(`/certificates/templates/${moduleId}/preview`, { params, responseType: 'blob' });
   const url = URL.createObjectURL(res.data);
   window.open(url, '_blank', 'noopener,noreferrer');
   setTimeout(() => URL.revokeObjectURL(url), 60_000);

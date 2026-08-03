@@ -12,8 +12,10 @@ const certificateTemplateSchema = new Schema(
     fileUrl: { type: String, required: true }, // GridFS URL (/uploads/<name>)
     fileName: { type: String },
     mimeType: { type: String, required: true }, // application/pdf | image/png | image/jpeg
-    // Where the student's name is drawn: horizontally centered, at this % from the
-    // top, sized as this % of the page/image height.
+    // Where the student's name is drawn: centered on this point — nameXPercent from
+    // the LEFT (50 = horizontally centered), nameYPercent from the TOP — sized as
+    // fontScale % of the page/image height.
+    nameXPercent: { type: Number, default: 50, min: 0, max: 100 },
     nameYPercent: { type: Number, default: 55, min: 0, max: 100 },
     fontScale: { type: Number, default: 6, min: 1, max: 20 },
     uploadedBy: { type: Schema.Types.ObjectId, ref: 'User' },

@@ -5,7 +5,7 @@ import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
  * with the student's name drawn on it — horizontally centered, at the configured
  * vertical position and size. Returns the PDF bytes (Uint8Array).
  */
-export async function renderCertificatePdf({ buffer, mimeType, name, nameYPercent = 55, fontScale = 6 }) {
+export async function renderCertificatePdf({ buffer, mimeType, name, nameXPercent = 50, nameYPercent = 55, fontScale = 6 }) {
   let pdfDoc;
   let page;
 
@@ -25,7 +25,9 @@ export async function renderCertificatePdf({ buffer, mimeType, name, nameYPercen
   const fontSize = Math.max(8, (Number(fontScale) / 100) * height);
   const text = String(name || '').trim() || 'Student';
   const textWidth = font.widthOfTextAtSize(text, fontSize);
-  const x = (width - textWidth) / 2;
+  // Center the name on (nameXPercent, nameYPercent); clamp so it stays on the page.
+  const centerX = width * (Number(nameXPercent) / 100);
+  const x = Math.max(0, Math.min(width - textWidth, centerX - textWidth / 2));
   // nameYPercent is measured from the TOP; pdf-lib's y origin is the bottom.
   const y = height * (1 - Number(nameYPercent) / 100) - fontSize / 2;
   page.drawText(text, { x, y, size: fontSize, font, color: rgb(0.12, 0.12, 0.14) });

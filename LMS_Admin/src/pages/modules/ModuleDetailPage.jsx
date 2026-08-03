@@ -362,18 +362,19 @@ function CertificateTemplateCard({ moduleId, moduleName }) {
   const issueAll = useIssueModuleCertificates();
   const toast = useToast();
   const [file, setFile] = useState(null);
+  const [nameX, setNameX] = useState(50);
   const [nameY, setNameY] = useState(55);
   const [fontScale, setFontScale] = useState(6);
   const fileRef = useRef(null);
 
   useEffect(() => {
-    if (tpl) { setNameY(tpl.nameYPercent ?? 55); setFontScale(tpl.fontScale ?? 6); }
+    if (tpl) { setNameX(tpl.nameXPercent ?? 50); setNameY(tpl.nameYPercent ?? 55); setFontScale(tpl.fontScale ?? 6); }
   }, [tpl]);
 
   async function save() {
     if (!tpl && !file) { toast.error('Choose a template file (PDF, PNG or JPG).'); return; }
     try {
-      await put.mutateAsync({ moduleId, file, nameYPercent: nameY, fontScale });
+      await put.mutateAsync({ moduleId, file, nameXPercent: nameX, nameYPercent: nameY, fontScale });
       setFile(null);
       if (fileRef.current) fileRef.current.value = '';
       toast.success('Certificate template saved.');
@@ -383,7 +384,7 @@ function CertificateTemplateCard({ moduleId, moduleName }) {
     try { await del.mutateAsync(moduleId); toast.success('Template removed.'); } catch (e) { toast.error(apiErrorMessage(e)); }
   }
   async function preview() {
-    try { await openCertPreview(moduleId, 'Student Name'); } catch (e) { toast.error(apiErrorMessage(e)); }
+    try { await openCertPreview(moduleId, 'Student Name', { nameXPercent: nameX, nameYPercent: nameY, fontScale }); } catch (e) { toast.error(apiErrorMessage(e)); }
   }
   async function issueToPassers() {
     try {
@@ -424,7 +425,11 @@ function CertificateTemplateCard({ moduleId, moduleName }) {
           {/* Name placement */}
           <div className="certfields">
             <div className="certfield">
-              <span className="certfield__label">Name position — <b>{nameY}%</b> from top</span>
+              <span className="certfield__label">Horizontal position — <b>{nameX}%</b> from left {nameX === 50 ? '(centered)' : ''}</span>
+              <input type="range" min="0" max="100" value={nameX} onChange={(e) => setNameX(Number(e.target.value))} />
+            </div>
+            <div className="certfield">
+              <span className="certfield__label">Vertical position — <b>{nameY}%</b> from top</span>
               <input type="range" min="0" max="100" value={nameY} onChange={(e) => setNameY(Number(e.target.value))} />
             </div>
             <div className="certfield certfield--num">

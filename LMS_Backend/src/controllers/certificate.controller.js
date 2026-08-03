@@ -31,6 +31,7 @@ export async function putCertificateTemplate(req, res) {
   if (!module) throw ApiError.notFound('Module not found');
 
   const existing = await CertificateTemplate.findOne({ module: moduleId });
+  const nameXPercent = req.body.nameXPercent !== undefined ? Number(req.body.nameXPercent) : existing?.nameXPercent ?? 50;
   const nameYPercent = req.body.nameYPercent !== undefined ? Number(req.body.nameYPercent) : existing?.nameYPercent ?? 55;
   const fontScale = req.body.fontScale !== undefined ? Number(req.body.fontScale) : existing?.fontScale ?? 6;
 
@@ -48,7 +49,7 @@ export async function putCertificateTemplate(req, res) {
   if (!fileUrl) throw ApiError.badRequest('Upload a certificate template file.');
 
   const doc = existing ?? new CertificateTemplate({ module: moduleId, organization: module.organization ?? null });
-  Object.assign(doc, { fileUrl, fileName, mimeType, nameYPercent, fontScale, uploadedBy: req.auth.userId });
+  Object.assign(doc, { fileUrl, fileName, mimeType, nameXPercent, nameYPercent, fontScale, uploadedBy: req.auth.userId });
   await doc.save();
   ok(res, doc.toJSON(), existing ? 200 : 201);
 }
@@ -82,9 +83,14 @@ export async function previewCertificateTemplate(req, res) {
   const tpl = await CertificateTemplate.findOne({ module: req.params.moduleId });
   if (!tpl) throw ApiError.notFound('No template for this module');
   const buffer = await readFileBuffer(tpl.fileUrl);
+  // Live preview: query values override the saved ones so the admin can position
+  // the name before saving.
+  const q = req.query;
   const bytes = await renderCertificatePdf({
-    buffer, mimeType: tpl.mimeType, name: req.query.name || 'Student Name',
-    nameYPercent: tpl.nameYPercent, fontScale: tpl.fontScale,
+    buffer, mimeType: tpl.mimeType, name: q.name || 'Student Name',
+    nameXPercent: q.nameXPercent !== undefined ? Number(q.nameXPercent) : tpl.nameXPercent,
+    nameYPercent: q.nameYPercent !== undefined ? Number(q.nameYPercent) : tpl.nameYPercent,
+    fontScale: q.fontScale !== undefined ? Number(q.fontScale) : tpl.fontScale,
   });
   res.setHeader('Content-Type', 'application/pdf');
   res.setHeader('Content-Disposition', 'inline; filename="certificate-preview.pdf"');
@@ -110,7 +116,7 @@ export async function downloadCertificate(req, res) {
   let bytes;
   if (tpl) {
     const buffer = await readFileBuffer(tpl.fileUrl);
-    bytes = await renderCertificatePdf({ buffer, mimeType: tpl.mimeType, name, nameYPercent: tpl.nameYPercent, fontScale: tpl.fontScale });
+    bytes = await renderCertificatePdf({ buffer, mimeType: tpl.mimeType, name, nameXPercent: tpl.nameXPercent, nameYPercent: tpl.nameYPercent, fontScale: tpl.fontScale });
   } else {
     bytes = await renderDefaultCertificatePdf({ name, moduleName: cert.module?.name, certificateId: cert.certificateId });
   }
