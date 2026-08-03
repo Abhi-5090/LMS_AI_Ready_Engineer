@@ -1,0 +1,130 @@
+/* ── Profile hero (GitHub-style identity banner) ─────────────────────────────── */
+.profile-hero {
+  position: relative;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+  background: var(--color-surface);
+  overflow: hidden;
+  margin-bottom: var(--space-6);
+}
+.profile-hero__cover {
+  height: 8.5rem;
+  background:
+    radial-gradient(120% 140% at 85% -20%, color-mix(in srgb, var(--color-secondary) 55%, transparent), transparent 60%),
+    linear-gradient(120deg, var(--color-primary), var(--color-secondary));
+  position: relative;
+}
+.profile-hero__cover::after {
+  /* subtle dotted texture for a gamified feel */
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(rgba(255, 255, 255, 0.16) 1px, transparent 1px);
+  background-size: 16px 16px;
+  opacity: 0.5;
+}
+.profile-hero__main {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-5);
+  padding: 0 var(--space-6) var(--space-5);
+  margin-top: -3.25rem;
+  flex-wrap: wrap;
+}
+/* Avatar with a gradient ring; overlaps the cover. */
+.profile-hero__avatar {
+  position: relative;
+  width: 7rem;
+  height: 7rem;
+  border-radius: 50%;
+  flex: none;
+  padding: 3px;
+  background: linear-gradient(135deg, var(--color-primary), var(--color-secondary));
+  box-shadow: 0 10px 26px -12px color-mix(in srgb, var(--color-primary) 70%, transparent);
+}
+.profile-hero__avatar-inner {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  overflow: hidden;
+  background: var(--color-surface);
+  display: grid;
+  place-items: center;
+  font-size: 1.75rem;
+  font-weight: var(--font-weight-bold);
+  color: var(--color-primary);
+  border: 3px solid var(--color-surface);
+}
+.profile-hero__avatar-inner img { width: 100%; height: 100%; object-fit: cover; }
+.profile-hero__avatar-edit {
+  position: absolute;
+  right: -2px;
+  bottom: -2px;
+  width: 2.1rem;
+  height: 2.1rem;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--color-primary);
+  color: #fff;
+  border: 3px solid var(--color-surface);
+  cursor: pointer;
+  transition: transform 150ms var(--ease-out, ease), background-color 150ms ease;
+}
+.profile-hero__avatar-edit:hover { transform: scale(1.08); background: var(--color-primary-hover); }
+.profile-hero__avatar-edit:active { transform: scale(0.96); }
+
+.profile-hero__id { flex: 1; min-width: 12rem; padding-bottom: 2px; }
+.profile-hero__name { font-size: var(--font-size-2xl, 1.6rem); font-weight: var(--font-weight-bold); line-height: 1.1; display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
+.profile-hero__handle { color: var(--color-text-secondary); font-size: var(--font-size-sm); margin-top: 3px; display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
+.profile-hero__bio { color: var(--color-text-secondary); font-size: var(--font-size-sm); margin: var(--space-3) 0 0; max-width: 46rem; }
+.profile-hero__links { display: flex; gap: var(--space-2); margin-top: var(--space-3); flex-wrap: wrap; }
+.profile-hero__link {
+  display: grid; place-items: center;
+  width: 2.1rem; height: 2.1rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background: var(--color-background);
+  color: var(--color-text-secondary);
+  transition: color 150ms ease, border-color 150ms ease, transform 150ms var(--ease-out, ease), background-color 150ms ease;
+}
+.profile-hero__link:hover { color: var(--color-primary); border-color: var(--color-primary); transform: translateY(-2px); background: var(--color-surface); }
+
+/* Gamified stat chips on the right of the hero. */
+.profile-hero__stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(6.5rem, 1fr));
+  gap: var(--space-2);
+  align-self: center;
+}
+.pstat {
+  min-width: 6.5rem;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border);
+  background: var(--color-background);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.pstat--accent { border-color: transparent; background: color-mix(in srgb, var(--color-primary) 12%, transparent); }
+.pstat__value { font-size: 1.35rem; font-weight: var(--font-weight-bold); color: var(--color-text-primary); font-variant-numeric: tabular-nums; display: flex; align-items: center; gap: 6px; }
+.pstat__value svg { color: var(--color-primary); }
+.pstat__label { font-size: var(--font-size-xs); color: var(--color-text-secondary); }
+
+/* Level / XP progress bar under the identity. */
+.profile-hero__level { margin-top: var(--space-4); max-width: 30rem; }
+.profile-hero__level-top { display: flex; justify-content: space-between; font-size: var(--font-size-xs); color: var(--color-text-secondary); margin-bottom: 5px; }
+.profile-hero__level-top b { color: var(--color-primary); }
+.profile-hero__bar { height: 8px; border-radius: var(--radius-full); background: var(--color-border); overflow: hidden; }
+.profile-hero__bar-fill { height: 100%; border-radius: var(--radius-full); background: linear-gradient(90deg, var(--color-primary), var(--color-secondary)); transition: width 600ms var(--ease-out, ease); }
+
+/* ── Two-column body (side + main), like a profile page ──────────────────────── */
+.profile-body { display: grid; grid-template-columns: 22rem 1fr; gap: var(--space-6); align-items: start; }
+.profile-body__side, .profile-body__main { display: flex; flex-direction: column; gap: var(--space-6); min-width: 0; }
+@media (max-width: 1000px) { .profile-body { grid-template-columns: 1fr; } }
+
+@media (max-width: 640px) {
+  .profile-hero__stats { grid-template-columns: repeat(2, 1fr); width: 100%; }
+  .profile-hero__main { gap: var(--space-4); }
+}

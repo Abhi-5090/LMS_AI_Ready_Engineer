@@ -1,15 +1,17 @@
 import { useMemo, useRef, useState } from 'react';
-import { CalendarCheck, Camera, ExternalLink, FileText, FolderOpen, Github, Globe, MessageCircleQuestion, Plus, Star, Trash2, Upload, Video, X } from 'lucide-react';
+import { Award, CalendarCheck, Camera, Code2, ExternalLink, FileText, FolderOpen, Github, Globe, GraduationCap, Linkedin, Link as LinkIcon, Mail, MessageCircleQuestion, Percent, Plus, Star, Target, Trash2, Upload, Video, X } from 'lucide-react';
 import { ProjectStatus, SOCIAL_PLATFORMS, TECH_STACK, UserRole } from '@/shared';
 import { Badge, Button, Card, CardHeader, EmptyState, FullPageSpinner, Input, Modal, Skeleton, Textarea, useConfirm, useToast } from '@/components/ui';
-import { PageHeader, Stat } from '@/components/PageHeader';
+import { Stat } from '@/components/PageHeader';
 import { apiErrorMessage, downloadFile, fileSrc } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
+import { useStudentAnalytics } from '@/lib/analytics';
 import { useTrainerStats, useUpdateProfile, useUploadAvatar, useUploadResume } from '@/lib/profile';
 import { useAddProject, useDeleteProject, useMyProjects, useTechTags } from '@/lib/projects';
 import { ProjectDetailModal } from '@/pages/projects/ProjectDetailModal';
 import '@/pages/projects/projects.css';
 import '@/pages/modules/modules.css';
+import './profile.css';
 
 const initials = (name = '') => name.split(' ').map((p) => p[0]).filter(Boolean).slice(0, 2).join('').toUpperCase();
 
@@ -20,16 +22,117 @@ export function ProfilePage() {
 
   return (
     <>
-      <PageHeader
-        title="My Profile"
-        subtitle={isStudent ? 'Your details, platform links, and projects.' : 'Your details, scoreboard, and platform links.'}
-      />
-      <DetailsCard user={user} />
-      {!isStudent && <TrainerStatsCard />}
-      <LinksCard user={user} />
-      {isStudent && <ProjectsCard />}
-      {isStudent && <ResumeCard user={user} />}
+      <ProfileHero user={user} isStudent={isStudent} />
+      <div className="profile-body">
+        <div className="profile-body__side">
+          <DetailsCard user={user} />
+          <LinksCard user={user} />
+        </div>
+        <div className="profile-body__main">
+          {isStudent ? (
+            <>
+              <ProjectsCard />
+              <ResumeCard user={user} />
+            </>
+          ) : (
+            <TrainerStatsCard />
+          )}
+        </div>
+      </div>
     </>
+  );
+}
+
+// ── Gamified identity hero (GitHub-profile style) ─────────────────────────────
+const PLATFORM_ICON = { github: Github, linkedin: Linkedin, leetcode: Code2, codechef: Code2, hackerrank: Code2, portfolio: Globe };
+
+function ProfileHero({ user, isStudent }) {
+  const avatar = useUploadAvatar();
+  const toast = useToast();
+  const fileRef = useRef(null);
+
+  async function onAvatar(e) {
+    const file = e.target.files?.[0];
+    if (fileRef.current) fileRef.current.value = '';
+    if (!file) return;
+    try { await avatar.mutateAsync(file); } catch (e2) { toast.error(apiErrorMessage(e2)); }
+  }
+
+  const links = [
+    ...SOCIAL_PLATFORMS.filter((p) => user.links?.[p.key]).map((p) => ({ key: p.key, label: p.label, url: user.links[p.key], Icon: PLATFORM_ICON[p.key] ?? Globe })),
+    ...(user.customLinks ?? []).map((l, i) => ({ key: `c${i}`, label: l.label, url: l.url, Icon: LinkIcon })),
+  ];
+
+  return (
+    <section className="profile-hero">
+      <div className="profile-hero__cover" />
+      <div className="profile-hero__main">
+        <div className="profile-hero__avatar">
+          <div className="profile-hero__avatar-inner">
+            {user.avatarUrl ? <img src={fileSrc(user.avatarUrl)} alt={user.name} /> : initials(user.name)}
+          </div>
+          <input ref={fileRef} type="file" accept="image/*" onChange={onAvatar} hidden />
+          <button type="button" className="profile-hero__avatar-edit" title="Change photo" aria-label="Change photo" onClick={() => fileRef.current?.click()}>
+            <Camera size={15} />
+          </button>
+        </div>
+
+        <div className="profile-hero__id">
+          <div className="profile-hero__name">
+            {user.name}
+            <Badge tone={isStudent ? 'primary' : 'success'}>{isStudent ? 'Student' : 'Trainer'}</Badge>
+          </div>
+          <div className="profile-hero__handle">
+            <Mail size={13} /> {user.email}{user.phone ? ` · ${user.phone}` : ''}
+          </div>
+          {user.bio && <p className="profile-hero__bio">{user.bio}</p>}
+          {links.length > 0 && (
+            <div className="profile-hero__links">
+              {links.map((l) => (
+                <a key={l.key} className="profile-hero__link" href={l.url} target="_blank" rel="noreferrer" title={l.label} aria-label={l.label}>
+                  <l.Icon size={16} />
+                </a>
+              ))}
+            </div>
+          )}
+          {isStudent && <StudentLevel />}
+        </div>
+
+        {isStudent && <StudentHeroStats />}
+      </div>
+    </section>
+  );
+}
+
+function StudentHeroStats() {
+  const { data: a } = useStudentAnalytics();
+  const att = a?.attendance?.percentage ?? 0;
+  const mods = a?.progress ? `${a.progress.completedCount}/${a.progress.total}` : '—';
+  const certs = a?.certificates ?? 0;
+  const avg = a?.scoreSummary?.gradedCount ? `${a.scoreSummary.avgScore}%` : '—';
+  return (
+    <div className="profile-hero__stats">
+      <div className="pstat pstat--accent"><span className="pstat__value"><Percent size={15} />{att}%</span><span className="pstat__label">Attendance</span></div>
+      <div className="pstat"><span className="pstat__value"><GraduationCap size={15} />{mods}</span><span className="pstat__label">Modules</span></div>
+      <div className="pstat"><span className="pstat__value"><Award size={15} />{certs}</span><span className="pstat__label">Certificates</span></div>
+      <div className="pstat"><span className="pstat__value"><Target size={15} />{avg}</span><span className="pstat__label">Avg score</span></div>
+    </div>
+  );
+}
+
+function StudentLevel() {
+  const { data: a } = useStudentAnalytics();
+  const done = a?.progress?.completedCount ?? 0;
+  const total = a?.progress?.total ?? 0;
+  const pct = total ? Math.round((done / total) * 100) : 0;
+  return (
+    <div className="profile-hero__level">
+      <div className="profile-hero__level-top">
+        <span>Curriculum progress</span>
+        <span><b>{done}</b> / {total} modules</span>
+      </div>
+      <div className="profile-hero__bar"><div className="profile-hero__bar-fill" style={{ width: `${pct}%` }} /></div>
+    </div>
   );
 }
 
@@ -61,7 +164,7 @@ function ResumeCard({ user }) {
   }
 
   return (
-    <Card style={{ marginBottom: 'var(--space-6)' }}>
+    <Card>
       <CardHeader title="Resume" subtitle="Store your resume in up to three formats — a PDF, a portfolio, and a video." />
       <div className="resume-formats">
         {/* Soft copy (PDF) */}
@@ -104,7 +207,7 @@ function ResumeCard({ user }) {
 export function TrainerStatsCard() {
   const { data: stats, isLoading } = useTrainerStats();
   return (
-    <Card style={{ marginBottom: 'var(--space-6)' }}>
+    <Card>
       <CardHeader title="Scoreboard" subtitle="Your teaching activity and the ratings students gave you." />
       {isLoading || !stats ? (
         <p className="lms-muted" style={{ marginTop: 'var(--space-3)' }}>Loading…</p>
@@ -124,22 +227,10 @@ export function TrainerStatsCard() {
 
 function DetailsCard({ user }) {
   const update = useUpdateProfile();
-  const avatar = useUploadAvatar();
-  const fileRef = useRef(null);
   const [form, setForm] = useState({ name: user.name ?? '', phone: user.phone ?? '', bio: user.bio ?? '' });
   const [msg, setMsg] = useState('');
   const [err, setErr] = useState('');
 
-  async function onAvatar(e) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setErr('');
-    try {
-      await avatar.mutateAsync(file);
-    } catch (e2) {
-      setErr(apiErrorMessage(e2));
-    }
-  }
   async function save(e) {
     e.preventDefault();
     setErr('');
@@ -153,22 +244,9 @@ function DetailsCard({ user }) {
   }
 
   return (
-    <Card style={{ marginBottom: 'var(--space-6)' }}>
-      <CardHeader title="Profile" subtitle="How you appear across the platform." />
-      <div className="profile-avatar" style={{ margin: 'var(--space-3) 0 var(--space-5)' }}>
-        <div className="profile-avatar__img">
-          {user.avatarUrl ? <img src={fileSrc(user.avatarUrl)} alt={user.name} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} /> : initials(user.name)}
-        </div>
-        <div>
-          <input ref={fileRef} type="file" accept="image/*" onChange={onAvatar} style={{ display: 'none' }} />
-          <Button variant="outline" size="sm" loading={avatar.isPending} onClick={() => fileRef.current?.click()}>
-            <Camera size={15} /> Change photo
-          </Button>
-          <div className="lms-muted" style={{ fontSize: 'var(--font-size-xs)', marginTop: 4 }}>PNG/JPG, up to 8 MB.</div>
-        </div>
-      </div>
-
-      <form onSubmit={save} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+    <Card>
+      <CardHeader title="Edit details" subtitle="Your name, phone and bio — how you appear across the platform." />
+      <form onSubmit={save} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)', marginTop: 'var(--space-3)' }}>
         <Input label="Full name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
         <Input label="Email" value={user.email} disabled />
         <Input label="Phone" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="Optional" />
@@ -214,7 +292,7 @@ function LinksCard({ user }) {
   }
 
   return (
-    <Card style={{ marginBottom: 'var(--space-6)' }}>
+    <Card>
       <div className="panel-head">
         <CardHeader title="Platform Links" subtitle="GitHub, coding profiles & portfolio — so progress is easy to track." />
         <Button type="button" variant="outline" size="sm" onClick={addCustom}><Plus size={15} /> Add link</Button>
@@ -268,7 +346,7 @@ function ProjectsCard() {
   const approved = list.filter((p) => p.status === ProjectStatus.APPROVED).length;
 
   return (
-    <Card style={{ marginBottom: 'var(--space-6)' }}>
+    <Card>
       <div className="panel-head">
         <CardHeader
           title="Projects"
