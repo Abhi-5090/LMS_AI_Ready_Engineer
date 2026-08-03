@@ -607,7 +607,7 @@ function CompletionCard({ a }) {
       ) : total === 0 ? (
         <EmptyState icon={<Users size={24} />} title="No students assigned" description="Assign students on the schedule/allow-list above." />
       ) : (
-        <div className="table-wrap">
+        <div className="table-wrap asmt-scroll" style={{ maxHeight: '42rem' }}>
           <table className="table">
             <thead><tr><th>Student</th><th>Status</th><th>Score</th><th>Attempts</th></tr></thead>
             <tbody>
@@ -659,7 +659,7 @@ function ReattemptsCard({ a }) {
         title="Reattempts"
         subtitle={`${reattempted.length} student${reattempted.length === 1 ? '' : 's'} re-assigned this test`}
       />
-      <div className="table-wrap" style={{ maxHeight: '20rem', overflowY: 'auto' }}>
+      <div className="table-wrap asmt-scroll" style={{ maxHeight: '42rem' }}>
         <table className="table">
           <thead>
             <tr><th>Student</th><th>Attempt</th><th>Assigned</th><th>Result</th></tr>
@@ -696,7 +696,7 @@ function SubmissionsCard({ id }) {
     }
   };
   return (
-    <Card>
+    <Card style={{ marginBottom: 'var(--space-6)' }}>
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem' }}>
         <CardHeader title="Submissions" subtitle="Student attempts and scores" />
         {hasSubs && (
@@ -713,7 +713,7 @@ function SubmissionsCard({ id }) {
           title="No submissions yet"
         />
       ) : (
-        <div className="table-wrap">
+        <div className="table-wrap asmt-scroll" style={{ maxHeight: '42rem' }}>
           <table className="table">
             <thead><tr><th>Student</th><th>Score</th><th>Result</th><th>Proctoring</th><th>Submitted</th></tr></thead>
             <tbody>

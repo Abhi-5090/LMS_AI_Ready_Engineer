@@ -984,3 +984,8 @@
   transition: color 140ms var(--ease-out, ease);
 }
 .page-back:hover { color: var(--color-primary); }
+
+/* Manage tables (who-completed / reattempts / submissions): scroll after ~15 rows,
+   keep the header pinned. Height is set per-table inline. */
+.asmt-scroll { overflow-y: auto; }
+.asmt-scroll thead th { position: sticky; top: 0; z-index: 1; background: var(--color-surface); }
