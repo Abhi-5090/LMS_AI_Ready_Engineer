@@ -331,6 +331,9 @@ async function snapshotsFromBank(questionIds, moduleId) {
     options: q.options,
     correctOption: q.correctOption,
     referenceAnswer: q.referenceAnswer || '',
+    mediaUrl: q.mediaUrl || '',
+    mediaType: q.mediaType || '',
+    mediaName: q.mediaName || '',
     points: q.points,
     sourceId: q._id,
   }));
@@ -458,7 +461,9 @@ export async function assignTemplate(req, res) {
     // Deep-copy the question snapshots so later template edits never change a live test.
     questions: template.questions.map((q) => ({
       type: q.type, prompt: q.prompt, options: q.options, correctOption: q.correctOption,
-      referenceAnswer: q.referenceAnswer || '', points: q.points, sourceId: q.sourceId,
+      referenceAnswer: q.referenceAnswer || '',
+      mediaUrl: q.mediaUrl || '', mediaType: q.mediaType || '', mediaName: q.mediaName || '',
+      points: q.points, sourceId: q.sourceId,
     })),
     availability: AssessmentAvailability.UNLOCKED, // assigning makes it available
     unlockedBy: req.auth.userId,

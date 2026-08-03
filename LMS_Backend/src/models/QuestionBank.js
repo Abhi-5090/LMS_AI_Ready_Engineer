@@ -25,6 +25,14 @@ const questionBankSchema = new Schema(
     // Model answer / grading rubric for AI-graded questions (scenario / prompt /
     // repo). Anchors the evaluator's scoring; never shown to students. Empty for MCQ.
     referenceAnswer: { type: String, default: '' },
+    // Optional media stimulus for a prompt-writing question: the student is SHOWN
+    // this (image / PDF / document) and must write a prompt that achieves the goal
+    // (the `prompt` field). Unlike referenceAnswer, media IS exposed to students.
+    // The AI grader feeds the same stimulus to Claude (image/PDF natively, docs as
+    // extracted text) so it grades the prompt against the actual material.
+    mediaUrl: { type: String, default: '' },
+    mediaType: { type: String, enum: ['', 'image', 'pdf', 'document'], default: '' },
+    mediaName: { type: String, default: '' },
     points: { type: Number, default: 1, min: 1, max: 100 },
     createdBy: { type: Schema.Types.ObjectId, ref: 'User' },
     // Groups questions that arrived together (one Excel upload or one master import)

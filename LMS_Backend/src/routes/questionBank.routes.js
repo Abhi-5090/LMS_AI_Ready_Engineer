@@ -20,6 +20,8 @@ router.delete('/uploads/:batchId', validate({ params: qb.batchParam }), asyncHan
 router.get('/duplicates', validate({ query: qb.moduleQueryReq }), asyncHandler(qb.listDuplicates));
 router.post('/', validate({ body: qb.createBankItemSchema }), asyncHandler(qb.createBankItem));
 router.post('/bulk', validate({ body: qb.bulkBankSchema }), asyncHandler(qb.bulkAddBankItems));
+// Upload a prompt-writing stimulus (image / PDF / document); returns { url, type, name }.
+router.post('/media', qb.uploadQuestionMediaMw, asyncHandler(qb.uploadQuestionMedia));
 // Super admin only (enforced in the handler): copy master-bank questions into the
 // org they're currently drilled into.
 router.post('/import-from-template', validate({ body: qb.importFromTemplateSchema }), asyncHandler(qb.importFromTemplate));

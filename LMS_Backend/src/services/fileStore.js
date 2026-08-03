@@ -198,9 +198,15 @@ export async function serveUpload(req, res) {
   if (!file) return res.status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'File not found' } });
 
   res.setHeader('X-Content-Type-Options', 'nosniff');
+  // PDFs need the browser's built-in viewer, which the `sandbox` directive blocks.
+  // Serving with a locked Content-Type + nosniff means the bytes can't be reinterpreted
+  // as HTML/JS, so dropping the sandbox for PDFs only is safe.
+  const isPdf = (file.contentType || '') === 'application/pdf';
   res.setHeader(
     'Content-Security-Policy',
-    "default-src 'none'; img-src 'self'; media-src 'self'; style-src 'unsafe-inline'; sandbox allow-same-origin",
+    isPdf
+      ? "default-src 'none'; img-src 'self'; media-src 'self'; object-src 'self'; style-src 'unsafe-inline'"
+      : "default-src 'none'; img-src 'self'; media-src 'self'; style-src 'unsafe-inline'; sandbox allow-same-origin",
   );
   res.setHeader('Content-Type', file.contentType || 'application/octet-stream');
   res.setHeader('Accept-Ranges', 'bytes');

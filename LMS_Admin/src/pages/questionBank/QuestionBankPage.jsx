@@ -1,14 +1,15 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import * as XLSX from 'xlsx';
-import { AlertTriangle, ArrowDown, ArrowDownUp, ArrowUp, Boxes, CheckCircle2, Copy, Download, FileQuestion, FolderOpen, Library, Lock, Pencil, Plus, Trash2, UploadCloud, X } from 'lucide-react';
+import { AlertTriangle, ArrowDown, ArrowDownUp, ArrowUp, Boxes, CheckCircle2, Copy, Download, FileQuestion, FileText, FolderOpen, Library, Lock, Pencil, Plus, Trash2, UploadCloud, X } from 'lucide-react';
 import { QuestionType, QuestionComplexity, UserRole } from '@/shared';
 import { Badge, Button, Card, CardHeader, EmptyState, Input, Modal, Select, SkeletonTable, useConfirm, useToast } from '@/components/ui';
 import { PageHeader } from '@/components/PageHeader';
-import { apiErrorMessage } from '@/lib/api';
+import { apiErrorMessage, fileSrc } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { useModules } from '@/lib/modules';
 import {
   useAddBankQuestion,
+  useUploadQuestionMedia,
   useBulkAddBankQuestions,
   useDeleteBankQuestion,
   useDeleteUploadBatch,
@@ -524,7 +525,7 @@ function ImportFromMasterModal({ modules, defaultModuleId, onClose }) {
   );
 }
 
-const BLANK_Q = { type: QuestionType.MCQ, complexity: QuestionComplexity.MEDIUM, prompt: '', options: ['', ''], correctOption: 0, referenceAnswer: '', points: 1, topic: '' };
+const BLANK_Q = { type: QuestionType.MCQ, complexity: QuestionComplexity.MEDIUM, prompt: '', options: ['', ''], correctOption: 0, referenceAnswer: '', mediaUrl: '', mediaType: '', mediaName: '', points: 1, topic: '' };
 
 function BankQuestionModal({ moduleId, topics, question, onClose }) {
   const isEdit = Boolean(question);
@@ -544,12 +545,32 @@ function BankQuestionModal({ moduleId, topics, question, onClose }) {
             options: question.options?.length ? [...question.options] : ['', ''],
             correctOption: question.correctOption ?? 0,
             referenceAnswer: question.referenceAnswer ?? '',
+            mediaUrl: question.mediaUrl ?? '',
+            mediaType: question.mediaType ?? '',
+            mediaName: question.mediaName ?? '',
             points: question.points ?? 1,
             topic: question.topic ?? '',
           }
         : BLANK_Q,
     );
   }, [question]);
+
+  const uploadMedia = useUploadQuestionMedia();
+  const mediaRef = useRef(null);
+  const [mediaErr, setMediaErr] = useState('');
+
+  async function onMediaFile(e) {
+    setMediaErr('');
+    const file = e.target.files?.[0];
+    if (mediaRef.current) mediaRef.current.value = ''; // allow re-picking the same file
+    if (!file) return;
+    try {
+      const res = await uploadMedia.mutateAsync(file);
+      setForm((f) => ({ ...f, mediaUrl: res.url, mediaType: res.type, mediaName: res.name }));
+    } catch (e2) {
+      setMediaErr(apiErrorMessage(e2));
+    }
+  }
 
   const isMcq = form.type === QuestionType.MCQ;
   const setOption = (i, v) => setForm((f) => ({ ...f, options: f.options.map((o, idx) => (idx === i ? v : o)) }));
@@ -572,7 +593,13 @@ function BankQuestionModal({ moduleId, topics, question, onClose }) {
       topic: form.topic,
       ...(isMcq
         ? { options: form.options.map((o) => o.trim()).filter(Boolean), correctOption: form.correctOption, referenceAnswer: '' }
-        : { options: [], referenceAnswer: form.referenceAnswer?.trim() || '' }),
+        : {
+            options: [],
+            referenceAnswer: form.referenceAnswer?.trim() || '',
+            ...(form.mediaUrl
+              ? { mediaUrl: form.mediaUrl, mediaType: form.mediaType, mediaName: form.mediaName }
+              : { mediaUrl: '', mediaName: '' }),
+          }),
     };
     try {
       if (isEdit) await update.mutateAsync({ id: question.id, ...payload });
@@ -643,6 +670,42 @@ function BankQuestionModal({ moduleId, topics, question, onClose }) {
             <p className="lms-muted" style={{ fontSize: 'var(--font-size-xs)', marginTop: 4 }}>
               Graded by the AI evaluation engine. Providing a model answer here makes grading far more accurate — it is never shown to students.
             </p>
+          </div>
+        )}
+        {form.type === QuestionType.PROMPT_WRITING && (
+          <div className="field">
+            <label className="field__label">
+              Stimulus <span className="lms-muted">(optional — image, PDF, or document the student writes a prompt about)</span>
+            </label>
+            {form.mediaUrl ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', flexWrap: 'wrap' }}>
+                {form.mediaType === 'image' ? (
+                  <img
+                    src={fileSrc(form.mediaUrl)}
+                    alt={form.mediaName || 'stimulus'}
+                    style={{ maxWidth: '180px', maxHeight: '130px', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)' }}
+                  />
+                ) : (
+                  <a href={fileSrc(form.mediaUrl)} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                    <FileText size={16} /> {form.mediaName || 'Attached file'}
+                  </a>
+                )}
+                <Button type="button" size="sm" variant="ghost" onClick={() => setForm((f) => ({ ...f, mediaUrl: '', mediaType: '', mediaName: '' }))}>
+                  <X size={15} /> Remove
+                </Button>
+              </div>
+            ) : (
+              <>
+                <input ref={mediaRef} type="file" accept="image/*,.pdf,.doc,.docx,.txt,.md" style={{ display: 'none' }} onChange={onMediaFile} />
+                <Button type="button" size="sm" variant="outline" loading={uploadMedia.isPending} onClick={() => mediaRef.current?.click()}>
+                  <UploadCloud size={15} style={{ marginRight: 6 }} /> Upload stimulus
+                </Button>
+              </>
+            )}
+            <p className="lms-muted" style={{ fontSize: 'var(--font-size-xs)', marginTop: 4 }}>
+              The student sees this and must write a prompt that achieves the goal above. The AI grader is given the same image/PDF (documents are read as text).
+            </p>
+            {mediaErr && <span className="field__error">{mediaErr}</span>}
           </div>
         )}
         <Input label="Points" type="number" min="1" max="100" value={form.points} onChange={(e) => setForm({ ...form, points: e.target.value })} />

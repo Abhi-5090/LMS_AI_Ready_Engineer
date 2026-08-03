@@ -18,6 +18,11 @@ const questionSchema = new Schema(
     // (scenario / prompt / repo). Fed to the evaluator to anchor its scoring, and
     // NEVER exposed to students. Empty for MCQ.
     referenceAnswer: { type: String, default: '' },
+    // Media stimulus for a prompt-writing question (image / PDF / document). Shown
+    // to students and fed to the AI grader. Snapshot from the bank item.
+    mediaUrl: { type: String, default: '' },
+    mediaType: { type: String, default: '' },
+    mediaName: { type: String, default: '' },
     points: { type: Number, default: 1 },
     // The question-bank item this was snapshot from (for de-duping re-adds).
     sourceId: { type: Schema.Types.ObjectId },

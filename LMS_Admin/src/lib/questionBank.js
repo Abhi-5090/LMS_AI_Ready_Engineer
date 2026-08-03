@@ -21,6 +21,17 @@ function useInvalidate() {
   return () => qc.invalidateQueries({ queryKey: bankKeys.all });
 }
 
+/** Upload a prompt-writing stimulus (image / PDF / document) → { url, type, name }. */
+export function useUploadQuestionMedia() {
+  return useMutation({
+    mutationFn: (file) => {
+      const fd = new FormData();
+      fd.append('file', file);
+      return unwrap(api.post('/question-bank/media', fd, { headers: { 'Content-Type': 'multipart/form-data' } }));
+    },
+  });
+}
+
 export function useAddBankQuestion() {
   const invalidate = useInvalidate();
   return useMutation({ mutationFn: (body) => unwrap(api.post('/question-bank', body)), onSuccess: invalidate });

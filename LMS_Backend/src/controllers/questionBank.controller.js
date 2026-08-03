@@ -1,12 +1,24 @@
+import path from 'node:path';
 import mongoose from 'mongoose';
+import multer from 'multer';
 import { z } from 'zod';
 import { QuestionType, QuestionComplexity, UserRole } from '#shared';
 import { Module, QuestionBankItem } from '../models/index.js';
 import { getTemplateOrg } from '../services/orgSeed.js';
+import { gridfsStorage } from '../services/fileStore.js';
 import { ApiError } from '../utils/ApiError.js';
 import { ok } from '../utils/http.js';
 
 const objectId = z.string().length(24);
+
+// Media fields shared by create/update: the stimulus a prompt-writing question
+// shows the student. mediaUrl is an internal /api/uploads path from the upload
+// endpoint below. Cleared server-side for MCQ (which never carries media).
+const mediaFields = {
+  mediaUrl: z.string().max(500).optional(),
+  mediaType: z.enum(['image', 'pdf', 'document']).optional(),
+  mediaName: z.string().max(300).optional(),
+};
 
 export const bankItemParam = z.object({ itemId: objectId });
 export const batchParam = z.object({ batchId: objectId });
@@ -47,6 +59,7 @@ const questionInput = z
     options: z.array(z.string().min(1)).optional(),
     correctOption: z.number().int().min(0).optional(),
     referenceAnswer: z.string().max(5000).optional(),
+    ...mediaFields,
     points: z.number().int().min(1).max(100).default(1),
   })
   .superRefine((q, ctx) => {
@@ -69,6 +82,7 @@ export const createBankItemSchema = z
     options: z.array(z.string().min(1)).optional(),
     correctOption: z.number().int().min(0).optional(),
     referenceAnswer: z.string().max(5000).optional(),
+    ...mediaFields,
     points: z.number().int().min(1).max(100).default(1),
   })
   .superRefine((q, ctx) => {
@@ -106,6 +120,7 @@ export const updateBankItemSchema = z
     options: z.array(z.string().min(1)).optional(),
     correctOption: z.number().int().min(0).optional(),
     referenceAnswer: z.string().max(5000).optional(),
+    ...mediaFields,
     points: z.number().int().min(1).max(100).optional(),
     topic: objectId.optional().nullable(),
   })
@@ -246,12 +261,52 @@ export async function createBankItem(req, res) {
     prompt: req.body.prompt,
     options: req.body.options ?? [],
     correctOption: req.body.correctOption,
-    // MCQ is graded deterministically, so it never carries a reference answer.
+    // MCQ is graded deterministically, so it never carries a reference answer or media.
     referenceAnswer: req.body.type === QuestionType.MCQ ? '' : (req.body.referenceAnswer ?? ''),
+    mediaUrl: req.body.type === QuestionType.MCQ ? '' : (req.body.mediaUrl ?? ''),
+    mediaType: req.body.type === QuestionType.MCQ ? '' : (req.body.mediaType ?? ''),
+    mediaName: req.body.type === QuestionType.MCQ ? '' : (req.body.mediaName ?? ''),
     points: req.body.points,
     createdBy: req.auth.userId,
   });
   ok(res, item.toJSON(), 201);
+}
+
+// ── Prompt-writing media stimulus upload ──────────────────────────────────────
+
+// Accepted stimulus files: images + PDF (fed to Claude natively) and documents
+// (docx/doc/txt/md — extracted to text at grading time). No SVG (stored-XSS) and
+// no video (Claude can't watch video).
+const MEDIA_EXT = new Set(['.png', '.jpg', '.jpeg', '.webp', '.gif', '.pdf', '.doc', '.docx', '.txt', '.md']);
+
+export const uploadQuestionMediaMw = multer({
+  storage: gridfsStorage('question'),
+  limits: { fileSize: 25 * 1024 * 1024, files: 1 },
+  fileFilter: (req, file, cb) => {
+    const ext = path.extname(file.originalname || '').toLowerCase();
+    if (!MEDIA_EXT.has(ext)) {
+      return cb(ApiError.badRequest('Unsupported file. Use an image, PDF, or document (docx/txt).'));
+    }
+    cb(null, true);
+  },
+}).single('file');
+
+/** Classify an uploaded stimulus into the three media buckets. */
+function mediaTypeFor(mimetype = '', filename = '') {
+  if (mimetype.startsWith('image/')) return 'image';
+  const ext = path.extname(filename).toLowerCase();
+  if (mimetype === 'application/pdf' || ext === '.pdf') return 'pdf';
+  return 'document';
+}
+
+/** Store a stimulus file and return its URL + classified type for the question form. */
+export async function uploadQuestionMedia(req, res) {
+  if (!req.file) throw ApiError.badRequest('No file uploaded');
+  ok(res, {
+    url: req.file.url,
+    type: mediaTypeFor(req.file.mimetype, req.file.filename),
+    name: req.file.originalname || 'stimulus',
+  }, 201);
 }
 
 /**
@@ -302,16 +357,21 @@ export async function updateBankItem(req, res) {
   const item = await QuestionBankItem.findById(req.params.itemId);
   if (!item) throw ApiError.notFound('Question not found');
   const module = await loadManageableModule(req, item.module); // authorize on its module
-  const { prompt, type, complexity, options, correctOption, referenceAnswer, points, topic } = req.body;
+  const { prompt, type, complexity, options, correctOption, referenceAnswer, mediaUrl, mediaType, mediaName, points, topic } = req.body;
   if (prompt !== undefined) item.prompt = prompt;
   if (type !== undefined) item.type = type;
   if (complexity !== undefined) item.complexity = complexity;
   if (options !== undefined) item.options = options;
   if (correctOption !== undefined) item.correctOption = correctOption;
   if (referenceAnswer !== undefined) item.referenceAnswer = referenceAnswer;
+  if (mediaUrl !== undefined) item.mediaUrl = mediaUrl;
+  if (mediaType !== undefined) item.mediaType = mediaType;
+  if (mediaName !== undefined) item.mediaName = mediaName;
+  // Removing the stimulus (mediaUrl → '') clears its type/name too.
+  if (mediaUrl === '') { item.mediaType = ''; item.mediaName = ''; }
   if (points !== undefined) item.points = points;
-  // Switching a question to MCQ clears any leftover reference answer.
-  if ((type ?? item.type) === QuestionType.MCQ) item.referenceAnswer = '';
+  // Switching a question to MCQ clears any leftover reference answer + media.
+  if ((type ?? item.type) === QuestionType.MCQ) { item.referenceAnswer = ''; item.mediaUrl = ''; item.mediaType = ''; item.mediaName = ''; }
   if (topic !== undefined) {
     item.topic = topic ?? null;
     item.topicTitle = topicTitleOf(module, topic);

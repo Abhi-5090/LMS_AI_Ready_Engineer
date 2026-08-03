@@ -1,7 +1,45 @@
 import { createEvaluator } from '../ai-engine/index.js';
 import { QuestionType, SubmissionStatus } from '#shared';
 import { Assessment, Submission, getStoredAiApiKey } from '../models/index.js';
+import { readFileBuffer } from './fileStore.js';
 import { env } from '../config/env.js';
+
+const IMAGE_MIME = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', webp: 'image/webp', gif: 'image/gif' };
+const MAX_IMAGE_BYTES = 4.5 * 1024 * 1024; // Anthropic image block ceiling
+const MAX_PDF_BYTES = 20 * 1024 * 1024;
+
+/**
+ * Turn a prompt-writing question's attached stimulus into the shape evaluatePrompt
+ * expects: image/PDF as base64, documents as extracted text. Returns null when there
+ * is no media, the file is missing, or it's too large to send — grading then falls
+ * back to text-only (task + rubric). Never throws.
+ */
+async function prepareMedia(q) {
+  if (!q.mediaUrl || !q.mediaType) return null;
+  try {
+    const buf = await readFileBuffer(q.mediaUrl);
+    const name = (q.mediaName || q.mediaUrl).toLowerCase();
+    if (q.mediaType === 'image') {
+      if (buf.length > MAX_IMAGE_BYTES) return null;
+      const ext = name.split('.').pop();
+      return { kind: 'image', mimeType: IMAGE_MIME[ext] || 'image/png', data: buf.toString('base64') };
+    }
+    if (q.mediaType === 'pdf') {
+      if (buf.length > MAX_PDF_BYTES) return null;
+      return { kind: 'pdf', data: buf.toString('base64') };
+    }
+    // document → extract text (docx via mammoth; txt/md read directly)
+    if (name.endsWith('.docx') || name.endsWith('.doc')) {
+      const m = await import('mammoth');
+      const mammoth = m.default || m;
+      const { value } = await mammoth.extractRawText({ buffer: buf });
+      return { kind: 'text', text: (value || '').slice(0, 20000) };
+    }
+    return { kind: 'text', text: buf.toString('utf8').slice(0, 20000) };
+  } catch {
+    return null;
+  }
+}
 
 let _evaluator = null;
 let _evaluatorKey = null; // the key the cached evaluator was built with
@@ -93,11 +131,13 @@ export async function gradeSubmission(assessment, submission, evaluator = undefi
             passingScore: assessment.passingScore,
           });
         } else {
-          // PROMPT_WRITING
+          // PROMPT_WRITING — feed the same stimulus the student saw (if any).
+          const media = await prepareMedia(q);
           result = await evaluator.evaluatePrompt({
             task: q.prompt,
             prompt: answer.text,
             reference,
+            media,
             passingScore: assessment.passingScore,
           });
         }

@@ -92,10 +92,26 @@ export function createEvaluator(opts = {}) {
   const run = makeRunner(client);
   const githubToken = opts.githubToken;
 
-  /** @returns {Promise<EvaluationResult>} */
-  async function evaluatePrompt({ task, prompt, reference = '', passingScore = 70 }) {
+  /**
+   * Grade a student's prompt. When `media` is provided, the student was shown a
+   * stimulus (image / PDF / extracted document text) and had to write a prompt that
+   * achieves the goal against it — so we hand Claude the SAME stimulus and ask it to
+   * mentally run the prompt on it before scoring.
+   * @param {{ task:string, prompt:string, reference?:string, passingScore?:number,
+   *   media?: { kind:'image'|'pdf'|'text', mimeType?:string, data?:string, text?:string } | null }} args
+   * @returns {Promise<EvaluationResult>}
+   */
+  async function evaluatePrompt({ task, prompt, reference = '', media = null, passingScore = 70 }) {
+    const hasMedia = !!(media && (media.data || media.text));
     const system =
       'You are an expert prompt-engineering examiner for an AI engineering program. ' +
+      (hasMedia
+        ? 'The student was shown a stimulus (image / PDF / document) and asked to write a prompt that, run against ' +
+          'that stimulus, achieves the stated goal. You are given the SAME stimulus. First, mentally execute the ' +
+          'student\'s prompt against the stimulus and consider the output it would produce; then judge how well it ' +
+          'achieves the goal on THIS specific material — reward prompts that correctly reference and use what is ' +
+          'actually in the stimulus, and penalize ones that ignore it or assume things not present. '
+        : '') +
       'Grade the student\'s submitted prompt strictly and fairly on five criteria, each 0–100: ' +
       'clarity, completeness, reasoning, structure, and output quality. ' +
       'Then give an overall score 0–100 (a holistic weighting, not a raw average), a concise summary, ' +
@@ -105,10 +121,27 @@ export function createEvaluator(opts = {}) {
         ? ' A trainer-provided model answer / rubric is included: treat it as the reference for what an ' +
           'excellent answer looks like, but reward any equally-valid approach the student takes.'
         : '');
-    const user =
-      `# Task the student was asked to write a prompt for\n${task}\n\n` +
-      (reference ? `# Trainer's model answer / grading rubric (reference)\n${reference}\n\n` : '') +
-      `# Student's submitted prompt\n${prompt}`;
+
+    let user;
+    if (hasMedia) {
+      const blocks = [{ type: 'text', text: `# Goal the student's prompt must achieve\n${task}` }];
+      if (reference) blocks.push({ type: 'text', text: `# Trainer's model answer / grading rubric (reference)\n${reference}` });
+      blocks.push({ type: 'text', text: '# Stimulus the student was shown' });
+      if (media.kind === 'image') {
+        blocks.push({ type: 'image', source: { type: 'base64', media_type: media.mimeType || 'image/png', data: media.data } });
+      } else if (media.kind === 'pdf') {
+        blocks.push({ type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: media.data } });
+      } else {
+        blocks.push({ type: 'text', text: media.text || '(document text unavailable)' });
+      }
+      blocks.push({ type: 'text', text: `# Student's submitted prompt\n${prompt}` });
+      user = blocks;
+    } else {
+      user =
+        `# Task the student was asked to write a prompt for\n${task}\n\n` +
+        (reference ? `# Trainer's model answer / grading rubric (reference)\n${reference}\n\n` : '') +
+        `# Student's submitted prompt\n${prompt}`;
+    }
     const r = await run({ system, user, schema: PROMPT_SCHEMA, schemaName: 'prompt_evaluation' });
     const score = clamp(r.score);
     return {

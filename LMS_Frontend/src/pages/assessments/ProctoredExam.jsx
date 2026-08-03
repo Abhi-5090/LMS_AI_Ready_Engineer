@@ -7,6 +7,7 @@ import { apiErrorMessage } from '@/lib/api';
 import { useProctorShot, useRecordWarning, useSaveProgress, useStartAttempt, useSubmitAssessment } from '@/lib/assessments';
 import { assessmentLabel, groupQuestionsByType, isGithubRepoUrl, QUESTION_TYPE_HINT, QUESTION_TYPE_LABEL } from './assessmentsUi';
 import { RepoInput } from './TakeAssessment';
+import { QuestionMedia } from './QuestionMedia';
 import './exam.css';
 const fmtClock = (ms) => {
   const s = Math.max(0, Math.round(ms / 1000));
@@ -446,6 +447,7 @@ function TimedExam({ assessment, questions, endsAt, serverNow, initialStream }) 
             <div className="exam-q-single">
               <div className="exam-q__section">{QUESTION_TYPE_LABEL[cur.q.type]} · Question {cur.number} of {ordered.length}</div>
               <div className="exam-q__prompt">{cur.number}. {cur.q.prompt}</div>
+              <QuestionMedia url={cur.q.mediaUrl} type={cur.q.mediaType} name={cur.q.mediaName} />
               {cur.q.type === QuestionType.MCQ ? (
                 cur.q.options?.map((opt, oi) => (
                   <label key={oi} className={`exam-opt${answers[cur.q.id]?.selectedOption === oi ? ' is-selected' : ''}`}>

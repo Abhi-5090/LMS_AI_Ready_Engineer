@@ -8,6 +8,7 @@ import { PageHeader } from '@/components/PageHeader';
 import { apiErrorMessage } from '@/lib/api';
 import { assessmentKeys, useAssessment, useLeaderboard, useMySubmission, useSubmitAssessment } from '@/lib/assessments';
 import { assessmentLabel, groupQuestionsByType, isGithubRepoUrl, QUESTION_TYPE_HINT, QUESTION_TYPE_LABEL, sectionRange } from './assessmentsUi';
+import { QuestionMedia } from './QuestionMedia';
 import { ProctoredFlow } from './ProctoredExam';
 import '../modules/modules.css';
 import './exam.css';
@@ -550,6 +551,7 @@ function Quiz({ a }) {
         <Card style={{ marginBottom: 'var(--space-4)' }}>
           <div className="quiz-q__section">{QUESTION_TYPE_LABEL[cur.q.type]} · Question {cur.number} of {ordered.length}</div>
           <div className="quiz-q__prompt">{cur.number}. {cur.q.prompt}</div>
+          <QuestionMedia url={cur.q.mediaUrl} type={cur.q.mediaType} name={cur.q.mediaName} />
           {cur.q.type === QuestionType.MCQ ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
               {cur.q.options?.map((opt, oi) => (
