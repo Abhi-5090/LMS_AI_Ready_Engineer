@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
-import { Check, FileSpreadsheet, Users } from 'lucide-react';
+import { Check, Download, FileSpreadsheet, Users } from 'lucide-react';
 import { AttendanceStatus } from '@/shared';
 import { Button, Card, CardHeader, EmptyState, ErrorState, Input, Select, SkeletonTable } from '@/components/ui';
 import { apiErrorMessage } from '@/lib/api';
 import { useClassRoster, useSaveAttendance } from '@/lib/attendance';
 import { parseTeamsAttendance, classStartMs, classifyJoin } from '@/lib/teamsAttendance';
+import { downloadAttendanceTemplate } from '@/lib/attendanceTemplate';
 import { ATT_OPTIONS } from './attendanceUi';
 import { formatDate } from '@/lib/format';
 import './attendance.css';
@@ -141,15 +142,20 @@ export function RosterEditor({ classId, onSaved }) {
               </div>
               <div className="teams-import__action">
                 <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv" onChange={onTeamsFile} style={{ display: 'none' }} />
+                <Button variant="outline" onClick={() => downloadAttendanceTemplate(data.class, rows)}>
+                  <Download size={15} style={{ marginRight: 6 }} /> Download template
+                </Button>
                 <Button variant="outline" onClick={() => fileRef.current?.click()}>
                   <FileSpreadsheet size={15} style={{ marginRight: 6 }} /> Import Teams attendance
                 </Button>
               </div>
             </div>
             <p className="lms-muted" style={{ fontSize: 'var(--font-size-xs)', margin: 0 }}>
-              Upload the Microsoft Teams attendance export (email + join time). Students who joined within the grace
-              period count as <strong>Present</strong>, later joins as <strong>Late</strong>, and anyone not in the
-              sheet as <strong>Absent</strong>. You can adjust below before saving.
+              Upload the Microsoft Teams attendance export (email + join time) — or <strong>Download template</strong> to
+              get a sheet pre-filled with this batch&apos;s students, fill in each attendee&apos;s <strong>First Join</strong> time
+              (e.g. 9:32&nbsp;AM), and re-upload it here. Students who joined within the grace period count as
+              <strong> Present</strong>, later joins as <strong>Late</strong>, and anyone left blank as <strong>Absent</strong>.
+              You can adjust below before saving.
             </p>
             {importError && <span className="field__error">{importError}</span>}
             {importInfo && (
