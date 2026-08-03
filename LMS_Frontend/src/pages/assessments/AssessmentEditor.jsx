@@ -699,10 +699,13 @@ function SubmissionsCard({ id, title }) {
       if ((s.attempt ?? 0) > (cur.latest.attempt ?? 0)) cur.latest = s;
     }
   }
-  const rows = [...byStudent.values()].map(({ latest: s, count }) => ({
+  // The latest full submission per student (+ attempt count) — drives both the
+  // on-screen table and the report, so they match.
+  const latestList = [...byStudent.values()].map(({ latest, count }) => ({ ...latest, attempts: count }));
+  const rows = latestList.map((s) => ({
     student: s.student?.name ?? '',
     email: s.student?.email ?? '',
-    attempts: count,
+    attempts: s.attempts,
     status: SUB_STATUS_LABEL[s.status] ?? s.status,
     score: s.score == null ? '—' : `${s.score}%`,
     result: s.disqualified ? 'Disqualified' : s.status === 'graded' ? (s.passed ? 'Passed' : 'Failed') : '—',
@@ -724,7 +727,7 @@ function SubmissionsCard({ id, title }) {
   return (
     <Card style={{ marginBottom: 'var(--space-6)' }}>
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem' }}>
-        <CardHeader title="Submissions" subtitle="Every attempt across all assignments of this test" />
+        <CardHeader title="Submissions" subtitle="Each student's latest attempt across all assignments" />
         {hasSubs && (
           <div style={{ display: 'flex', gap: 'var(--space-2)', flexShrink: 0 }}>
             <Button variant="secondary" size="sm" onClick={onExcel} loading={exporting === 'excel'}>
@@ -737,7 +740,7 @@ function SubmissionsCard({ id, title }) {
         )}
       </div>
       {isLoading && !subs ? (
-        <SkeletonTable rows={5} cols={5} />
+        <SkeletonTable rows={5} cols={6} />
       ) : !subs || subs.length === 0 ? (
         <EmptyState
           icon={<ScrollText size={26} />}
@@ -746,15 +749,15 @@ function SubmissionsCard({ id, title }) {
       ) : (
         <div className="table-wrap asmt-scroll" style={{ maxHeight: '42rem' }}>
           <table className="table">
-            <thead><tr><th>Student</th><th>Score</th><th>Result</th><th>Proctoring</th><th>Submitted</th></tr></thead>
+            <thead><tr><th>Student</th><th>Attempts</th><th>Score</th><th>Result</th><th>Proctoring</th><th>Submitted</th></tr></thead>
             <tbody>
-              {subs.map((s) => (
+              {latestList.map((s) => (
                 <tr key={s.id}>
                   <td>
                     {s.student?.name}
-                    {s.attempt > 1 && <span className="lms-muted" style={{ fontSize: 'var(--font-size-xs)' }}> · attempt {s.attempt}</span>}
                     <div className="lms-muted" style={{ fontSize: 'var(--font-size-xs)' }}>{s.student?.email}</div>
                   </td>
+                  <td>{s.attempts > 1 ? <Badge tone="primary">{s.attempts}</Badge> : s.attempts}</td>
                   <td>{s.score ?? '—'}%</td>
                   <td>
                     {s.disqualified ? (
