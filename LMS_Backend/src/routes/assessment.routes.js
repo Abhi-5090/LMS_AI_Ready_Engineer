@@ -44,6 +44,8 @@ router.post('/:id/warning', studentOnly, validate({ params: sub.assessmentIdPara
 // Submissions.
 router.post('/:id/submit', studentOnly, validate({ params: sub.assessmentIdParam, body: sub.submitSchema }), asyncHandler(sub.submit));
 router.get('/:id/submission', studentOnly, validate({ params: sub.assessmentIdParam }), asyncHandler(sub.getMySubmission));
+// Consolidated results across every re-assignment of this test to its batch.
+router.get('/:id/consolidated', adminOrTrainer, validate({ params: a.assessmentIdParam }), asyncHandler(a.consolidatedSubmissions));
 router.get('/:id/submissions', adminOrTrainer, validate({ params: sub.assessmentIdParam }), asyncHandler(sub.listSubmissions));
 router.get('/:id/submissions.csv', adminOrTrainer, validate({ params: sub.assessmentIdParam }), asyncHandler(sub.exportSubmissionsCsv));
 router.get('/:id/leaderboard', validate({ params: sub.assessmentIdParam }), asyncHandler(sub.leaderboard));

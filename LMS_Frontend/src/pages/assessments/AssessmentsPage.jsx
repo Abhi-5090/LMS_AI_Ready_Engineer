@@ -410,6 +410,22 @@ function TrainerModuleTests({ moduleId, moduleObj, onBack }) {
   const { data: assigned, isLoading: aLoading } = useAssessments({ module: moduleId });
   const [assignTarget, setAssignTarget] = useState(null); // a template being assigned
 
+  // Re-assigning a test makes another instance (same template + batch). Collapse those
+  // into ONE row per test so the trainer sees one card; Manage opens the consolidated view.
+  const assignedGroups = useMemo(() => {
+    const m = new Map();
+    for (const a of assigned ?? []) {
+      const key = `${a.sourceTemplate ?? a.id}::${a.batch?.id ?? a.batch ?? ''}`;
+      if (!m.has(key)) m.set(key, []);
+      m.get(key).push(a);
+    }
+    return [...m.values()].map((insts) => ({
+      rep: insts[insts.length - 1], // any sibling works; the view consolidates them all
+      count: insts.length,
+      live: insts.some((x) => x.availability === AssessmentAvailability.UNLOCKED),
+    }));
+  }, [assigned]);
+
   return (
     <>
       <ModuleBar moduleObj={moduleObj} onBack={onBack} />
@@ -463,17 +479,17 @@ function TrainerModuleTests({ moduleId, moduleObj, onBack }) {
             <table className="table">
               <thead><tr><th>Test</th><th>Type</th><th>Status</th><th /></tr></thead>
               <tbody>
-                {assigned?.map((a) => {
-                  const unlocked = a.availability === AssessmentAvailability.UNLOCKED;
-                  return (
-                    <tr key={a.id}>
-                      <td>{a.title}</td>
-                      <td><Badge tone={ASSESSMENT_TYPE_TONE[a.type]}>{ASSESSMENT_TYPE_LABEL[a.type]}</Badge></td>
-                      <td><Badge tone={unlocked ? 'success' : 'neutral'}>{unlocked ? 'Live' : 'Locked'}</Badge></td>
-                      <td><Button size="sm" variant="outline" onClick={() => navigate(`/app/assessments/${a.id}`)}>Manage</Button></td>
-                    </tr>
-                  );
-                })}
+                {assignedGroups.map(({ rep, count, live }) => (
+                  <tr key={rep.id}>
+                    <td>
+                      {rep.title}
+                      {count > 1 && <span className="lms-muted" style={{ fontSize: 'var(--font-size-xs)', marginLeft: 6 }}>· {count} assignments</span>}
+                    </td>
+                    <td><Badge tone={ASSESSMENT_TYPE_TONE[rep.type]}>{ASSESSMENT_TYPE_LABEL[rep.type]}</Badge></td>
+                    <td><Badge tone={live ? 'success' : 'neutral'}>{live ? 'Live' : 'Locked'}</Badge></td>
+                    <td><Button size="sm" variant="outline" onClick={() => navigate(`/app/assessments/${rep.id}`)}>Manage</Button></td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>

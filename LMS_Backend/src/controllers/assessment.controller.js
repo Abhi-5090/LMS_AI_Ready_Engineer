@@ -472,6 +472,83 @@ export async function assignTemplate(req, res) {
   ok(res, instance.toJSON(), 201);
 }
 
+const DONE_STATUSES = [SubmissionStatus.SUBMITTED, SubmissionStatus.EVALUATING, SubmissionStatus.GRADED];
+
+/**
+ * Consolidated view of a test that was assigned one or more times to the same batch.
+ * A trainer who re-assigns a test (e.g. to a student who missed it) creates another
+ * instance sharing sourceTemplate + batch; those are all "the same test". This merges
+ * every sibling instance into ONE result set: each assigned student's LATEST attempt
+ * (most recent completed one wins), plus the full per-student attempt history so the
+ * Manage view can list who was given a reattempt (assigned more than once).
+ */
+export async function consolidatedSubmissions(req, res) {
+  const instance = await Assessment.findById(req.params.id);
+  if (!instance) throw ApiError.notFound('Assessment not found');
+  if (instance.isTemplate) throw ApiError.badRequest('Ready-made templates have no submissions');
+  if (req.auth.role === UserRole.TRAINER) {
+    const module = await Module.findById(instance.module).select('assignedTrainers');
+    if (!module?.assignedTrainers.some((t) => t.toString() === req.auth.userId)) {
+      throw ApiError.forbidden('You are not assigned to this module');
+    }
+  }
+
+  // Group = every assigned instance from the same template, for the same batch.
+  const groupKey = instance.sourceTemplate || instance._id;
+  const siblings = await Assessment.find({
+    isTemplate: false,
+    batch: instance.batch,
+    $or: [{ sourceTemplate: groupKey }, { _id: groupKey }],
+  })
+    .sort({ createdAt: 1 }) // first assignment = attempt 1
+    .select('_id allowedStudents createdAt');
+  const order = new Map(siblings.map((s, i) => [String(s._id), i]));
+  const instIds = siblings.map((s) => s._id);
+
+  // Assigned roster = the whole batch if ANY instance targets everyone, else the union
+  // of the per-instance allow-lists.
+  const batch = await Batch.findById(instance.batch).select('students').populate('students', 'name email');
+  const roster = batch?.students ?? [];
+  const anyWholeBatch = siblings.some((s) => (s.allowedStudents ?? []).length === 0);
+  const allowUnion = new Set(siblings.flatMap((s) => (s.allowedStudents ?? []).map(String)));
+  const assigned = anyWholeBatch ? roster : roster.filter((s) => allowUnion.has(String(s._id)));
+
+  const subs = await Submission.find({ assessment: { $in: instIds } }).populate('student', 'name email').lean();
+  const byStudent = new Map();
+  for (const sub of subs) {
+    const sid = String(sub.student?._id ?? sub.student);
+    if (!byStudent.has(sid)) byStudent.set(sid, []);
+    byStudent.get(sid).push({
+      instance: String(sub.assessment),
+      attempt: (order.get(String(sub.assessment)) ?? 0) + 1,
+      assignedAt: siblings[order.get(String(sub.assessment))]?.createdAt ?? null,
+      status: sub.status,
+      score: sub.score ?? null,
+      passed: sub.passed ?? null,
+      submittedAt: sub.submittedAt ?? null,
+      disqualified: sub.disqualified ?? false,
+    });
+  }
+
+  const pickLatest = (attempts) => {
+    const completed = attempts.filter((a) => DONE_STATUSES.includes(a.status));
+    if (completed.length) return completed[completed.length - 1]; // most recent completed
+    return attempts[attempts.length - 1] ?? null; // else the newest (in-progress / not started)
+  };
+
+  const students = assigned.map((s) => {
+    const attempts = (byStudent.get(String(s._id)) ?? []).sort((a, b) => a.attempt - b.attempt);
+    return {
+      student: { id: String(s._id), name: s.name, email: s.email },
+      attempts,
+      attemptCount: attempts.length,
+      latest: pickLatest(attempts),
+    };
+  });
+
+  ok(res, { instanceCount: siblings.length, instanceIds: instIds.map(String), students });
+}
+
 export async function updateAssessment(req, res) {
   const assessment = await loadAssessmentForManage(req);
   const { title, description, topics, passingScore, availableFrom, deadline, durationMinutes, proctoring, violationLimit } = req.body;

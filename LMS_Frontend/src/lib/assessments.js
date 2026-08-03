@@ -161,6 +161,15 @@ export function useSubmissions(id) {
   });
 }
 
+/** Consolidated results across every re-assignment of this test to its batch. */
+export function useConsolidated(id) {
+  return useQuery({
+    queryKey: ['assessments', id, 'consolidated'],
+    queryFn: () => unwrap(api.get(`/assessments/${id}/consolidated`)),
+    enabled: Boolean(id),
+  });
+}
+
 /** Trainer/admin: reopen a student's test for another attempt (archives the current). */
 export function useGrantReattempt(id) {
   const qc = useQueryClient();

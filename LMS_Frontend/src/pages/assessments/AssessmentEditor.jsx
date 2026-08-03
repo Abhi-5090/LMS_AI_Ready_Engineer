@@ -8,8 +8,8 @@ import { PageHeader } from '@/components/PageHeader';
 import { apiErrorMessage, downloadFile, fileSrc } from '@/lib/api';
 import {
   useAssessment,
+  useConsolidated,
   useDeleteQuestion,
-  useGrantReattempt,
   useSetAllowedStudents,
   useSetAvailability,
   useSubmissions,
@@ -553,78 +553,40 @@ function AnalyticsCard({ a }) {
 
 const DONE_STATUSES = ['submitted', 'evaluating', 'graded'];
 
-/**
- * The student's LATEST attempt outcome: the current submission if it's completed,
- * otherwise the most recent archived attempt (when a reattempt is granted but not
- * yet retaken). Returns null if they've never completed one.
- */
-function latestOutcome(sub) {
-  if (!sub) return null;
-  if (DONE_STATUSES.includes(sub.status)) {
-    return { score: sub.score, passed: sub.passed, status: sub.status, submittedAt: sub.submittedAt, disqualified: sub.disqualified };
-  }
-  const prior = sub.attempts ?? [];
-  return prior.length ? prior[prior.length - 1] : null;
+const OUTCOME_STATUS = {
+  done: { tone: 'success', label: 'Submitted' },
+  disqualified: { tone: 'error', label: 'Disqualified' },
+  in_progress: { tone: 'warning', label: 'In progress' },
+  not_started: { tone: 'neutral', label: 'Not started' },
+};
+
+/** Classify a consolidated latest-attempt record for the status badge. */
+function outcomeStatus(latest) {
+  if (!latest) return 'not_started';
+  if (latest.disqualified) return 'disqualified';
+  if (DONE_STATUSES.includes(latest.status)) return 'done';
+  if (latest.status === 'in_progress') return 'in_progress';
+  return 'not_started';
 }
 
+/**
+ * "Who's completed it" — CONSOLIDATED across every time this test was assigned to
+ * the batch. A student re-assigned the test (a reattempt) shows their LATEST attempt
+ * as the single result, so the list stays one row per student.
+ */
 function CompletionCard({ a }) {
-  const { data: subs, isLoading } = useSubmissions(a.id);
-  const confirm = useConfirm();
-  const toast = useToast();
-  const grant = useGrantReattempt(a.id);
-  const roster = a.batch?.students ?? [];
-  const allow = (a.allowedStudents ?? []).map(String);
-  // Assigned = the allow-list if set, otherwise the whole batch.
-  const assigned = allow.length ? roster.filter((s) => allow.includes(String(s.id))) : roster;
-  const byStudent = new Map((subs ?? []).map((s) => [String(s.student?.id ?? s.student), s]));
-
-  const rows = assigned.map((s) => {
-    const sub = byStudent.get(String(s.id));
-    const outcome = latestOutcome(sub); // latest completed attempt (current or archived)
-    const currentDone = sub && DONE_STATUSES.includes(sub.status);
-    const reattemptPending = sub && !currentDone && (sub.attempts?.length ?? 0) > 0;
-    let status = 'not_started';
-    if (sub) {
-      if (currentDone) status = sub.disqualified ? 'disqualified' : 'done';
-      else if (reattemptPending) status = 'reattempt';
-      else if (sub.status === 'in_progress') status = 'in_progress';
-    }
-    return { s, sub, outcome, status, currentDone };
-  });
-  const count = (k) => rows.filter((r) => r.status === k).length;
+  const { data, isLoading } = useConsolidated(a.id);
+  const students = data?.students ?? [];
+  const total = students.length;
+  const count = (k) => students.filter((r) => outcomeStatus(r.latest) === k).length;
   const done = count('done') + count('disqualified');
-  const total = assigned.length;
   const pct = total ? Math.round((done / total) * 100) : 0;
-
-  const STATUS = {
-    done: { tone: 'success', label: 'Submitted' },
-    disqualified: { tone: 'error', label: 'Disqualified' },
-    in_progress: { tone: 'warning', label: 'In progress' },
-    reattempt: { tone: 'primary', label: 'Reattempt pending' },
-    not_started: { tone: 'neutral', label: 'Not started' },
-  };
-
-  async function onReattempt(sub, name) {
-    if (!sub) return;
-    const ok2 = await confirm({
-      title: `Give ${name} another attempt?`,
-      description: 'Their current result is archived and the test reopens for them to take again. Their latest attempt becomes the recorded result.',
-      confirmLabel: 'Grant reattempt',
-    });
-    if (!ok2) return;
-    try {
-      await grant.mutateAsync(sub.id);
-      toast.success(`Reattempt granted to ${name}.`);
-    } catch (e) {
-      toast.error(apiErrorMessage(e));
-    }
-  }
 
   return (
     <Card style={{ marginBottom: 'var(--space-6)' }}>
       <CardHeader
         title={<span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}><Users size={18} style={{ color: 'var(--color-primary)' }} /> Who&apos;s completed it</span>}
-        subtitle={total ? `${done} of ${total} student${total === 1 ? '' : 's'} submitted · latest attempt shown` : 'No students assigned yet'}
+        subtitle={total ? `${done} of ${total} student${total === 1 ? '' : 's'} submitted · latest attempt shown${data?.instanceCount > 1 ? ` · ${data.instanceCount} assignments merged` : ''}` : 'No students assigned yet'}
       />
       {total > 0 && (
         <>
@@ -635,43 +597,31 @@ function CompletionCard({ a }) {
             <Badge tone="success">{count('done')} submitted</Badge>
             {count('disqualified') > 0 && <Badge tone="error">{count('disqualified')} disqualified</Badge>}
             <Badge tone="warning">{count('in_progress')} in progress</Badge>
-            {count('reattempt') > 0 && <Badge tone="primary">{count('reattempt')} reattempt pending</Badge>}
             <Badge tone="neutral">{count('not_started')} not started</Badge>
           </div>
         </>
       )}
 
-      {isLoading && !subs ? (
+      {isLoading && !data ? (
         <SkeletonTable rows={4} cols={4} />
       ) : total === 0 ? (
         <EmptyState icon={<Users size={24} />} title="No students assigned" description="Assign students on the schedule/allow-list above." />
       ) : (
         <div className="table-wrap">
           <table className="table">
-            <thead><tr><th>Student</th><th>Status</th><th>Score</th><th /></tr></thead>
+            <thead><tr><th>Student</th><th>Status</th><th>Score</th><th>Attempts</th></tr></thead>
             <tbody>
-              {rows.map(({ s, sub, outcome, status, currentDone }) => (
-                <tr key={s.id}>
-                  <td>
-                    {s.name}
-                    <div className="lms-muted" style={{ fontSize: 'var(--font-size-xs)' }}>{s.email}</div>
-                  </td>
-                  <td>
-                    <Badge tone={STATUS[status].tone}>{status === 'done' && sub?.status === 'graded' ? 'Graded' : STATUS[status].label}</Badge>
-                    {(sub?.attempts?.length ?? 0) > 0 && (
-                      <span className="lms-muted" style={{ fontSize: 'var(--font-size-xs)', marginLeft: 6 }}>attempt {sub.attempts.length + 1}</span>
-                    )}
-                  </td>
-                  <td>{outcome && outcome.status === 'graded' && !outcome.disqualified ? `${outcome.score}%` : '—'}</td>
-                  <td style={{ textAlign: 'right' }}>
-                    {currentDone && (
-                      <Button size="sm" variant="outline" loading={grant.isPending} onClick={() => onReattempt(sub, s.name)}>
-                        Reattempt
-                      </Button>
-                    )}
-                  </td>
-                </tr>
-              ))}
+              {students.map(({ student, latest, attemptCount }) => {
+                const status = outcomeStatus(latest);
+                return (
+                  <tr key={student.id}>
+                    <td>{student.name}<div className="lms-muted" style={{ fontSize: 'var(--font-size-xs)' }}>{student.email}</div></td>
+                    <td><Badge tone={OUTCOME_STATUS[status].tone}>{status === 'done' && latest?.status === 'graded' ? 'Graded' : OUTCOME_STATUS[status].label}</Badge></td>
+                    <td>{latest && latest.status === 'graded' && !latest.disqualified ? `${latest.score}%` : '—'}</td>
+                    <td>{attemptCount > 1 ? <Badge tone="primary">{attemptCount} attempts</Badge> : <span className="lms-muted">1</span>}</td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -681,49 +631,48 @@ function CompletionCard({ a }) {
 }
 
 /**
- * Scrollable list of every student who's been given a reattempt on this test —
- * shown below "Who's completed it" so a trainer can see, at a glance, who got a
- * second chance, when, and how it went. Hidden until at least one reattempt exists.
+ * Scrollable list of every student who was re-assigned this test (a reattempt) —
+ * one row per assignment they received, newest first, so a trainer can see who got
+ * a second chance, when, and how each attempt went. Hidden until a reattempt exists.
  */
 function ReattemptsCard({ a }) {
-  const { data: subs } = useSubmissions(a.id);
-  const rows = (subs ?? []).filter((s) => (s.attempts?.length ?? 0) > 0);
-  if (rows.length === 0) return null;
+  const { data } = useConsolidated(a.id);
+  const reattempted = (data?.students ?? []).filter((r) => r.attemptCount > 1);
+  if (reattempted.length === 0) return null;
+
+  // Flatten to one row per (student, attempt), showing the 2nd attempt onward.
+  const rows = reattempted.flatMap((r) =>
+    r.attempts.slice(1).map((att) => ({ student: r.student, att })),
+  );
+
+  const resultBadge = (att) => {
+    if (att.disqualified) return <Badge tone="error">Disqualified</Badge>;
+    if (att.status === 'graded') return <Badge tone={att.passed ? 'success' : 'error'}>{att.score}% · {att.passed ? 'Passed' : 'Failed'}</Badge>;
+    if (att.status === 'submitted' || att.status === 'evaluating') return <Badge tone="primary">In review</Badge>;
+    if (att.status === 'in_progress') return <Badge tone="warning">In progress</Badge>;
+    return <Badge tone="neutral">Not started</Badge>;
+  };
 
   return (
     <Card style={{ marginBottom: 'var(--space-6)' }}>
       <CardHeader
         title="Reattempts"
-        subtitle={`${rows.length} student${rows.length === 1 ? '' : 's'} given another attempt`}
+        subtitle={`${reattempted.length} student${reattempted.length === 1 ? '' : 's'} re-assigned this test`}
       />
       <div className="table-wrap" style={{ maxHeight: '20rem', overflowY: 'auto' }}>
         <table className="table">
           <thead>
-            <tr><th>Student</th><th>Attempt</th><th>Granted</th><th>Latest result</th></tr>
+            <tr><th>Student</th><th>Attempt</th><th>Assigned</th><th>Result</th></tr>
           </thead>
           <tbody>
-            {rows.map((s) => {
-              const outcome = latestOutcome(s);
-              const currentDone = DONE_STATUSES.includes(s.status);
-              return (
-                <tr key={s.id}>
-                  <td>{s.student?.name}<div className="lms-muted" style={{ fontSize: 'var(--font-size-xs)' }}>{s.student?.email}</div></td>
-                  <td>{(s.attempts?.length ?? 0) + 1}</td>
-                  <td className="lms-muted" style={{ fontSize: 'var(--font-size-xs)' }}>{s.reattemptGrantedAt ? formatDate(s.reattemptGrantedAt) : '—'}</td>
-                  <td>
-                    {currentDone ? (
-                      s.status === 'graded' ? (
-                        <Badge tone={outcome?.passed ? 'success' : 'error'}>{outcome?.score}% · {outcome?.passed ? 'Passed' : 'Failed'}</Badge>
-                      ) : (
-                        <Badge tone="primary">In review</Badge>
-                      )
-                    ) : (
-                      <Badge tone="warning">Retaking…</Badge>
-                    )}
-                  </td>
-                </tr>
-              );
-            })}
+            {rows.map(({ student, att }) => (
+              <tr key={`${student.id}-${att.attempt}`}>
+                <td>{student.name}<div className="lms-muted" style={{ fontSize: 'var(--font-size-xs)' }}>{student.email}</div></td>
+                <td>#{att.attempt}</td>
+                <td className="lms-muted" style={{ fontSize: 'var(--font-size-xs)' }}>{att.assignedAt ? formatDate(att.assignedAt) : '—'}</td>
+                <td>{resultBadge(att)}</td>
+              </tr>
+            ))}
           </tbody>
         </table>
       </div>
