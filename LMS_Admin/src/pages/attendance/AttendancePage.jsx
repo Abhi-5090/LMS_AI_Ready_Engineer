@@ -8,7 +8,7 @@ import { useAuth } from '@/lib/auth';
 import { useBatchAttendance, useMyAttendance } from '@/lib/attendance';
 import { useBatches } from '@/lib/batches';
 import { useClasses } from '@/lib/classes';
-import { formatDate } from '@/lib/format';
+import { formatDate, toDateInput } from '@/lib/format';
 import { RosterEditor } from './RosterEditor';
 import { ATT_LABEL, ATT_TONE, pctTone } from './attendanceUi';
 import '../schedule/schedule.css';
@@ -110,6 +110,16 @@ function EntryView() {
   const { data: classes, isLoading, isError, error, refetch } = useClasses();
   const [moduleKey, setModuleKey] = useState(null); // which module's sessions are open
   const [selected, setSelected] = useState(null);   // which class's roster is open
+  const [q, setQ] = useState('');                    // search by class name
+  const [batchFilter, setBatchFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+  const [dateFilter, setDateFilter] = useState('');
+
+  function backToModules() {
+    setModuleKey(null);
+    setSelected(null);
+    setQ(''); setBatchFilter(''); setStatusFilter(''); setDateFilter('');
+  }
 
   // Group the sessions by module → one card per module (LLMs, Prompting, …).
   const modules = useMemo(() => {
@@ -161,10 +171,29 @@ function EntryView() {
   // ── Step 2: sessions for the chosen module ──
   const total = active.classes.length;
   const pending = active.classes.filter((c) => !c.attendanceMarked).length;
+
+  // Batches present in this module's sessions → the batch filter's options.
+  const batchesInModule = [
+    ...new Map(active.classes.filter((c) => c.batch?.id).map((c) => [c.batch.id, c.batch])).values(),
+  ].sort((a, b) => a.name.localeCompare(b.name));
+
+  const needle = q.trim().toLowerCase();
+  const shown = active.classes
+    .filter((c) => {
+      if (batchFilter && c.batch?.id !== batchFilter) return false;
+      if (statusFilter === 'marked' && !c.attendanceMarked) return false;
+      if (statusFilter === 'pending' && c.attendanceMarked) return false;
+      if (dateFilter && toDateInput(c.date) !== dateFilter) return false;
+      if (needle && !`${c.title} ${c.batch?.name ?? ''}`.toLowerCase().includes(needle)) return false;
+      return true;
+    })
+    // Most recent on top: date desc, then start time desc.
+    .sort((a, b) => `${toDateInput(b.date)} ${b.startTime ?? ''}`.localeCompare(`${toDateInput(a.date)} ${a.startTime ?? ''}`));
+
   return (
     <>
       <div className="mod-att-head">
-        <Button variant="outline" size="sm" onClick={() => { setModuleKey(null); setSelected(null); }}>
+        <Button variant="outline" size="sm" onClick={backToModules}>
           <ChevronLeft size={15} style={{ marginRight: 4 }} /> All modules
         </Button>
         <div className="mod-att-head__title">
@@ -175,14 +204,39 @@ function EntryView() {
       </div>
 
       <Card style={{ marginBottom: 'var(--space-6)' }}>
-        <CardHeader title="Select a class" subtitle="Choose a session to record attendance for." />
-        <div className="table-wrap">
+        <CardHeader title="Select a class" subtitle="Newest first — choose a session to record attendance for." />
+
+        <div className="att-filters">
+          <Input
+            className="att-filters__search"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Search classes by name…"
+          />
+          <Select
+            label="Batch"
+            value={batchFilter}
+            onChange={(e) => setBatchFilter(e.target.value)}
+            options={[{ value: '', label: 'All batches' }, ...batchesInModule.map((b) => ({ value: b.id, label: b.name }))]}
+          />
+          <Select
+            label="Status"
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            options={[{ value: '', label: 'All' }, { value: 'pending', label: 'Pending' }, { value: 'marked', label: 'Marked' }]}
+          />
+          <Input label="Date" type="date" value={dateFilter} onChange={(e) => setDateFilter(e.target.value)} />
+        </div>
+
+        <div className="att-sessions-scroll table-wrap">
           <table className="table">
             <thead>
               <tr><th>Date</th><th>Class</th><th>Batch</th><th>Status</th><th /></tr>
             </thead>
             <tbody>
-              {active.classes.map((c) => (
+              {shown.length === 0 ? (
+                <tr><td colSpan={5} className="lms-muted" style={{ textAlign: 'center' }}>No classes match your filters.</td></tr>
+              ) : shown.map((c) => (
                 <tr key={c.id}>
                   <td>{formatDate(c.date)}</td>
                   <td>{c.title}</td>
