@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Check, Download, FileSpreadsheet, Users } from 'lucide-react';
 import { AttendanceStatus } from '@/shared';
-import { Button, Card, CardHeader, EmptyState, ErrorState, Input, Select, SkeletonTable } from '@/components/ui';
+import { Button, Card, CardHeader, EmptyState, ErrorState, Input, Modal, Select, SkeletonTable } from '@/components/ui';
 import { apiErrorMessage } from '@/lib/api';
 import { useClassRoster, useSaveAttendance } from '@/lib/attendance';
 import { parseTeamsAttendance, classStartMs, classifyJoin } from '@/lib/teamsAttendance';
@@ -21,6 +21,7 @@ export function RosterEditor({ classId, onSaved }) {
   const [importError, setImportError] = useState('');
   const [saveError, setSaveError] = useState('');
   const [saved, setSaved] = useState(false);
+  const [showUnmatched, setShowUnmatched] = useState(false); // "emails that didn't match" modal
   const fileRef = useRef(null);
 
   useEffect(() => {
@@ -66,7 +67,9 @@ export function RosterEditor({ classId, onSaved }) {
     });
     setRows(next);
     const rosterEmails = new Set(currentRows.map((r) => r.email?.toLowerCase()).filter(Boolean));
-    counts.unmatched = [...byEmail.keys()].filter((e) => !rosterEmails.has(e)).length;
+    const unmatchedList = [...byEmail.keys()].filter((e) => !rosterEmails.has(e)).sort();
+    counts.unmatched = unmatchedList.length;
+    counts.unmatchedList = unmatchedList;
     setImportInfo(counts);
   }
 
@@ -163,7 +166,18 @@ export function RosterEditor({ classId, onSaved }) {
                 <Check size={15} strokeWidth={3} style={{ color: 'var(--color-success)' }} />
                 <span>
                   {importInfo.present} present · {importInfo.late} late · {importInfo.absent} absent
-                  {importInfo.unmatched > 0 && ` · ${importInfo.unmatched} sheet email(s) didn’t match an enrolled student`}
+                  {importInfo.unmatched > 0 && (
+                    <>
+                      {' · '}
+                      <button
+                        type="button"
+                        onClick={() => setShowUnmatched(true)}
+                        style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', color: 'var(--color-primary)', textDecoration: 'underline', cursor: 'pointer' }}
+                      >
+                        {importInfo.unmatched} sheet email{importInfo.unmatched === 1 ? '' : 's'} didn’t match an enrolled student
+                      </button>
+                    </>
+                  )}
                 </span>
               </div>
             )}
@@ -219,6 +233,27 @@ export function RosterEditor({ classId, onSaved }) {
             {saved && <span style={{ color: 'var(--color-success)', fontSize: 'var(--font-size-sm)', display: 'inline-flex', alignItems: 'center', gap: 4 }}><Check size={15} strokeWidth={3} /> Saved</span>}
             {saveError && <span className="field__error">{saveError}</span>}
           </div>
+
+          <Modal
+            open={showUnmatched}
+            title="Emails that didn’t match a student"
+            onClose={() => setShowUnmatched(false)}
+            footer={<Button variant="outline" onClick={() => setShowUnmatched(false)}>Close</Button>}
+          >
+            <p className="lms-muted" style={{ marginTop: 0, fontSize: 'var(--font-size-sm)' }}>
+              These {importInfo?.unmatchedList?.length ?? 0} email{(importInfo?.unmatchedList?.length ?? 0) === 1 ? '' : 's'} from the uploaded sheet aren’t enrolled in this batch, so their rows were skipped. Check for typos, or add them to the batch and re-import.
+            </p>
+            <div className="table-wrap" style={{ maxHeight: '20rem', overflowY: 'auto' }}>
+              <table className="table">
+                <thead><tr><th style={{ width: 48 }}>#</th><th>Email</th></tr></thead>
+                <tbody>
+                  {(importInfo?.unmatchedList ?? []).map((em, i) => (
+                    <tr key={em}><td className="lms-muted">{i + 1}</td><td>{em}</td></tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </Modal>
         </>
       )}
     </Card>
