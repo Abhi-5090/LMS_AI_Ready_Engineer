@@ -196,20 +196,17 @@ export function ClassModal({ open, mode, initial, onClose, isAdmin, batches = []
         )}
 
         <Input label={form.repeat ? 'First class date' : 'Date'} type="date" value={form.date} onChange={(e) => set('date', e.target.value)} required />
-        {/* Session type · Start · End — one row. Offline classes have no time. */}
-        <div className={`sched-time-row${form.mode === 'offline' ? ' sched-time-row--offline' : ''}`}>
+        {/* Session type · Start · End — one row. Both online and in-person classes
+            carry a start/end time (attendance is graded against the start). */}
+        <div className="sched-time-row">
           <Select
             label="Session type"
             value={form.mode}
             onChange={(e) => set('mode', e.target.value)}
             options={[{ value: 'online', label: 'Online' }, { value: 'offline', label: 'Offline (in person)' }]}
           />
-          {form.mode === 'online' && (
-            <>
-              <Input label="Start" type="time" value={form.startTime} onChange={(e) => set('startTime', e.target.value)} required />
-              <Input label="End" type="time" value={form.endTime} onChange={(e) => set('endTime', e.target.value)} required />
-            </>
-          )}
+          <Input label="Start" type="time" value={form.startTime} onChange={(e) => set('startTime', e.target.value)} required />
+          <Input label="End" type="time" value={form.endTime} onChange={(e) => set('endTime', e.target.value)} required />
         </div>
 
         {!isEdit && (

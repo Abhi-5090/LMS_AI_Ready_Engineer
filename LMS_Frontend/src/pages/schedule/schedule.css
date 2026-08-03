@@ -142,5 +142,4 @@
 /* Session type · Start · End — equal columns, controls aligned; offline = 1 col. */
 .sched-time-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: var(--space-3); align-items: end; }
 .sched-time-row .field { margin: 0; }
-.sched-time-row--offline { grid-template-columns: 1fr; }
 @media (max-width: 520px) { .sched-time-row { grid-template-columns: 1fr; } }
