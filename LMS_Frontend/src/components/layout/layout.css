@@ -111,7 +111,8 @@
   transition: color var(--transition-fast), background-color var(--transition-fast);
 }
 .sidebar__group-head:hover { color: var(--color-text-primary); background: var(--color-background); }
-.sidebar__group-head.is-open { color: var(--color-text-primary); }
+.sidebar__group-head.is-open { color: var(--color-primary-hover); background: var(--color-primary-light); font-weight: var(--font-weight-semibold); }
+.sidebar__group-head.is-open .sidebar__group-chev { color: var(--color-primary-hover); }
 .sidebar__group-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sidebar__group-chev { flex: none; color: var(--color-text-muted); transition: transform 220ms var(--ease-out, ease); }
 .sidebar__group-head.is-open .sidebar__group-chev { transform: rotate(90deg); }

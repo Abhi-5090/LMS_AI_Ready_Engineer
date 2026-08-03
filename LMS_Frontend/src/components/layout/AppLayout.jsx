@@ -21,10 +21,7 @@ function initials(name) {
     .toUpperCase();
 }
 
-// ── Collapsible sidebar groups ────────────────────────────────────────────────
-const OPEN_KEY = 'lms.navGroups'; // remembered open groups (per browser)
-const loadOpen = () => { try { return new Set(JSON.parse(localStorage.getItem(OPEN_KEY)) || []); } catch { return new Set(); } };
-const saveOpen = (set) => { try { localStorage.setItem(OPEN_KEY, JSON.stringify([...set])); } catch { /* ignore */ } };
+// ── Collapsible sidebar groups (single-open accordion) ────────────────────────
 /** Does `pathname` belong to this nav item? Exact for the dashboard, prefix otherwise. */
 const matchTo = (pathname, to) => (to === '/app' ? pathname === '/app' : pathname === to || pathname.startsWith(`${to}/`));
 /** All leaf links, flattening groups — for the topbar title + active lookup. */
@@ -55,29 +52,24 @@ export function AppLayout() {
   const location = useLocation();
   const badges = useNavBadges();
   const [navOpen, setNavOpen] = useState(false);
-  const [openGroups, setOpenGroups] = useState(loadOpen);
+  // Single-open accordion: at most one group is expanded at a time.
+  const [openGroup, setOpenGroup] = useState(null);
 
   const nav = NAV_BY_ROLE[user?.role] ?? [];
-  // The group that holds the current page is always open (so the active item shows).
+  // The group holding the current page — used to auto-open it on navigation.
   const activeGroup = nav.find((e) => e.group && e.items.some((it) => matchTo(location.pathname, it.to)))?.group ?? null;
-  const effectiveOpen = new Set(openGroups);
-  if (activeGroup) effectiveOpen.add(activeGroup);
-  const openSig = [...effectiveOpen].sort().join(',');
-  // Re-glide the indicator on route change AND whenever groups open/close (layout shifts).
-  const { navRef, indicatorRef } = useSidebarMotion(`${location.pathname}|${openSig}`);
+  // Re-glide the indicator on route change AND when the open group changes.
+  const { navRef, indicatorRef } = useSidebarMotion(`${location.pathname}|${openGroup ?? ''}`);
 
   // Close the mobile drawer whenever the route changes.
   useEffect(() => setNavOpen(false), [location.pathname]);
+  // On navigation, open the group that owns the current page (collapsing the others).
+  useEffect(() => { if (activeGroup) setOpenGroup(activeGroup); }, [location.pathname, activeGroup]);
 
   if (!user) return null;
 
   function toggleGroup(name) {
-    setOpenGroups((prev) => {
-      const next = new Set(prev);
-      if (next.has(name)) next.delete(name); else next.add(name);
-      saveOpen(next);
-      return next;
-    });
+    setOpenGroup((prev) => (prev === name ? null : name)); // open it (others collapse), or close it
     // After the slide settles, re-place the active-indicator (its own resize hook).
     setTimeout(() => window.dispatchEvent(new Event('resize')), 240);
   }
@@ -109,7 +101,7 @@ export function AppLayout() {
             if (!entry.group) {
               return <SidebarLink key={entry.to} item={entry} badge={badges[entry.to] ?? 0} onNavigate={() => setNavOpen(false)} />;
             }
-            const open = effectiveOpen.has(entry.group);
+            const open = openGroup === entry.group;
             const groupCount = entry.items.reduce((n, it) => n + (badges[it.to] ?? 0), 0);
             return (
               <div key={entry.group} className="sidebar__group">
