@@ -414,12 +414,12 @@ function CertificateTemplateCard({ moduleId, moduleName }) {
           {/* Upload dropzone */}
           <label className={`certdrop${currentName ? ' certdrop--set' : ''}`}>
             <input ref={fileRef} type="file" accept=".pdf,.png,.jpg,.jpeg" onChange={(e) => setFile(e.target.files?.[0] ?? null)} hidden />
-            <span className="certdrop__icon"><UploadCloud size={22} /></span>
-            <span style={{ minWidth: 0 }}>
+            <span className="certdrop__text">
               <span className="certdrop__name">{currentName ?? 'Click to upload a certificate template'}</span>
               <span className="certdrop__hint">PDF, PNG or JPG · the student’s name is added automatically</span>
+              {file && <Badge tone="primary">New file</Badge>}
             </span>
-            {file && <Badge tone="primary">New file</Badge>}
+            <span className="certdrop__icon"><UploadCloud size={26} /></span>
           </label>
 
           {/* Name placement */}
