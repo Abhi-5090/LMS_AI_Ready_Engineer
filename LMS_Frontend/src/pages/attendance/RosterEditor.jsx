@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
-import { Check, Download, FileSpreadsheet, UserCog, Users } from 'lucide-react';
+import { Check, Clock, Download, FileSpreadsheet, UserCheck, UserCog, Users, UserX } from 'lucide-react';
 import { AttendanceStatus } from '@/shared';
 import { Button, Card, CardHeader, EmptyState, ErrorState, Input, Modal, Select, SkeletonTable } from '@/components/ui';
+import { Stat } from '@/components/PageHeader';
 import { apiErrorMessage } from '@/lib/api';
 import { useClassRoster, useSaveAttendance } from '@/lib/attendance';
 import { parseTeamsAttendance, classStartMs, classifyJoin } from '@/lib/teamsAttendance';
@@ -144,8 +145,23 @@ export function RosterEditor({ classId, onSaved }) {
   if (isLoading && !data) return <Card><SkeletonTable rows={5} cols={3} /></Card>;
   if (isError) return <ErrorState message={apiErrorMessage(error)} onRetry={refetch} />;
 
+  // Live tallies for the analytics row (reflect the current statuses as you edit).
+  const total = rows.length;
+  const present = rows.filter((r) => r.status === AttendanceStatus.PRESENT).length;
+  const absent = rows.filter((r) => r.status === AttendanceStatus.ABSENT).length;
+  const late = rows.filter((r) => r.status === AttendanceStatus.LATE).length;
+
   return (
-    <Card>
+    <>
+      {total > 0 && (
+        <div className="stat-grid" style={{ marginBottom: 'var(--space-4)' }}>
+          <Stat label="Total Students" value={total} accent icon={<Users size={20} />} />
+          <Stat label="Present" value={present} icon={<UserCheck size={20} />} />
+          <Stat label="Absent" value={absent} icon={<UserX size={20} />} />
+          <Stat label="Late" value={late} icon={<Clock size={20} />} />
+        </div>
+      )}
+      <Card>
       <CardHeader
         title={`Attendance — ${data.class.title}`}
         subtitle={`${formatDate(data.class.date)} · starts ${data.class.startTime} · ${rows.length} students${data.class.attendanceMarked ? ' · already marked' : ''}`}
@@ -313,6 +329,7 @@ export function RosterEditor({ classId, onSaved }) {
           </Modal>
         </>
       )}
-    </Card>
+      </Card>
+    </>
   );
 }
