@@ -11,8 +11,10 @@ const prefersReduced =
 export const prefersReducedMotion = prefersReduced;
 
 /**
- * Wraps page content and re-animates its top-level blocks on every route change
- * (fade + rise + stagger). gsap.context() makes it StrictMode-safe.
+ * Wraps page content and re-animates its top-level blocks on every route change:
+ * each block eases in with a gentle fade + rise and a light stagger, so the page
+ * "arrives" instead of snapping in. Uses transform/opacity only (composited, no
+ * reflow) and clears the inline styles afterwards. gsap.context() is StrictMode-safe.
  */
 export function PageTransition({ children }) {
   const ref = useRef(null);
@@ -20,12 +22,13 @@ export function PageTransition({ children }) {
   useLayoutEffect(() => {
     if (prefersReduced || !ref.current) return undefined;
     const ctx = gsap.context(() => {
-      // PURE opacity fade — no transform, no stagger, no clearProps — so the page
-      // entrance can NEVER move or reflow the layout (only opacity changes).
       gsap.from(ref.current.children, {
         opacity: 0,
-        duration: 0.28,
-        ease: 'power1.out',
+        y: 16,
+        duration: 0.44,
+        stagger: 0.06,
+        ease: 'power2.out',
+        clearProps: 'transform,opacity',
       });
     }, ref);
     return () => ctx.revert();
