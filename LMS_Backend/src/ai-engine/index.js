@@ -1,4 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
+import OpenAI from 'openai';
 import { fetchRepoSnapshot } from './github.js';
 
 /**
@@ -13,7 +14,8 @@ import { fetchRepoSnapshot } from './github.js';
  * @typedef {import('#shared').EvaluationResult} EvaluationResult
  */
 
-const MODEL = 'claude-opus-4-8';
+const ANTHROPIC_MODEL = 'claude-opus-4-8';
+const OPENAI_MODEL = process.env.OPENAI_MODEL || 'gpt-4o';
 
 const PROMPT_SCHEMA = {
   type: 'object',
@@ -64,17 +66,45 @@ const PROJECT_SCHEMA = {
 
 const clamp = (n) => Math.max(0, Math.min(100, Math.round(Number(n) || 0)));
 
-function makeRunner(client) {
+// The evaluators build a NEUTRAL `user` payload — either a plain string, or an
+// array of { text } / { media: { kind, mimeType, data, text } } parts — and each
+// provider's runner renders that into its own content-block format below.
+
+/** Neutral → Anthropic content blocks (image + PDF are sent natively). */
+function toAnthropicContent(user) {
+  if (typeof user === 'string') return user;
+  return user.map((it) => {
+    const m = it.media;
+    if (!m) return { type: 'text', text: it.text };
+    if (m.kind === 'image') return { type: 'image', source: { type: 'base64', media_type: m.mimeType || 'image/png', data: m.data } };
+    if (m.kind === 'pdf') return { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: m.data } };
+    return { type: 'text', text: m.text || '(document text unavailable)' };
+  });
+}
+
+/** Neutral → OpenAI content parts (image via data URL; PDF can't be rendered here). */
+function toOpenAIContent(user) {
+  if (typeof user === 'string') return user;
+  return user.map((it) => {
+    const m = it.media;
+    if (!m) return { type: 'text', text: it.text };
+    if (m.kind === 'image') return { type: 'image_url', image_url: { url: `data:${m.mimeType || 'image/png'};base64,${m.data}` } };
+    if (m.kind === 'pdf') return { type: 'text', text: '[A PDF stimulus was provided but this model cannot render it — grade from the goal and rubric.]' };
+    return { type: 'text', text: m.text || '(document text unavailable)' };
+  });
+}
+
+function anthropicRunner(client, model) {
   return async function run({ system, user, schema, schemaName }) {
     const message = await client.messages.create({
-      model: MODEL,
+      model,
       max_tokens: 4096,
       thinking: { type: 'adaptive' },
       // High effort: grading a student is a correctness-sensitive task where accuracy
       // matters more than latency/cost, so we give the model room to reason.
       output_config: { effort: 'high', format: { type: 'json_schema', name: schemaName, schema } },
       system,
-      messages: [{ role: 'user', content: user }],
+      messages: [{ role: 'user', content: toAnthropicContent(user) }],
     });
     const text = (message.content || []).filter((b) => b.type === 'text').map((b) => b.text).join('');
     if (!text) throw new Error('Empty evaluation response from model');
@@ -82,14 +112,35 @@ function makeRunner(client) {
   };
 }
 
+function openaiRunner(client, model) {
+  return async function run({ system, user, schema, schemaName }) {
+    const resp = await client.chat.completions.create({
+      model,
+      max_tokens: 4096,
+      response_format: { type: 'json_schema', json_schema: { name: schemaName, schema, strict: true } },
+      messages: [
+        { role: 'system', content: system },
+        { role: 'user', content: toOpenAIContent(user) },
+      ],
+    });
+    const text = resp.choices?.[0]?.message?.content || '';
+    if (!text) throw new Error('Empty evaluation response from model');
+    return JSON.parse(text);
+  };
+}
+
 /**
- * @param {{ apiKey: string, githubToken?: string }} opts
- * @returns {{ evaluatePrompt: Function, evaluateScenario: Function, evaluateProject: Function }}
+ * Build an evaluator backed by Claude (Anthropic) or OpenAI — whichever key the
+ * admin/env provides. Both expose the same interface; grading works with either.
+ * @param {{ apiKey: string, provider?: 'anthropic'|'openai', model?: string, githubToken?: string }} opts
+ * @returns {{ provider: string, model: string, evaluatePrompt: Function, evaluateScenario: Function, evaluateProject: Function, verifyConnection: Function }}
  */
 export function createEvaluator(opts = {}) {
-  if (!opts.apiKey) throw new Error('createEvaluator requires an Anthropic apiKey');
-  const client = new Anthropic({ apiKey: opts.apiKey });
-  const run = makeRunner(client);
+  if (!opts.apiKey) throw new Error('createEvaluator requires an apiKey');
+  const provider = opts.provider === 'openai' ? 'openai' : 'anthropic';
+  const model = opts.model || (provider === 'openai' ? OPENAI_MODEL : ANTHROPIC_MODEL);
+  const client = provider === 'openai' ? new OpenAI({ apiKey: opts.apiKey }) : new Anthropic({ apiKey: opts.apiKey });
+  const run = provider === 'openai' ? openaiRunner(client, model) : anthropicRunner(client, model);
   const githubToken = opts.githubToken;
 
   /**
@@ -124,17 +175,12 @@ export function createEvaluator(opts = {}) {
 
     let user;
     if (hasMedia) {
-      const blocks = [{ type: 'text', text: `# Goal the student's prompt must achieve\n${task}` }];
-      if (reference) blocks.push({ type: 'text', text: `# Trainer's model answer / grading rubric (reference)\n${reference}` });
-      blocks.push({ type: 'text', text: '# Stimulus the student was shown' });
-      if (media.kind === 'image') {
-        blocks.push({ type: 'image', source: { type: 'base64', media_type: media.mimeType || 'image/png', data: media.data } });
-      } else if (media.kind === 'pdf') {
-        blocks.push({ type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: media.data } });
-      } else {
-        blocks.push({ type: 'text', text: media.text || '(document text unavailable)' });
-      }
-      blocks.push({ type: 'text', text: `# Student's submitted prompt\n${prompt}` });
+      // Neutral parts — each provider's runner renders media into its own format.
+      const blocks = [{ text: `# Goal the student's prompt must achieve\n${task}` }];
+      if (reference) blocks.push({ text: `# Trainer's model answer / grading rubric (reference)\n${reference}` });
+      blocks.push({ text: '# Stimulus the student was shown' });
+      blocks.push({ media });
+      blocks.push({ text: `# Student's submitted prompt\n${prompt}` });
       user = blocks;
     } else {
       user =
@@ -239,16 +285,25 @@ export function createEvaluator(opts = {}) {
 
   /** Lightweight liveness check for the API key (one tiny call). */
   async function verifyConnection() {
+    if (provider === 'openai') {
+      const r = await client.chat.completions.create({
+        model,
+        max_tokens: 16,
+        messages: [{ role: 'user', content: 'Reply with the single word OK.' }],
+      });
+      const text = r.choices?.[0]?.message?.content || '';
+      return { ok: true, model: r.model || model, sample: text.trim().slice(0, 20) };
+    }
     const msg = await client.messages.create({
-      model: MODEL,
+      model,
       max_tokens: 16,
       messages: [{ role: 'user', content: 'Reply with the single word OK.' }],
     });
     const text = (msg.content || []).filter((b) => b.type === 'text').map((b) => b.text).join('');
-    return { ok: true, model: msg.model || MODEL, sample: text.trim().slice(0, 20) };
+    return { ok: true, model: msg.model || model, sample: text.trim().slice(0, 20) };
   }
 
-  return { evaluatePrompt, evaluateScenario, evaluateProject, verifyConnection };
+  return { provider, model, evaluatePrompt, evaluateScenario, evaluateProject, verifyConnection };
 }
 
 export { fetchRepoSnapshot, parseRepoUrl } from './github.js';

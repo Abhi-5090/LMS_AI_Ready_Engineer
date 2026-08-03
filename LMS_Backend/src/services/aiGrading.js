@@ -1,6 +1,6 @@
 import { createEvaluator } from '../ai-engine/index.js';
 import { QuestionType, SubmissionStatus } from '#shared';
-import { Assessment, Submission, getStoredAiApiKey } from '../models/index.js';
+import { Assessment, Submission, getStoredAiApiKey, getStoredOpenaiApiKey } from '../models/index.js';
 import { readFileBuffer } from './fileStore.js';
 import { env } from '../config/env.js';
 
@@ -42,36 +42,52 @@ async function prepareMedia(q) {
 }
 
 let _evaluator = null;
-let _evaluatorKey = null; // the key the cached evaluator was built with
+let _evaluatorKey = null; // "provider:key" the cached evaluator was built with
 
-/** The active Claude key — env var takes precedence over the admin-stored key. */
-async function resolveApiKey() {
-  return env.anthropicApiKey || (await getStoredAiApiKey());
+/**
+ * Pick the active AI provider + key for grading. Precedence: env over admin-stored,
+ * and Anthropic (Claude) over OpenAI when both are present. Either provider alone is
+ * enough — grading works with whichever key exists.
+ */
+async function resolveProvider() {
+  if (env.anthropicApiKey) return { provider: 'anthropic', key: env.anthropicApiKey, source: 'environment' };
+  if (env.openaiApiKey) return { provider: 'openai', key: env.openaiApiKey, source: 'environment' };
+  const anthropic = await getStoredAiApiKey();
+  if (anthropic) return { provider: 'anthropic', key: anthropic, source: 'settings' };
+  const openai = await getStoredOpenaiApiKey();
+  if (openai) return { provider: 'openai', key: openai, source: 'settings' };
+  return null;
 }
 
 /**
- * Build (or reuse) the Claude-backed evaluator from the active key. Returns null
- * if no key is configured. Rebuilds automatically when the admin changes the key.
+ * Build (or reuse) the evaluator from the active provider/key. Returns null if no
+ * key is configured. Rebuilds automatically when the admin changes the key/provider.
  */
 export async function getEvaluator() {
-  const key = await resolveApiKey();
-  if (!key) {
+  const resolved = await resolveProvider();
+  if (!resolved) {
     _evaluator = null;
     _evaluatorKey = null;
     return null;
   }
-  if (key !== _evaluatorKey) {
-    _evaluator = createEvaluator({ apiKey: key, githubToken: env.githubToken });
-    _evaluatorKey = key;
+  const cacheKey = `${resolved.provider}:${resolved.key}`;
+  if (cacheKey !== _evaluatorKey) {
+    _evaluator = createEvaluator({ provider: resolved.provider, apiKey: resolved.key, githubToken: env.githubToken });
+    _evaluatorKey = cacheKey;
   }
   return _evaluator;
 }
 
 /** Source of the active key, for admin diagnostics (never returns the key itself). */
 export async function aiKeySource() {
-  if (env.anthropicApiKey) return 'environment';
-  if (await getStoredAiApiKey()) return 'settings';
-  return 'none';
+  const r = await resolveProvider();
+  return r ? r.source : 'none';
+}
+
+/** The active provider ('anthropic' | 'openai'), or null when nothing is configured. */
+export async function aiProvider() {
+  const r = await resolveProvider();
+  return r ? r.provider : null;
 }
 
 /** True when at least one question needs AI grading (prompt/scenario/coding). */

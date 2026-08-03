@@ -23,6 +23,10 @@ const settingsSchema = new Schema(
     // NEVER returned by the API (the controller exposes a boolean instead) and
     // hidden from default queries. The env var takes precedence over this.
     aiApiKey: { type: String, select: false, default: '' },
+    // Alternative AI-grading provider: an OpenAI API key. Either this OR the Claude
+    // key above is enough — grading uses whichever is set (Claude wins if both are).
+    // Same handling: server-side only, never returned, hidden from default queries.
+    openaiApiKey: { type: String, select: false, default: '' },
     // Zoom S2S OAuth credentials — same handling as the AI key (never returned).
     zoomAccountId: { type: String, select: false, default: '' },
     zoomClientId: { type: String, select: false, default: '' },
@@ -68,10 +72,16 @@ export async function getSettings() {
   }
 }
 
-/** Read the stored AI key (explicitly, since it is `select: false`). */
+/** Read the stored Claude (Anthropic) key (explicitly, since it is `select: false`). */
 export async function getStoredAiApiKey() {
   const doc = await SettingsModel.findOne({ organization: settingsOrg() }).select('+aiApiKey');
   return doc?.aiApiKey || '';
+}
+
+/** Read the stored OpenAI key (explicitly, since it is `select: false`). */
+export async function getStoredOpenaiApiKey() {
+  const doc = await SettingsModel.findOne({ organization: settingsOrg() }).select('+openaiApiKey');
+  return doc?.openaiApiKey || '';
 }
 
 /** Read the stored SEB Config Key (explicitly, since it is `select: false`). */

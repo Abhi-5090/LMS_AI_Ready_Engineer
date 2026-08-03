@@ -18,7 +18,7 @@ export { ExternalCertificate } from './ExternalCertificate.js';
 export { Project } from './Project.js';
 export { TechTag } from './TechTag.js';
 export { ModuleProgress } from './ModuleProgress.js';
-export { Settings, getSettings, getStoredAiApiKey, getStoredZoomCreds, getStoredSebConfigKey } from './Settings.js';
+export { Settings, getSettings, getStoredAiApiKey, getStoredOpenaiApiKey, getStoredZoomCreds, getStoredSebConfigKey } from './Settings.js';
 export { Doubt } from './Doubt.js';
 export { Announcement } from './Announcement.js';
 export { Notification } from './Notification.js';

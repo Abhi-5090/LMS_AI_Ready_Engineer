@@ -2,11 +2,11 @@ import path from 'node:path';
 import multer from 'multer';
 import { z } from 'zod';
 import { ThemeName } from '#shared';
-import { getSettings, getStoredSebConfigKey, User } from '../models/index.js';
+import { getSettings, getStoredSebConfigKey, getStoredAiApiKey, getStoredOpenaiApiKey, User } from '../models/index.js';
 import { env } from '../config/env.js';
 import { gridfsStorage } from '../services/fileStore.js';
 import { sendMail } from '../services/mailer.js';
-import { aiKeySource, getEvaluator } from '../services/aiGrading.js';
+import { aiKeySource, aiProvider, getEvaluator } from '../services/aiGrading.js';
 import { verifyZoom, zoomConfigured, zoomSource } from '../services/meetings.js';
 import { livekitConfigured } from '../services/livekit.js';
 import { ApiError } from '../utils/ApiError.js';
@@ -23,6 +23,7 @@ export const updateSettingsSchema = z
     sebConfigUrl: z.string().max(1000).optional(),
     // Write-only secrets. Empty string clears the value. Never read back.
     aiApiKey: z.string().max(200).optional(),
+    openaiApiKey: z.string().max(200).optional(),
     zoomAccountId: z.string().max(200).optional(),
     zoomClientId: z.string().max(200).optional(),
     zoomClientSecret: z.string().max(200).optional(),
@@ -42,7 +43,12 @@ async function settingsView(s) {
 
     aiConfigured: (await aiKeySource()) !== 'none',
     aiKeySource: await aiKeySource(),
-    aiKeyLocked: Boolean(env.anthropicApiKey), // env wins → UI field is read-only
+    aiProvider: await aiProvider(), // 'anthropic' | 'openai' | null — the active one
+    aiKeyLocked: Boolean(env.anthropicApiKey), // Claude env var present → Claude field read-only
+    // Per-provider: is a key saved (in settings), and is it locked by an env var?
+    anthropicConfigured: Boolean(env.anthropicApiKey) || Boolean(await getStoredAiApiKey()),
+    openaiConfigured: Boolean(env.openaiApiKey) || Boolean(await getStoredOpenaiApiKey()),
+    openaiKeyLocked: Boolean(env.openaiApiKey), // OpenAI env var present → OpenAI field read-only
     zoomConfigured: await zoomConfigured(),
     zoomSource: await zoomSource(),
     zoomLocked: Boolean(env.zoomAccountId && env.zoomClientId && env.zoomClientSecret),
@@ -95,17 +101,18 @@ export async function setSebConfig(req, res) {
   ok(res, await settingsView(s));
 }
 
-/** Admin: verify the configured Claude key with a tiny live call. */
+/** Admin: verify the active AI key (Claude or OpenAI) with a tiny live call. */
 export async function testAiConnection(_req, res) {
   const evaluator = await getEvaluator();
   if (!evaluator) {
-    throw ApiError.badRequest('No Claude API key configured. Set ANTHROPIC_API_KEY or save one in Settings.');
+    throw ApiError.badRequest('No AI key configured. Save a Claude or OpenAI key in Settings, or set ANTHROPIC_API_KEY / OPENAI_API_KEY.');
   }
   try {
     const result = await evaluator.verifyConnection();
-    ok(res, { ok: true, model: result.model, source: await aiKeySource() });
+    ok(res, { ok: true, provider: evaluator.provider, model: result.model, source: await aiKeySource() });
   } catch (err) {
-    throw ApiError.badRequest(`Claude connection failed: ${err.message}`);
+    const label = evaluator.provider === 'openai' ? 'OpenAI' : 'Claude';
+    throw ApiError.badRequest(`${label} connection failed: ${err.message}`);
   }
 }
 

@@ -322,72 +322,107 @@ function LiveKitCard({ settings }) {
   );
 }
 
-function AiGradingCard({ settings }) {
-  const update = useUpdateSettings();
-  const test = useTestAiConnection();
+/** One provider's write-only key field (Claude or OpenAI). */
+function ProviderKeyField({ label, envName, placeholder, locked, configured, field, update }) {
   const [key, setKey] = useState('');
   const [msg, setMsg] = useState('');
   const [err, setErr] = useState('');
 
-  const locked = settings.aiKeyLocked; // env var present → managed outside the UI
-  const configured = settings.aiConfigured;
-
-  async function saveKey(e) {
+  async function save(e) {
     e.preventDefault();
     setMsg(''); setErr('');
     try {
-      await update.mutateAsync({ aiApiKey: key.trim() });
+      await update.mutateAsync({ [field]: key.trim() });
       setKey('');
       setMsg(key.trim() ? 'Key saved.' : 'Key cleared.');
     } catch (e2) { setErr(apiErrorMessage(e2)); }
   }
 
+  return (
+    <div style={{ borderTop: '1px solid var(--color-border)', paddingTop: 'var(--space-4)', marginTop: 'var(--space-4)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', marginBottom: 'var(--space-2)' }}>
+        <strong>{label}</strong>
+        {configured ? <Badge tone="success">Configured</Badge> : <Badge tone="neutral">Not set</Badge>}
+      </div>
+      {locked ? (
+        <p className="lms-muted" style={{ fontSize: 'var(--font-size-sm)', margin: 0 }}>
+          Set via the <code>{envName}</code> environment variable — managed outside this UI.
+        </p>
+      ) : (
+        <form onSubmit={save} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
+          <Input
+            label={`${label} API key`}
+            type="password"
+            autoComplete="off"
+            placeholder={configured ? 'A key is saved — enter a new one to replace it' : placeholder}
+            value={key}
+            onChange={(e) => setKey(e.target.value)}
+          />
+          <div style={{ display: 'flex', gap: 'var(--space-2)', alignItems: 'center', flexWrap: 'wrap' }}>
+            <Button type="submit" size="sm" loading={update.isPending}>Save</Button>
+            {configured && (
+              <Button type="button" size="sm" variant="outline" onClick={() => { setKey(''); update.mutate({ [field]: '' }); }}>
+                Clear
+              </Button>
+            )}
+            {msg && <span style={{ color: 'var(--color-success)', fontSize: 'var(--font-size-xs)' }}>{msg}</span>}
+            {err && <span className="field__error">{err}</span>}
+          </div>
+        </form>
+      )}
+    </div>
+  );
+}
+
+function AiGradingCard({ settings }) {
+  const update = useUpdateSettings();
+  const test = useTestAiConnection();
+  const [msg, setMsg] = useState('');
+  const [err, setErr] = useState('');
+
+  const configured = settings.aiConfigured;
+  const providerLabel = settings.aiProvider === 'openai' ? 'OpenAI' : settings.aiProvider === 'anthropic' ? 'Claude' : null;
+
   async function runTest() {
     setMsg(''); setErr('');
     try {
       const r = await test.mutateAsync();
-      setMsg(`Connected to Claude (${r.model}).`);
+      const label = r.provider === 'openai' ? 'OpenAI' : 'Claude';
+      setMsg(`Connected to ${label} (${r.model}).`);
     } catch (e2) { setErr(apiErrorMessage(e2)); }
   }
 
   return (
     <Card style={{ maxWidth: '40rem', marginTop: 'var(--space-6)' }}>
-      <CardHeader title="AI Grading (Claude)" subtitle="Enables AI evaluation of prompt-writing & coding submissions." />
-      <div style={{ marginBottom: 'var(--space-4)' }}>
+      <CardHeader title="AI Grading" subtitle="Evaluates prompt-writing, scenario & coding submissions. Provide a Claude OR an OpenAI key — either one works." />
+      <div style={{ marginBottom: 'var(--space-1)' }}>
         Status:{' '}
         {configured
-          ? <Badge tone="success">Configured ({settings.aiKeySource})</Badge>
+          ? <Badge tone="success">Active: {providerLabel} ({settings.aiKeySource})</Badge>
           : <Badge tone="warning">Not configured</Badge>}
       </div>
+      <p className="lms-muted" style={{ fontSize: 'var(--font-size-xs)', marginTop: 0 }}>
+        If both are set, Claude is used. Keys are stored server-side, write-only, and never shown again.
+      </p>
 
-      {locked ? (
-        <p className="lms-muted">
-          The key is set via the <code>ANTHROPIC_API_KEY</code> environment variable and is managed
-          outside this UI (recommended for production).
-        </p>
-      ) : (
-        <form onSubmit={saveKey} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
-          <Input
-            label="Claude API key"
-            type="password"
-            autoComplete="off"
-            placeholder={configured ? 'A key is saved — enter a new one to replace it' : 'sk-ant-…'}
-            value={key}
-            onChange={(e) => setKey(e.target.value)}
-          />
-          <div style={{ display: 'flex', gap: 'var(--space-2)', alignItems: 'center', flexWrap: 'wrap' }}>
-            <Button type="submit" loading={update.isPending}>Save key</Button>
-            {configured && (
-              <Button type="button" variant="outline" onClick={() => { setKey(''); update.mutate({ aiApiKey: '' }); }}>
-                Clear key
-              </Button>
-            )}
-          </div>
-          <p className="lms-muted" style={{ fontSize: 'var(--font-size-xs)' }}>
-            Stored server-side and never shown again. The key is write-only.
-          </p>
-        </form>
-      )}
+      <ProviderKeyField
+        label="Claude (Anthropic)"
+        envName="ANTHROPIC_API_KEY"
+        placeholder="sk-ant-…"
+        locked={settings.aiKeyLocked}
+        configured={settings.anthropicConfigured}
+        field="aiApiKey"
+        update={update}
+      />
+      <ProviderKeyField
+        label="OpenAI"
+        envName="OPENAI_API_KEY"
+        placeholder="sk-…"
+        locked={settings.openaiKeyLocked}
+        configured={settings.openaiConfigured}
+        field="openaiApiKey"
+        update={update}
+      />
 
       <div style={{ marginTop: 'var(--space-4)', display: 'flex', gap: 'var(--space-3)', alignItems: 'center', flexWrap: 'wrap' }}>
         <Button variant="outline" onClick={runTest} loading={test.isPending} disabled={!configured}>
