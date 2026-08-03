@@ -14,6 +14,9 @@ import {
   ScrollText,
   Building2,
   Inbox,
+  Library,
+  Activity,
+  SlidersHorizontal,
 } from 'lucide-react';
 import { UserRole } from '@/shared';
 
@@ -35,22 +38,22 @@ export const NAV_BY_ROLE = {
   ],
   [UserRole.ADMIN]: [
     { label: 'Dashboard', to: '/app', Icon: LayoutDashboard },
-    { group: 'People', items: [
+    { group: 'People', Icon: Users, items: [
       { label: 'Users', to: '/app/users', Icon: Users },
       { label: 'Batches', to: '/app/batches', Icon: UsersRound },
       { label: 'Approvals', to: '/app/approvals', Icon: BadgeCheck },
     ] },
-    { group: 'Curriculum', items: [
+    { group: 'Curriculum', Icon: Library, items: [
       { label: 'Modules', to: '/app/modules', Icon: BookOpen },
       { label: 'Question Bank', to: '/app/question-bank', Icon: Database },
       { label: 'Assessments', to: '/app/assessments', Icon: FileText },
       { label: 'Certificates', to: '/app/certificates', Icon: Award },
     ] },
-    { group: 'Operations', items: [
+    { group: 'Operations', Icon: Activity, items: [
       { label: 'Attendance', to: '/app/attendance', Icon: ClipboardCheck },
       { label: 'Announcements', to: '/app/announcements', Icon: Megaphone },
     ] },
-    { group: 'System & Insights', items: [
+    { group: 'System & Insights', Icon: SlidersHorizontal, items: [
       { label: 'Analytics', to: '/app/analytics', Icon: BarChart3 },
       { label: 'Audit Log', to: '/app/audit', Icon: ScrollText },
       { label: 'Settings', to: '/app/settings', Icon: Settings },

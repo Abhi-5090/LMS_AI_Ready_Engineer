@@ -15,27 +15,34 @@ import {
   BadgeCheck,
   Database,
   UserCircle,
+  GraduationCap,
+  TrendingUp,
+  LifeBuoy,
+  Presentation,
+  ClipboardList,
+  MessagesSquare,
 } from 'lucide-react';
 import { UserRole } from '@/shared';
 
 /**
  * Role-based navigation. Entries are either a plain link `{ label, to, Icon }`
- * (always visible) or a collapsible group `{ group, items: [...] }`. Dashboard
- * stays a top-level link; the rest are grouped so the sidebar stays scannable.
+ * (always visible) or a collapsible group `{ group, Icon, items: [...] }` whose
+ * header looks like a nav row and expands to reveal its links. Dashboard stays a
+ * top-level link.
  */
 export const NAV_BY_ROLE = {
   [UserRole.STUDENT]: [
     { label: 'Dashboard', to: '/app', Icon: LayoutDashboard },
-    { group: 'Learn', items: [
+    { group: 'Learn', Icon: GraduationCap, items: [
       { label: 'My Curriculum', to: '/app/curriculum', Icon: Compass },
       { label: 'Class Schedule', to: '/app/schedule', Icon: CalendarDays },
       { label: 'Assessments', to: '/app/assessments', Icon: FileText },
     ] },
-    { group: 'My Progress', items: [
+    { group: 'My Progress', Icon: TrendingUp, items: [
       { label: 'Attendance', to: '/app/attendance', Icon: ClipboardCheck },
       { label: 'Certificates', to: '/app/certificates', Icon: Award },
     ] },
-    { group: 'Support', items: [
+    { group: 'Support', Icon: LifeBuoy, items: [
       { label: 'Announcements', to: '/app/announcements', Icon: Megaphone },
       { label: 'Doubts', to: '/app/doubts', Icon: HelpCircle },
     ] },
@@ -43,22 +50,22 @@ export const NAV_BY_ROLE = {
   ],
   [UserRole.TRAINER]: [
     { label: 'Dashboard', to: '/app', Icon: LayoutDashboard },
-    { group: 'Teaching', items: [
+    { group: 'Teaching', Icon: Presentation, items: [
       { label: 'My Modules', to: '/app/modules', Icon: BookOpen },
       { label: 'My Batches', to: '/app/batches', Icon: UsersRound },
       { label: 'Class Schedule', to: '/app/schedule', Icon: CalendarDays },
       { label: 'Attendance Entry', to: '/app/attendance', Icon: CalendarClock },
     ] },
-    { group: 'Assessments', items: [
+    { group: 'Assessments', Icon: ClipboardList, items: [
       { label: 'Question Bank', to: '/app/question-bank', Icon: Database },
       { label: 'Assessments', to: '/app/assessments', Icon: Unlock },
     ] },
-    { group: 'Students & Comms', items: [
+    { group: 'Students & Comms', Icon: MessagesSquare, items: [
       { label: 'Announcements', to: '/app/announcements', Icon: Megaphone },
       { label: 'Doubts', to: '/app/doubts', Icon: HelpCircle },
       { label: 'Approvals', to: '/app/approvals', Icon: BadgeCheck },
     ] },
-    { group: 'Insights', items: [
+    { group: 'Insights', Icon: BarChart3, items: [
       { label: 'Analytics', to: '/app/analytics', Icon: BarChart3 },
     ] },
     { label: 'Profile', to: '/app/profile', Icon: UserCircle },

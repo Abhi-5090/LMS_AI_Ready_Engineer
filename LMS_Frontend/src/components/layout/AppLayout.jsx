@@ -78,6 +78,8 @@ export function AppLayout() {
       saveOpen(next);
       return next;
     });
+    // After the slide settles, re-place the active-indicator (its own resize hook).
+    setTimeout(() => window.dispatchEvent(new Event('resize')), 240);
   }
 
   const allItems = flattenNav(nav);
@@ -117,19 +119,23 @@ export function AppLayout() {
                   onClick={() => toggleGroup(entry.group)}
                   aria-expanded={open}
                 >
+                  {entry.Icon && (
+                    <span className="sidebar__link-icon" aria-hidden><entry.Icon size={18} strokeWidth={2} /></span>
+                  )}
                   <span className="sidebar__group-name">{entry.group}</span>
                   {!open && groupCount > 0 && (
                     <span className="sidebar__badge" aria-label={`${groupCount} new`}>{groupCount > 9 ? '9+' : groupCount}</span>
                   )}
                   <ChevronRight size={15} strokeWidth={2.2} className="sidebar__group-chev" aria-hidden />
                 </button>
-                {open && (
+                {/* Always rendered; the grid 0fr→1fr transition slides it open/closed. */}
+                <div className={`sidebar__group-panel${open ? ' is-open' : ''}`}>
                   <div className="sidebar__group-items">
                     {entry.items.map((it) => (
                       <SidebarLink key={it.to} item={it} badge={badges[it.to] ?? 0} onNavigate={() => setNavOpen(false)} nested />
                     ))}
                   </div>
-                )}
+                </div>
               </div>
             );
           })}
