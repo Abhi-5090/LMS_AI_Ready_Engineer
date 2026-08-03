@@ -90,17 +90,17 @@ function ProfileHero({ user, isStudent }) {
         </button>
       </div>
 
-      <div className="profile-hero__avatar">
-        <div className="profile-hero__avatar-inner">
-          {user.avatarUrl ? <img src={fileSrc(user.avatarUrl)} alt={user.name} /> : initials(user.name)}
-        </div>
-        <input ref={fileRef} type="file" accept="image/*" onChange={onAvatar} hidden />
-        <button type="button" className="profile-hero__avatar-edit" title="Change photo" aria-label="Change photo" disabled={avatar.isPending} onClick={() => fileRef.current?.click()}>
-          <Camera size={15} />
-        </button>
-      </div>
-
       <div className="profile-hero__body">
+        <div className="profile-hero__avatar">
+          <div className="profile-hero__avatar-inner">
+            {user.avatarUrl ? <img src={fileSrc(user.avatarUrl)} alt={user.name} /> : initials(user.name)}
+          </div>
+          <input ref={fileRef} type="file" accept="image/*" onChange={onAvatar} hidden />
+          <button type="button" className="profile-hero__avatar-edit" title="Change photo" aria-label="Change photo" disabled={avatar.isPending} onClick={() => fileRef.current?.click()}>
+            <Camera size={15} />
+          </button>
+        </div>
+
         <div className="profile-hero__id">
           <div className="profile-hero__name">
             {user.name}
