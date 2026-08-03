@@ -285,6 +285,8 @@ function AnswersModal({ a, submission, onClose }) {
                       )}
                     </div>
 
+                    <QuestionMedia url={q.mediaUrl} type={q.mediaType} name={q.mediaName} />
+
                     {isMcq ? (
                   <div className="ans-cols">
                     <div className="ans-side">
