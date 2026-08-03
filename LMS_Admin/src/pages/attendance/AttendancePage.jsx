@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { BookOpen, CalendarX, ChevronLeft, ChevronRight, Download, TriangleAlert, Users } from 'lucide-react';
 import { UserRole } from '@/shared';
-import { Badge, Button, Card, CardHeader, EmptyState, ErrorState, Select, SkeletonCards, SkeletonTable, useToast } from '@/components/ui';
+import { Badge, Button, Card, CardHeader, EmptyState, ErrorState, Input, Select, SkeletonCards, SkeletonTable, useToast } from '@/components/ui';
 import { PageHeader, Stat } from '@/components/PageHeader';
 import { apiErrorMessage, downloadFile } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
