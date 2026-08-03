@@ -204,28 +204,32 @@ function EntryView() {
       </div>
 
       <Card style={{ marginBottom: 'var(--space-6)' }}>
-        <CardHeader title="Select a class" subtitle="Newest first — choose a session to record attendance for." />
-
-        <div className="att-filters">
-          <Input
-            className="att-filters__search"
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder="Search classes by name…"
-          />
-          <Select
-            label="Batch"
-            value={batchFilter}
-            onChange={(e) => setBatchFilter(e.target.value)}
-            options={[{ value: '', label: 'All batches' }, ...batchesInModule.map((b) => ({ value: b.id, label: b.name }))]}
-          />
-          <Select
-            label="Status"
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            options={[{ value: '', label: 'All' }, { value: 'pending', label: 'Pending' }, { value: 'marked', label: 'Marked' }]}
-          />
-          <Input label="Date" type="date" value={dateFilter} onChange={(e) => setDateFilter(e.target.value)} />
+        <div className="att-sessions-head">
+          <CardHeader title="Select a class" subtitle="Newest first — choose a session to record attendance for." />
+          <div className="att-filters">
+            <Select
+              label="Batch"
+              className="att-filters__ctl"
+              value={batchFilter}
+              onChange={(e) => setBatchFilter(e.target.value)}
+              options={[{ value: '', label: 'All batches' }, ...batchesInModule.map((b) => ({ value: b.id, label: b.name }))]}
+            />
+            <Select
+              label="Status"
+              className="att-filters__ctl"
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              options={[{ value: '', label: 'All' }, { value: 'pending', label: 'Pending' }, { value: 'marked', label: 'Marked' }]}
+            />
+            <Input label="Date" type="date" className="att-filters__ctl" value={dateFilter} onChange={(e) => setDateFilter(e.target.value)} />
+            <Input
+              label="Search"
+              className="att-filters__search"
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="Search by class name…"
+            />
+          </div>
         </div>
 
         <div className="att-sessions-scroll table-wrap">

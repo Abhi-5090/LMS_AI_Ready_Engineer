@@ -79,16 +79,31 @@
   .mod-att-card { transition: none; }
   .mod-att-card:hover { transform: none; }
 }
-/* Sessions table: filter bar + scroll (≈10 rows, then scroll), newest first. */
+/* Sessions table: header row (title left, compact filters at the right), then
+   a scroll region (≈10 rows, then scroll), newest first. */
+.att-sessions-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+  margin-bottom: var(--space-4);
+}
 .att-filters {
   display: flex;
   gap: var(--space-3);
   align-items: flex-end;
   flex-wrap: wrap;
-  margin-bottom: var(--space-4);
 }
-.att-filters .field { margin: 0; }
-.att-filters__search { flex: 1 1 16rem; min-width: 12rem; align-self: flex-end; }
+.att-filters .field { flex: 0 0 auto; margin: 0; }
+.att-filters .att-filters__ctl { width: 9.5rem; }
+.att-filters .att-filters__search { width: 13rem; }
+@media (max-width: 680px) {
+  .att-filters { width: 100%; }
+  .att-filters .field { flex: 1 1 8rem; }
+  .att-filters .att-filters__ctl,
+  .att-filters .att-filters__search { width: auto; }
+}
 .att-sessions-scroll { max-height: 34rem; overflow-y: auto; }
 .att-sessions-scroll thead th {
   position: sticky;
