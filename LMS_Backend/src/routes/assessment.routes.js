@@ -48,5 +48,7 @@ router.get('/:id/submissions', adminOrTrainer, validate({ params: sub.assessment
 router.get('/:id/submissions.csv', adminOrTrainer, validate({ params: sub.assessmentIdParam }), asyncHandler(sub.exportSubmissionsCsv));
 router.get('/:id/leaderboard', validate({ params: sub.assessmentIdParam }), asyncHandler(sub.leaderboard));
 router.post('/:id/submissions/:submissionId/regrade', adminOrTrainer, validate({ params: sub.submissionParam }), asyncHandler(sub.regradeSubmission));
+// Reopen a student's test for another attempt (archives the current one).
+router.post('/:id/submissions/:submissionId/reattempt', adminOrTrainer, validate({ params: sub.submissionParam }), asyncHandler(sub.grantReattempt));
 
 export default router;

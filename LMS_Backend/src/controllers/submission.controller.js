@@ -302,6 +302,55 @@ export async function regradeSubmission(req, res) {
   ok(res, submission.toJSON());
 }
 
+/**
+ * Admin/assigned-trainer: reopen a student's test for another attempt. The current
+ * (completed) attempt is archived into `attempts[]` and the submission is reset to
+ * NOT_STARTED so the student can take it again — the new attempt becomes their live
+ * result. Used when a student didn't attempt or failed and needs a retake.
+ */
+export async function grantReattempt(req, res) {
+  const assessment = await Assessment.findById(req.params.id);
+  if (!assessment) throw ApiError.notFound('Assessment not found');
+  if (req.auth.role === UserRole.TRAINER) {
+    const module = await Module.findById(assessment.module).select('assignedTrainers');
+    const assigned = module?.assignedTrainers.some((t) => t.toString() === req.auth.userId);
+    if (!assigned) throw ApiError.forbidden('You are not assigned to this module');
+  }
+  const sub = await Submission.findOne({ _id: req.params.submissionId, assessment: assessment._id });
+  if (!sub) throw ApiError.notFound('Submission not found');
+
+  const COMPLETED = [SubmissionStatus.SUBMITTED, SubmissionStatus.EVALUATING, SubmissionStatus.GRADED];
+  if (!COMPLETED.includes(sub.status)) {
+    throw ApiError.badRequest('This student has not completed an attempt yet — nothing to reopen.');
+  }
+
+  const archived = { score: sub.score, passed: sub.passed, status: sub.status, submittedAt: sub.submittedAt, disqualified: sub.disqualified };
+  const updated = await Submission.findByIdAndUpdate(
+    sub._id,
+    {
+      $push: { attempts: archived },
+      $set: {
+        status: SubmissionStatus.NOT_STARTED,
+        answers: [],
+        disqualified: false,
+        proctorShots: [],
+        warnings: 0,
+        warningLog: [],
+        reattemptGrantedAt: new Date(),
+        reattemptGrantedBy: req.auth.userId,
+      },
+      $unset: { score: '', passed: '', feedback: '', startedAt: '', submittedAt: '', disqualifiedReason: '' },
+    },
+    { new: true },
+  );
+  audit(req, 'submission.reattempt', {
+    targetType: 'submission',
+    targetId: sub.id,
+    meta: { assessment: assessment.title, student: sub.student.toString(), attempt: updated.attempts.length + 1 },
+  });
+  ok(res, updated.toJSON());
+}
+
 /** The signed-in student's submission for an assessment (or null). */
 export async function getMySubmission(req, res) {
   const sub = await Submission.findOne({ assessment: req.params.id, student: req.auth.userId });

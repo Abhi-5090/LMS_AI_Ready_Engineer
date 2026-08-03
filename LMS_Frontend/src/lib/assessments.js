@@ -161,6 +161,18 @@ export function useSubmissions(id) {
   });
 }
 
+/** Trainer/admin: reopen a student's test for another attempt (archives the current). */
+export function useGrantReattempt(id) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (submissionId) => unwrap(api.post(`/assessments/${id}/submissions/${submissionId}/reattempt`)),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: assessmentKeys.submissions(id) });
+      qc.invalidateQueries({ queryKey: assessmentKeys.all });
+    },
+  });
+}
+
 /** Ranked batch leaderboard for an assessment. */
 export function useLeaderboard(id) {
   return useQuery({

@@ -34,6 +34,16 @@ const submissionSchema = new Schema(
     // Proctoring warnings (blocked shortcuts / leaving the exam). Counted for staff review.
     warnings: { type: Number, default: 0 },
     warningLog: { type: [{ _id: false, reason: String, at: Date }], default: [] },
+    // Prior COMPLETED attempts, archived when a trainer grants a reattempt. The live
+    // fields above (score/passed/status/answers…) always reflect the CURRENT attempt;
+    // the student's outcome is that latest attempt.
+    attempts: {
+      type: [{ _id: false, score: Number, passed: Boolean, status: String, submittedAt: Date, disqualified: Boolean }],
+      default: [],
+    },
+    // The most recent reattempt grant (drives the trainer's Manage → Reattempts table).
+    reattemptGrantedAt: { type: Date },
+    reattemptGrantedBy: { type: Schema.Types.ObjectId, ref: 'User' },
     organization: { type: Schema.Types.ObjectId, ref: 'Organization', default: null, index: true },
   },
   baseSchemaOptions,
