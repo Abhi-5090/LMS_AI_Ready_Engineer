@@ -24,10 +24,10 @@ export function PageTransition({ children }) {
     const ctx = gsap.context(() => {
       gsap.from(ref.current.children, {
         opacity: 0,
-        y: 16,
-        duration: 0.44,
-        stagger: 0.06,
-        ease: 'power2.out',
+        y: 26,
+        duration: 0.85,
+        stagger: 0.11,
+        ease: 'power3.out',
         clearProps: 'transform,opacity',
       });
     }, ref);
