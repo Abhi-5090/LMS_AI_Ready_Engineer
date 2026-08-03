@@ -52,3 +52,51 @@
   color: var(--color-text);
 }
 .teams-organizer__icon { color: var(--color-primary); display: grid; place-items: center; flex: none; }
+
+/* Attendance entry: pick a module (card), then drill into its sessions. */
+.mod-att-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(15.5rem, 1fr));
+  gap: var(--space-4);
+}
+.mod-att-card {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  text-align: left;
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  cursor: pointer;
+  transition: transform 160ms cubic-bezier(0.23, 1, 0.32, 1), box-shadow 160ms ease, border-color 160ms ease;
+}
+@media (hover: hover) {
+  .mod-att-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+    border-color: color-mix(in srgb, var(--color-primary) 40%, var(--color-border));
+  }
+}
+.mod-att-card:active { transform: scale(0.99); }
+.mod-att-card__icon {
+  display: grid;
+  place-items: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  flex-shrink: 0;
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--color-primary) 12%, transparent);
+  color: var(--color-primary);
+}
+.mod-att-card__body { display: flex; flex-direction: column; gap: 4px; min-width: 0; flex: 1; }
+.mod-att-card__name { font-weight: 600; color: var(--color-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mod-att-card__code { font-size: var(--font-size-xs); color: var(--color-text-secondary); }
+.mod-att-card__meta { display: flex; gap: var(--space-2); flex-wrap: wrap; margin-top: 2px; }
+.mod-att-card__chev { color: var(--color-text-secondary); flex-shrink: 0; }
+.mod-att-head { display: flex; align-items: center; gap: var(--space-3); margin-bottom: var(--space-5); flex-wrap: wrap; }
+.mod-att-head__title { font-size: var(--font-size-sm); }
+@media (prefers-reduced-motion: reduce) {
+  .mod-att-card { transition: none; }
+  .mod-att-card:hover { transform: none; }
+}

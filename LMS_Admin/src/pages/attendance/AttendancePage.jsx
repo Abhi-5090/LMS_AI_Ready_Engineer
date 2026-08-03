@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { CalendarX, Download, TriangleAlert, Users } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { BookOpen, CalendarX, ChevronLeft, ChevronRight, Download, TriangleAlert, Users } from 'lucide-react';
 import { UserRole } from '@/shared';
 import { Badge, Button, Card, CardHeader, EmptyState, ErrorState, Select, SkeletonCards, SkeletonTable, useToast } from '@/components/ui';
 import { PageHeader, Stat } from '@/components/PageHeader';
@@ -108,51 +108,102 @@ function StaffAttendanceView() {
 
 function EntryView() {
   const { data: classes, isLoading, isError, error, refetch } = useClasses();
-  const [selected, setSelected] = useState(null);
+  const [moduleKey, setModuleKey] = useState(null); // which module's sessions are open
+  const [selected, setSelected] = useState(null);   // which class's roster is open
 
+  // Group the sessions by module → one card per module (LLMs, Prompting, …).
+  const modules = useMemo(() => {
+    const map = new Map();
+    for (const c of classes ?? []) {
+      const key = c.module?.id ?? '__none__';
+      if (!map.has(key)) {
+        map.set(key, { key, name: c.module?.name ?? 'Unassigned', code: c.module?.code ?? '', classes: [] });
+      }
+      map.get(key).classes.push(c);
+    }
+    return [...map.values()].sort((a, b) => a.name.localeCompare(b.name));
+  }, [classes]);
+
+  const active = moduleKey != null ? modules.find((m) => m.key === moduleKey) : null;
+
+  if (isLoading && !classes) return <Card><SkeletonTable rows={5} cols={5} /></Card>;
+  if (isError) return <ErrorState message={apiErrorMessage(error)} onRetry={refetch} />;
+  if (!classes || classes.length === 0) {
+    return <Card><EmptyState icon={<CalendarX size={26} />} title="No classes scheduled yet" /></Card>;
+  }
+
+  // ── Step 1: pick a module (cards) ──
+  if (!active) {
+    return (
+      <div className="mod-att-grid">
+        {modules.map((m) => {
+          const total = m.classes.length;
+          const pending = m.classes.filter((c) => !c.attendanceMarked).length;
+          return (
+            <button key={m.key} type="button" className="mod-att-card" onClick={() => setModuleKey(m.key)}>
+              <span className="mod-att-card__icon"><BookOpen size={20} /></span>
+              <span className="mod-att-card__body">
+                <span className="mod-att-card__name">{m.name}</span>
+                {m.code && <span className="mod-att-card__code">{m.code}</span>}
+                <span className="mod-att-card__meta">
+                  <Badge tone="neutral">{total} session{total === 1 ? '' : 's'}</Badge>
+                  {pending > 0 ? <Badge tone="warning">{pending} pending</Badge> : <Badge tone="success">All marked</Badge>}
+                </span>
+              </span>
+              <ChevronRight size={18} className="mod-att-card__chev" />
+            </button>
+          );
+        })}
+      </div>
+    );
+  }
+
+  // ── Step 2: sessions for the chosen module ──
+  const total = active.classes.length;
+  const pending = active.classes.filter((c) => !c.attendanceMarked).length;
   return (
     <>
+      <div className="mod-att-head">
+        <Button variant="outline" size="sm" onClick={() => { setModuleKey(null); setSelected(null); }}>
+          <ChevronLeft size={15} style={{ marginRight: 4 }} /> All modules
+        </Button>
+        <div className="mod-att-head__title">
+          <strong>{active.name}</strong>
+          {active.code && <span className="lms-muted"> · {active.code}</span>}
+          <span className="lms-muted"> · {total} session{total === 1 ? '' : 's'}{pending > 0 ? ` · ${pending} pending` : ''}</span>
+        </div>
+      </div>
+
       <Card style={{ marginBottom: 'var(--space-6)' }}>
         <CardHeader title="Select a class" subtitle="Choose a session to record attendance for." />
-        {isLoading && !classes ? (
-          <SkeletonTable rows={5} cols={5} />
-        ) : isError ? (
-          <ErrorState message={apiErrorMessage(error)} onRetry={refetch} />
-        ) : !classes || classes.length === 0 ? (
-          <EmptyState
-            icon={<CalendarX size={26} />}
-            title="No classes scheduled yet"
-          />
-        ) : (
-          <div className="table-wrap">
-            <table className="table">
-              <thead>
-                <tr><th>Date</th><th>Class</th><th>Batch</th><th>Status</th><th /></tr>
-              </thead>
-              <tbody>
-                {classes.map((c) => (
-                  <tr key={c.id}>
-                    <td>{formatDate(c.date)}</td>
-                    <td>{c.title}</td>
-                    <td>{c.batch?.name}</td>
-                    <td>
-                      {c.attendanceMarked ? <Badge tone="success">Marked</Badge> : <Badge tone="neutral">Pending</Badge>}
-                    </td>
-                    <td>
-                      <Button
-                        size="sm"
-                        variant={selected === c.id ? 'primary' : 'outline'}
-                        onClick={() => setSelected(c.id)}
-                      >
-                        {c.attendanceMarked ? 'Edit' : 'Mark'}
-                      </Button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+        <div className="table-wrap">
+          <table className="table">
+            <thead>
+              <tr><th>Date</th><th>Class</th><th>Batch</th><th>Status</th><th /></tr>
+            </thead>
+            <tbody>
+              {active.classes.map((c) => (
+                <tr key={c.id}>
+                  <td>{formatDate(c.date)}</td>
+                  <td>{c.title}</td>
+                  <td>{c.batch?.name}</td>
+                  <td>
+                    {c.attendanceMarked ? <Badge tone="success">Marked</Badge> : <Badge tone="neutral">Pending</Badge>}
+                  </td>
+                  <td>
+                    <Button
+                      size="sm"
+                      variant={selected === c.id ? 'primary' : 'outline'}
+                      onClick={() => setSelected(c.id)}
+                    >
+                      {c.attendanceMarked ? 'Edit' : 'Mark'}
+                    </Button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </Card>
 
       {selected && <RosterEditor classId={selected} />}
