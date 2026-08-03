@@ -1,17 +1,15 @@
 import { useState } from 'react';
-import { Award, Download, ExternalLink, FileText, Share2, Trash2, Upload } from 'lucide-react';
-import { Badge, Button, Card, CardHeader, EmptyState, ErrorState, Input, Modal, Skeleton, SkeletonCards, useConfirm } from '@/components/ui';
+import { Award, Download, Eye, ExternalLink, FileText, Share2, Trash2, Upload } from 'lucide-react';
+import { Badge, Button, Card, CardHeader, EmptyState, ErrorState, Input, Modal, Skeleton, SkeletonCards, Spinner, useConfirm, useToast } from '@/components/ui';
 import { PageHeader } from '@/components/PageHeader';
 import { apiErrorMessage, fileSrc } from '@/lib/api';
-import { useAuth } from '@/lib/auth';
-import { useMyCertificates, openCertificatePdf } from '@/lib/certificates';
+import { useMyCertificates, downloadCertificatePdf, fetchCertificatePdfUrl } from '@/lib/certificates';
 import {
   useAddExternalCertificate,
   useDeleteExternalCertificate,
   useMyExternalCertificates,
 } from '@/lib/externalCertificates';
 import { formatDate } from '@/lib/format';
-import { Certificate } from './Certificate';
 import './certificates.css';
 import '../modules/modules.css';
 
@@ -35,6 +33,9 @@ function certTitle(c) {
   return c.isProgramCertificate ? 'AI Ready Engineer Program' : c.module?.name ?? 'Module';
 }
 
+const certSlug = (c) =>
+  `${certTitle(c)}-${c.certificateId}`.replace(/[^a-z0-9]+/gi, '-').replace(/^-+|-+$/g, '').toLowerCase() || 'certificate';
+
 const isImage = (url = '') => /\.(png|jpe?g|gif|webp)(\?|$)/i.test(url);
 
 // Approval state badges for student-uploaded certificates.
@@ -45,9 +46,38 @@ const CERT_STATUS = {
 };
 
 function StudentCertificates() {
-  const user = useAuth((s) => s.user);
+  const toast = useToast();
   const { data: certs, isLoading, isError, error, refetch } = useMyCertificates();
-  const [view, setView] = useState(null);
+  const [preview, setPreview] = useState(null); // { cert, url } — the certificate PDF preview
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [busyId, setBusyId] = useState(null); // certificate currently downloading
+
+  async function openPreview(c) {
+    setPreview({ cert: c, url: null });
+    setPreviewLoading(true);
+    try {
+      const url = await fetchCertificatePdfUrl(c.certificateId);
+      setPreview({ cert: c, url });
+    } catch (e) {
+      toast.error(apiErrorMessage(e));
+      setPreview(null);
+    } finally {
+      setPreviewLoading(false);
+    }
+  }
+  function closePreview() {
+    setPreview((p) => { if (p?.url) URL.revokeObjectURL(p.url); return null; });
+  }
+  async function download(c) {
+    setBusyId(c.id);
+    try {
+      await downloadCertificatePdf(c.certificateId, `${certSlug(c)}.pdf`);
+    } catch (e) {
+      toast.error(apiErrorMessage(e));
+    } finally {
+      setBusyId(null);
+    }
+  }
 
   return (
     <>
@@ -74,31 +104,36 @@ function StudentCertificates() {
               description="No certificates yet. Complete a module — pass its final assessment and meet the attendance requirement — to earn one automatically."
             />
           ) : (
-            <div className="cert-list">
+            <div className="cert-card-grid">
               {certs?.map((c) => (
-                <div key={c.id} className="cert-row">
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontWeight: 'var(--font-weight-semibold)', display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
-                      {certTitle(c)}
-                      {c.isProgramCertificate && <Badge tone="success">Program</Badge>}
-                    </div>
-                    <div className="lms-muted" style={{ fontSize: 'var(--font-size-xs)' }}>
-                      {formatDate(c.issuedAt)} · {c.certificateId}
+                <div key={c.id} className="cert-card">
+                  <div className="cert-card__body">
+                    <span className="cert-card__icon"><Award size={22} /></span>
+                    <div className="cert-card__meta">
+                      <div className="cert-card__title">
+                        {certTitle(c)}
+                        {c.isProgramCertificate && <Badge tone="success">Program</Badge>}
+                      </div>
+                      <div className="cert-card__sub lms-muted">{formatDate(c.issuedAt)} · {c.certificateId}</div>
                     </div>
                   </div>
-                  <div style={{ display: 'flex', gap: 'var(--space-2)', flex: 'none' }}>
-                    <Button
-                      size="sm"
-                      variant="outline"
+                  {/* Revealed on hover: preview · download · share. */}
+                  <div className="cert-card__actions">
+                    <button type="button" className="icon-btn" title="Preview certificate" aria-label={`Preview ${certTitle(c)}`} onClick={() => openPreview(c)}>
+                      <Eye size={16} />
+                    </button>
+                    <button type="button" className="icon-btn" title="Download certificate" aria-label={`Download ${certTitle(c)}`} disabled={busyId === c.id} onClick={() => download(c)}>
+                      <Download size={16} />
+                    </button>
+                    <button
+                      type="button"
+                      className="icon-btn"
                       title="Share on LinkedIn"
+                      aria-label={`Share ${certTitle(c)}`}
                       onClick={() => shareLink(`${window.location.origin}/verify/${c.certificateId}`, `${certTitle(c)} — AI Ready Engineer certificate`)}
                     >
-                      <Share2 size={14} style={{ marginRight: 4 }} /> Share
-                    </Button>
-                    <Button size="sm" variant="outline" title="Download PDF" onClick={() => openCertificatePdf(c.certificateId).catch(() => {})}>
-                      <Download size={14} style={{ marginRight: 4 }} /> Download
-                    </Button>
-                    <Button size="sm" onClick={() => setView(c)}>View</Button>
+                      <Share2 size={16} />
+                    </button>
                   </div>
                 </div>
               ))}
@@ -113,21 +148,29 @@ function StudentCertificates() {
       </div>
 
       <Modal
-        open={Boolean(view)}
+        open={Boolean(preview)}
         size="lg"
-        title="Certificate"
-        onClose={() => setView(null)}
+        title={preview ? certTitle(preview.cert) : 'Certificate'}
+        onClose={closePreview}
         footer={
           <>
-            <Button variant="outline" onClick={() => setView(null)}>Close</Button>
-            <Button onClick={() => window.print()}>Print / Save PDF</Button>
+            <Button variant="outline" onClick={closePreview}>Close</Button>
+            {preview?.cert && (
+              <Button onClick={() => download(preview.cert)} disabled={busyId === preview.cert.id}>
+                <Download size={15} style={{ marginRight: 6 }} /> Download
+              </Button>
+            )}
           </>
         }
       >
-        {view && (
-          <div className="cert-print-area">
-            <Certificate certificate={view} studentName={user?.name ?? 'Student'} />
-          </div>
+        {previewLoading || !preview?.url ? (
+          <div style={{ display: 'flex', justifyContent: 'center', padding: 'var(--space-10)' }}><Spinner size={30} /></div>
+        ) : (
+          <object data={preview.url} type="application/pdf" className="cert-preview-pdf" aria-label="Certificate preview">
+            <p className="lms-muted" style={{ padding: 'var(--space-4)' }}>
+              Preview isn’t available here — <a href={preview.url} target="_blank" rel="noreferrer">open the PDF</a> instead.
+            </p>
+          </object>
         )}
       </Modal>
     </>

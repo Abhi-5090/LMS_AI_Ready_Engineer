@@ -15,6 +15,26 @@ export async function openCertificatePdf(certificateId) {
   setTimeout(() => URL.revokeObjectURL(url), 60_000);
 }
 
+/** Fetch the rendered certificate PDF as a blob object-URL (for an in-app preview).
+ *  The caller must revoke it when done. */
+export async function fetchCertificatePdfUrl(certificateId) {
+  const res = await api.get(`/certificates/${certificateId}/download`, { responseType: 'blob' });
+  return URL.createObjectURL(res.data);
+}
+
+/** Fetch the rendered certificate PDF and save it to the user's device. */
+export async function downloadCertificatePdf(certificateId, filename = 'certificate.pdf') {
+  const res = await api.get(`/certificates/${certificateId}/download`, { responseType: 'blob' });
+  const url = URL.createObjectURL(res.data);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 10_000);
+}
+
 /** Student's own certificates (server issues any newly-earned ones first). */
 export function useMyCertificates({ enabled = true } = {}) {
   return useQuery({

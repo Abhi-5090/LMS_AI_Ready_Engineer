@@ -268,3 +268,42 @@
 }
 .approval-thumb img { width: 100%; height: 100%; object-fit: cover; }
 .approval-actions { display: flex; align-items: center; gap: var(--space-2); flex: none; flex-wrap: wrap; }
+
+/* AI Ready certificates — hover-reveal action cards (preview · download · share). */
+.cert-card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr)); gap: var(--space-3); }
+.cert-card {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  transition: border-color 160ms var(--ease-out, ease), box-shadow 160ms ease, transform 160ms var(--ease-out, ease);
+}
+@media (hover: hover) {
+  .cert-card:hover {
+    border-color: color-mix(in srgb, var(--color-primary) 40%, var(--color-border));
+    box-shadow: var(--shadow-md);
+    transform: translateY(-2px);
+  }
+}
+.cert-card__body { display: flex; align-items: center; gap: var(--space-3); min-width: 0; flex: 1; }
+.cert-card__icon {
+  display: grid; place-items: center; width: 2.5rem; height: 2.5rem; flex: none;
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--color-primary) 12%, transparent);
+  color: var(--color-primary);
+}
+.cert-card__meta { min-width: 0; }
+.cert-card__title { font-weight: var(--font-weight-semibold); display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
+.cert-card__sub { font-size: var(--font-size-xs); margin-top: 2px; }
+.cert-card__actions { display: flex; gap: var(--space-1); flex: none; }
+/* On pointer devices the icons reveal on hover/focus; on touch they stay visible. */
+@media (hover: hover) {
+  .cert-card__actions { opacity: 0; transform: translateX(4px); transition: opacity 160ms ease, transform 160ms var(--ease-out, ease); }
+  .cert-card:hover .cert-card__actions,
+  .cert-card:focus-within .cert-card__actions { opacity: 1; transform: none; }
+}
+.cert-preview-pdf { width: 100%; height: 70vh; border: none; border-radius: var(--radius-md); background: var(--color-surface-2); }
