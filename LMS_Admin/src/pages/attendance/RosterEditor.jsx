@@ -146,12 +146,12 @@ export function RosterEditor({ classId, onSaved }) {
                   <Download size={15} style={{ marginRight: 6 }} /> Download template
                 </Button>
                 <Button variant="outline" onClick={() => fileRef.current?.click()}>
-                  <FileSpreadsheet size={15} style={{ marginRight: 6 }} /> Import Teams attendance
+                  <FileSpreadsheet size={15} style={{ marginRight: 6 }} /> Import attendance
                 </Button>
               </div>
             </div>
             <p className="lms-muted" style={{ fontSize: 'var(--font-size-xs)', margin: 0 }}>
-              Upload the Microsoft Teams attendance export (email + join time) — or <strong>Download template</strong> to
+              Upload an attendance sheet (email + first join time) — or <strong>Download template</strong> to
               get a sheet pre-filled with this batch&apos;s students, fill in each attendee&apos;s <strong>First Join</strong> time
               (e.g. 9:32&nbsp;AM), and re-upload it here. Students who joined within the grace period count as
               <strong> Present</strong>, later joins as <strong>Late</strong>, and anyone left blank as <strong>Absent</strong>.

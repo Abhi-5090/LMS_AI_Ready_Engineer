@@ -3,7 +3,9 @@ import { Link, useParams } from 'react-router-dom';
 import { Check, ChevronRight, Users, BookOpen } from 'lucide-react';
 import { Badge, Card, CardHeader, Modal, Skeleton, SkeletonText, EmptyState, ErrorState } from '@/components/ui';
 import { PageHeader } from '@/components/PageHeader';
+import { UserRole } from '@/shared';
 import { apiErrorMessage } from '@/lib/api';
+import { useAuth } from '@/lib/auth';
 import { useBatch, useSetTopicTaught } from '@/lib/batches';
 import { useModule } from '@/lib/modules';
 import { formatDateRange } from '@/lib/format';
@@ -19,6 +21,7 @@ function taughtSet(batch, moduleId) {
 /** Trainer's view of a batch they're assigned to — mark which topics they've taught. */
 export function BatchDetailPage() {
   const { id } = useParams();
+  const user = useAuth((s) => s.user);
   const { data: batch, isLoading, isError, error, refetch } = useBatch(id);
   const [topicModule, setTopicModule] = useState(null); // module whose topics we're ticking
 
@@ -59,7 +62,16 @@ export function BatchDetailPage() {
 
   const students = batch.students ?? [];
   const trainers = batch.trainers ?? [];
-  const modules = (batch.modules ?? []).slice().sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+  const allModules = (batch.modules ?? []).slice().sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+  // A trainer only sees the modules they actually deliver in THIS batch (from the
+  // batch's per-module trainer mapping). Admins/others see every module.
+  const myModuleIds = new Set(
+    (batch.moduleTrainers ?? [])
+      .filter((mt) => (mt.trainers ?? []).some((t) => (t.id ?? t) === user?.id))
+      .map((mt) => String(mt.module?.id ?? mt.module)),
+  );
+  const modules =
+    user?.role === UserRole.TRAINER ? allModules.filter((m) => myModuleIds.has(String(m.id))) : allModules;
 
   return (
     <>

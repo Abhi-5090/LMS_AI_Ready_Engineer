@@ -2,10 +2,9 @@ import * as XLSX from 'xlsx';
 
 /**
  * Build and download an attendance template pre-filled with a class's enrolled
- * students. The column headers match exactly what the attendance importer reads,
- * so a filled-in template grades identically to a Teams export:
+ * students. Exactly four columns — the ones the attendance importer reads:
  *
- *   Name · Email · First Join · Leave Time · In-Meeting Duration
+ *   Email · First Join · Leave Time · In-Meeting Duration
  *
  * Fill each attendee's "First Join" (e.g. 9:32 AM); optionally Leave Time and/or
  * In-Meeting Duration (if Duration is blank it's derived from Leave − First Join).
@@ -13,14 +12,14 @@ import * as XLSX from 'xlsx';
  * grace period count as Present, later joins as Late, and blank rows as Absent.
  *
  * @param {{ date:string, title?:string, startTime?:string }} cls
- * @param {{ name?:string, email?:string }[]} roster  enrolled students (name + email)
+ * @param {{ email?:string }[]} roster  enrolled students (email is all we need)
  */
 export function downloadAttendanceTemplate(cls, roster) {
   const dayIso = new Date(cls?.date ?? Date.now()).toISOString().slice(0, 10);
-  const header = ['Name', 'Email', 'First Join', 'Leave Time', 'In-Meeting Duration'];
-  const body = (roster ?? []).map((r) => [r.name ?? '', r.email ?? '', '', '', '']);
+  const header = ['Email', 'First Join', 'Leave Time', 'In-Meeting Duration'];
+  const body = (roster ?? []).map((r) => [r.email ?? '', '', '', '']);
   const ws = XLSX.utils.aoa_to_sheet([header, ...body]);
-  ws['!cols'] = [{ wch: 26 }, { wch: 32 }, { wch: 16 }, { wch: 16 }, { wch: 20 }];
+  ws['!cols'] = [{ wch: 32 }, { wch: 16 }, { wch: 16 }, { wch: 20 }];
 
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Attendance');
