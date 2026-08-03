@@ -59,7 +59,7 @@
   display: flex;
   align-items: flex-start;
   gap: var(--space-5);
-  padding: var(--space-5) var(--space-6);
+  padding: var(--space-3) var(--space-6);
   background: linear-gradient(180deg, #0e1526, #0a0f1c);
   color: rgba(255, 255, 255, 0.92);
   flex-wrap: wrap;
@@ -68,7 +68,7 @@
    straddles the backdrop and the dark strip. */
 .profile-hero__avatar {
   position: relative;
-  margin-top: -4.25rem;
+  margin-top: -5.5rem;
   z-index: 2;
   width: 20%;
   min-width: 7.5rem;
