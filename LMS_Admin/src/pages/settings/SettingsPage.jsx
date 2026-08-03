@@ -113,10 +113,10 @@ export function SettingsPage() {
         </form>
       </Card>
 
-      <EmailCard />
+      <SafeExamBrowserCard settings={data} />
       <ProviderGradingCard settings={data} provider="claude" />
       <ProviderGradingCard settings={data} provider="openai" />
-      <SafeExamBrowserCard settings={data} />
+      <EmailCard />
       <LiveKitCard settings={data} />
       </div>
     </>
