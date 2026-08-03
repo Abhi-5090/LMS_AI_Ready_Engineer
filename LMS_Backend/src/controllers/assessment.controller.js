@@ -191,8 +191,16 @@ export async function listAssessments(req, res) {
     myBatchId = me?.batch ?? null;
     const batch = myBatchId ? await Batch.findById(myBatchId).select('modules') : null;
     filter.module = { $in: batch?.modules ?? [] };
-    filter.availability = AssessmentAvailability.UNLOCKED; // students only see unlocked
     filter.isTemplate = { $ne: true }; // students never see the ready-made library
+    // Students see unlocked assessments PLUS any they've already attempted — so a test
+    // that's since been locked or is past its window still appears, and they can review
+    // the questions they answered and their result.
+    const mySubs = await Submission.find({ student: userId }).select('assessment').lean();
+    const submittedIds = mySubs.map((s) => s.assessment);
+    filter.$or = [
+      { availability: AssessmentAvailability.UNLOCKED },
+      ...(submittedIds.length ? [{ _id: { $in: submittedIds } }] : []),
+    ];
   } else if (req.query.template === 'true') {
     // Staff browsing the ready-made test library (admin templates).
     filter.isTemplate = true;

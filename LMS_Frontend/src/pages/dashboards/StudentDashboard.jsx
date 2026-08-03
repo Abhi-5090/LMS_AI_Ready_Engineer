@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Award, CalendarCheck, CalendarX, Compass, GraduationCap, Percent, Target, Trophy } from 'lucide-react';
+import { Award, CalendarCheck, CalendarX, Compass, GraduationCap, Percent, Target } from 'lucide-react';
 import { Badge, Button, Card, CardHeader, EmptyState, ErrorState, SkeletonCards } from '@/components/ui';
 import { PageHeader, Stat } from '@/components/PageHeader';
 import { BarChart } from '@/components/charts/BarChart';
@@ -71,7 +71,6 @@ export function StudentDashboard() {
               <Stat label="Attendance" value={`${att.percentage}%`} accent icon={<Percent size={20} />} />
               <Stat label="Modules Completed" value={`${prog.completedCount} / ${prog.total}`} icon={<GraduationCap size={20} />} />
               <Stat label="Average Score" value={scoreSummary.gradedCount ? `${scoreSummary.avgScore}%` : '—'} icon={<Target size={20} />} />
-              <Stat label="Class Rank" value={a?.rank ? `#${a.rank.position} / ${a.rank.of}` : '—'} icon={<Trophy size={20} />} />
               <Stat label="Certificates" value={a?.certificates ?? 0} icon={<Award size={20} />} />
               <Stat label="Current Module" value={currentModule} icon={<Compass size={20} />} />
             </div>
@@ -79,7 +78,7 @@ export function StudentDashboard() {
             {/* Progress + status + attendance rings */}
             <div className="dash-grid-3">
               <Card>
-                <CardHeader title="Curriculum Progress" subtitle={a?.rank ? `Top ${a.rank.percentile}% in ${a.rank.batch}` : 'Modules completed'} />
+                <CardHeader title="Curriculum Progress" subtitle="Your progress through the curriculum" />
                 <div style={{ display: 'flex', justifyContent: 'center', padding: 'var(--space-2) 0' }}>
                   <GaugeRing value={completionPct} tone="primary" label={`${prog.completedCount} of ${prog.total} modules`} />
                 </div>
