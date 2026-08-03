@@ -48,6 +48,11 @@ export function useDeleteBankQuestion() {
   const invalidate = useInvalidate();
   return useMutation({ mutationFn: (id) => unwrap(api.delete(`/question-bank/${id}`)), onSuccess: invalidate });
 }
+/** Delete several bank questions at once (selected duplicates). */
+export function useDeleteBankQuestions() {
+  const invalidate = useInvalidate();
+  return useMutation({ mutationFn: (ids) => unwrap(api.post('/question-bank/bulk-delete', { ids })), onSuccess: invalidate });
+}
 
 /** Upload batches (cards) for a module — one per Excel upload / master import. */
 export function useUploadBatches(moduleId) {

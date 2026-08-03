@@ -12,6 +12,7 @@ import {
   useUploadQuestionMedia,
   useBulkAddBankQuestions,
   useDeleteBankQuestion,
+  useDeleteBankQuestions,
   useDeleteUploadBatch,
   useDuplicates,
   useImportFromMaster,
@@ -388,8 +389,10 @@ function BatchQuestions({ moduleId, batchId }) {
 function DuplicatesTab({ moduleId }) {
   const { data, isLoading } = useDuplicates(moduleId);
   const del = useDeleteBankQuestion();
+  const bulkDel = useDeleteBankQuestions();
   const confirm = useConfirm();
   const toast = useToast();
+  const [selected, setSelected] = useState(() => new Set());
 
   if (isLoading && !data) return <SkeletonTable rows={3} cols={2} />;
   const groups = data?.groups ?? [];
@@ -397,16 +400,47 @@ function DuplicatesTab({ moduleId }) {
     return <EmptyState icon={<CheckCircle2 size={26} />} title="No duplicates" description="Every question in this module is unique." />;
   }
 
+  // Removable = every copy after the first (kept) one in each group.
+  const removableIds = groups.flatMap((g) => g.items.slice(1).map((it) => it.id));
+  const allSelected = removableIds.length > 0 && removableIds.every((id) => selected.has(id));
+  const toggle = (id) => setSelected((prev) => {
+    const n = new Set(prev);
+    if (n.has(id)) n.delete(id); else n.add(id);
+    return n;
+  });
+  const toggleAll = () => setSelected(allSelected ? new Set() : new Set(removableIds));
+
   async function removeExtra(id) {
     if (await confirm({ title: 'Delete this copy?', message: 'This duplicate will be removed. The other copies stay.', confirmLabel: 'Delete copy', tone: 'danger' })) {
-      try { await del.mutateAsync(id); } catch (e) { toast.error(apiErrorMessage(e)); }
+      try { await del.mutateAsync(id); setSelected((p) => { const n = new Set(p); n.delete(id); return n; }); } catch (e) { toast.error(apiErrorMessage(e)); }
+    }
+  }
+  async function deleteSelected() {
+    const ids = [...selected];
+    if (!ids.length) return;
+    if (await confirm({ title: `Delete ${ids.length} duplicate${ids.length === 1 ? '' : 's'}?`, message: 'The selected copies will be removed. The kept copies stay.', confirmLabel: 'Delete selected', tone: 'danger' })) {
+      try {
+        await bulkDel.mutateAsync(ids);
+        setSelected(new Set());
+        toast.success(`${ids.length} duplicate${ids.length === 1 ? '' : 's'} deleted.`);
+      } catch (e) { toast.error(apiErrorMessage(e)); }
     }
   }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
-      <div className="lms-secondary-text" style={{ fontSize: 'var(--font-size-sm)' }}>
-        <strong>{groups.length}</strong> duplicated question{groups.length === 1 ? '' : 's'} · <strong>{data.removableCount}</strong> extra cop{data.removableCount === 1 ? 'y' : 'ies'} could be removed. The first (oldest) of each is kept below; delete the rest.
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--space-3)', flexWrap: 'wrap' }}>
+        <div className="lms-secondary-text" style={{ fontSize: 'var(--font-size-sm)' }}>
+          <strong>{groups.length}</strong> duplicated question{groups.length === 1 ? '' : 's'} · <strong>{data.removableCount}</strong> extra cop{data.removableCount === 1 ? 'y' : 'ies'} could be removed. The first (oldest) of each is kept; select the rest to delete.
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
+          <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 'var(--font-size-sm)', cursor: 'pointer' }}>
+            <input type="checkbox" checked={allSelected} onChange={toggleAll} /> Select all
+          </label>
+          <Button size="sm" variant="danger" disabled={selected.size === 0} loading={bulkDel.isPending} onClick={deleteSelected}>
+            <Trash2 size={14} style={{ marginRight: 6 }} /> Delete selected{selected.size ? ` (${selected.size})` : ''}
+          </Button>
+        </div>
       </div>
       {groups.map((g, gi) => (
         <Card key={gi}>
@@ -415,6 +449,11 @@ function DuplicatesTab({ moduleId }) {
           <div style={{ marginTop: 'var(--space-2)', display: 'flex', flexDirection: 'column', gap: 6 }}>
             {g.items.map((it, i) => (
               <div key={it.id} style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', fontSize: 'var(--font-size-sm)' }}>
+                {i > 0 ? (
+                  <input type="checkbox" checked={selected.has(it.id)} onChange={() => toggle(it.id)} title="Select to delete" />
+                ) : (
+                  <span style={{ display: 'inline-block', width: 13 }} />
+                )}
                 <Badge tone={i === 0 ? 'success' : 'warning'}>{i === 0 ? 'Keep' : 'Duplicate'}</Badge>
                 <span className="lms-muted" style={{ flex: 1 }}>{it.uploadSource || 'Added manually'} · {formatDate(it.createdAt)}</span>
                 {i > 0 && (

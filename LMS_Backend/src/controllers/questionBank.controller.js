@@ -100,6 +100,8 @@ export const createBankItemSchema = z
     }
   });
 
+export const bulkDeleteSchema = z.object({ ids: z.array(objectId).min(1).max(1000) });
+
 export const bulkBankSchema = z.object({
   module: objectId,
   topic: objectId.optional().nullable(),
@@ -392,6 +394,17 @@ export async function deleteBankItem(req, res) {
   await loadManageableModule(req, item.module); // authorize
   await item.deleteOne();
   ok(res, { id: req.params.itemId, deleted: true });
+}
+
+/** Delete several bank questions at once (e.g. selected duplicates). */
+export async function bulkDeleteBankItems(req, res) {
+  const items = await QuestionBankItem.find({ _id: { $in: req.body.ids } }).select('module');
+  if (!items.length) return ok(res, { deleted: 0 });
+  // Authorize every distinct module the selection touches.
+  const moduleIds = [...new Set(items.map((i) => i.module.toString()))];
+  for (const mid of moduleIds) await loadManageableModule(req, mid);
+  const result = await QuestionBankItem.deleteMany({ _id: { $in: items.map((i) => i._id) } });
+  ok(res, { deleted: result.deletedCount });
 }
 
 /**

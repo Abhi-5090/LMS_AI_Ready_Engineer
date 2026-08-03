@@ -25,6 +25,7 @@ router.post('/media', qb.uploadQuestionMediaMw, asyncHandler(qb.uploadQuestionMe
 // Super admin only (enforced in the handler): copy master-bank questions into the
 // org they're currently drilled into.
 router.post('/import-from-template', validate({ body: qb.importFromTemplateSchema }), asyncHandler(qb.importFromTemplate));
+router.post('/bulk-delete', validate({ body: qb.bulkDeleteSchema }), asyncHandler(qb.bulkDeleteBankItems));
 router.patch('/:itemId', validate({ params: qb.bankItemParam, body: qb.updateBankItemSchema }), asyncHandler(qb.updateBankItem));
 router.delete('/:itemId', validate({ params: qb.bankItemParam }), asyncHandler(qb.deleteBankItem));
 
