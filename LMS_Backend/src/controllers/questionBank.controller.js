@@ -11,6 +11,11 @@ import { ok } from '../utils/http.js';
 
 const objectId = z.string().length(24);
 
+// On bulk (Excel) import, points are derived from complexity — easy = 1, medium = 2,
+// hard = 3 — regardless of any points value in the sheet.
+const POINTS_BY_COMPLEXITY = { easy: 1, medium: 2, hard: 3 };
+const pointsForComplexity = (c) => POINTS_BY_COMPLEXITY[c] ?? 2;
+
 // Media fields shared by create/update: the stimulus a prompt-writing question
 // shows the student. mediaUrl is an internal /api/uploads path from the upload
 // endpoint below. Cleared server-side for MCQ (which never carries media).
@@ -338,7 +343,8 @@ export async function bulkAddBankItems(req, res) {
       options: q.options ?? [],
       correctOption: q.correctOption,
       referenceAnswer: q.type === QuestionType.MCQ ? '' : (q.referenceAnswer ?? ''),
-      points: q.points,
+      // Points always follow complexity on import (easy 1 / medium 2 / hard 3).
+      points: pointsForComplexity(q.complexity),
       createdBy: req.auth.userId,
       uploadBatch,
       uploadSource,

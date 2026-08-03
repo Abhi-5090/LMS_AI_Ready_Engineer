@@ -633,10 +633,14 @@ function resolveCorrect(correctRaw, options) {
   if (/^[A-D]$/.test(letter)) return letter.charCodeAt(0) - 65;
   return options.findIndex((o) => o.toLowerCase() === c.toLowerCase());
 }
+// Points are DERIVED from complexity on import — easy = 1, medium = 2, hard = 3 —
+// so any "points" column in the sheet is ignored.
+const POINTS_BY_COMPLEXITY = { easy: 1, medium: 2, hard: 3 };
+
 function rowToQuestion(row, type) {
   if (!row.prompt) return null;
-  const points = Math.max(1, Math.min(100, Math.round(Number(row.points) || 1)));
   const complexity = normalizeComplexity(row.complexity);
+  const points = POINTS_BY_COMPLEXITY[complexity] ?? 2;
   if (type !== QuestionType.MCQ) return { type, complexity, prompt: row.prompt, points, referenceAnswer: row.reference || '' };
   const options = [row.opt1, row.opt2, row.opt3, row.opt4].filter((o) => o && o.trim() !== '');
   if (options.length < 2) return null;
@@ -645,8 +649,10 @@ function rowToQuestion(row, type) {
   return { type, complexity, prompt: row.prompt, options, correctOption, points };
 }
 
-const MCQ_HEADERS = ['question', 'complexity', 'option 1', 'option 2', 'option 3', 'option 4', 'correct answer', 'points'];
-const TEXT_HEADERS = ['question', 'complexity', 'expected answer', 'points'];
+// No "points" column — points are set automatically from complexity on import
+// (easy = 1, medium = 2, hard = 3).
+const MCQ_HEADERS = ['question', 'complexity', 'option 1', 'option 2', 'option 3', 'option 4', 'correct answer'];
+const TEXT_HEADERS = ['question', 'complexity', 'expected answer'];
 
 function BankExcelImport({ moduleId, topics, onClose }) {
   const [type, setType] = useState(QuestionType.MCQ);
@@ -684,8 +690,8 @@ function BankExcelImport({ moduleId, topics, onClose }) {
   function downloadTemplate() {
     const headers = isMcq ? MCQ_HEADERS : TEXT_HEADERS;
     const example = isMcq
-      ? ['What does LLM stand for?', 'easy', 'Large Language Model', 'Low Level Machine', 'Linear Logic Map', 'Long Lived Memory', 'Large Language Model', 1]
-      : ['Describe how you would design a RAG pipeline for a support chatbot.', 'hard', 'Should cover: chunking strategy, embeddings + vector store, retrieval, and grounding the LLM answer in retrieved context.', 5];
+      ? ['What does LLM stand for?', 'easy', 'Large Language Model', 'Low Level Machine', 'Linear Logic Map', 'Long Lived Memory', 'Large Language Model']
+      : ['Describe how you would design a RAG pipeline for a support chatbot.', 'hard', 'Should cover: chunking strategy, embeddings + vector store, retrieval, and grounding the LLM answer in retrieved context.'];
     const ws = XLSX.utils.aoa_to_sheet([headers, example]);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Questions');
