@@ -23,22 +23,27 @@ export function ProfilePage() {
   return (
     <>
       <ProfileHero user={user} isStudent={isStudent} />
-      <div className="profile-body">
-        <div className="profile-body__side">
-          <DetailsCard user={user} />
-          <LinksCard user={user} />
+      {isStudent ? (
+        <div className="profile-body">
+          <div className="profile-body__side">
+            <DetailsCard user={user} />
+            <LinksCard user={user} />
+          </div>
+          <div className="profile-body__main">
+            <ProjectsCard />
+            <ResumeCard user={user} />
+          </div>
         </div>
-        <div className="profile-body__main">
-          {isStudent ? (
-            <>
-              <ProjectsCard />
-              <ResumeCard user={user} />
-            </>
-          ) : (
+      ) : (
+        <div className="profile-stack">
+          {/* Two equal-height cards in a row. */}
+          <div className="profile-duo">
+            <DetailsCard user={user} />
             <TrainerStatsCard />
-          )}
+          </div>
+          <LinksCard user={user} wide />
         </div>
-      </div>
+      )}
     </>
   );
 }
@@ -207,7 +212,7 @@ function ResumeCard({ user }) {
 export function TrainerStatsCard() {
   const { data: stats, isLoading } = useTrainerStats();
   return (
-    <Card>
+    <Card className="profile-scoreboard">
       <CardHeader title="Scoreboard" subtitle="Your teaching activity and the ratings students gave you." />
       {isLoading || !stats ? (
         <p className="lms-muted" style={{ marginTop: 'var(--space-3)' }}>Loading…</p>
@@ -263,7 +268,7 @@ function DetailsCard({ user }) {
 
 // ── Platform links ─────────────────────────────────────────────────────────
 
-function LinksCard({ user }) {
+function LinksCard({ user, wide = false }) {
   const update = useUpdateProfile();
   const [links, setLinks] = useState(() =>
     Object.fromEntries(SOCIAL_PLATFORMS.map((p) => [p.key, user.links?.[p.key] ?? ''])),
@@ -298,7 +303,7 @@ function LinksCard({ user }) {
         <Button type="button" variant="outline" size="sm" onClick={addCustom}><Plus size={15} /> Add link</Button>
       </div>
       <form onSubmit={save} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)', marginTop: 'var(--space-3)' }}>
-        <div className="profile-links">
+        <div className={`profile-links${wide ? ' profile-links--two' : ''}`}>
           {SOCIAL_PLATFORMS.map((p) => (
             <Input
               key={p.key}
