@@ -89,6 +89,39 @@
   text-align: center;
 }
 
+/* ── Collapsible nav groups ───────────────────────────────
+   Wrappers stay statically positioned so the active-indicator's offsetTop math
+   (measured against .sidebar__nav) keeps working for nested links. */
+.sidebar__group { display: flex; flex-direction: column; gap: var(--space-1); }
+.sidebar__group-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  border-radius: var(--radius-md);
+  transition: color var(--transition-fast), background-color var(--transition-fast);
+}
+.sidebar__group-head:hover { color: var(--color-text-primary); background: var(--color-background); }
+.sidebar__group-name { flex: 1; text-align: left; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sidebar__group-chev { flex: none; transition: transform 180ms var(--ease-out, ease); }
+.sidebar__group-head.is-open .sidebar__group-chev { transform: rotate(90deg); }
+.sidebar__group-items { display: flex; flex-direction: column; gap: var(--space-1); animation: navGroupIn 180ms var(--ease-out, ease); }
+.sidebar__link--nested { padding-left: var(--space-6); }
+@keyframes navGroupIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) {
+  .sidebar__group-chev { transition: none; }
+  .sidebar__group-items { animation: none; }
+}
+
 /* ── Main / Topbar ────────────────────────────────────── */
 .main {
   display: flex;

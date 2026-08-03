@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
-import { Building2, GraduationCap, LogOut, Menu, X } from 'lucide-react';
+import { Building2, ChevronRight, GraduationCap, LogOut, Menu, X } from 'lucide-react';
 import { UserRole } from '@/shared';
 import { Button } from '@/components/ui';
 import { ThemeSwitcher } from '@/components/ThemeSwitcher';
@@ -24,6 +24,35 @@ function initials(name) {
   return result || '?';
 }
 
+// ── Collapsible sidebar groups ────────────────────────────────────────────────
+const OPEN_KEY = 'lms.navGroups'; // remembered open groups (per browser)
+const loadOpen = () => { try { return new Set(JSON.parse(localStorage.getItem(OPEN_KEY)) || []); } catch { return new Set(); } };
+const saveOpen = (set) => { try { localStorage.setItem(OPEN_KEY, JSON.stringify([...set])); } catch { /* ignore */ } };
+/** Does `pathname` belong to this nav item? Exact for the dashboard, prefix otherwise. */
+const matchTo = (pathname, to) => (to === '/app' ? pathname === '/app' : pathname === to || pathname.startsWith(`${to}/`));
+/** All leaf links, flattening groups — for the topbar title + active lookup. */
+const flattenNav = (nav) => nav.flatMap((e) => (e.group ? e.items : [e]));
+
+/** One sidebar link (top-level or nested inside a group). */
+function SidebarLink({ item, badge, onNavigate, nested }) {
+  return (
+    <NavLink
+      to={item.to}
+      end={item.to === '/app'}
+      onClick={onNavigate}
+      className={({ isActive }) => `sidebar__link${nested ? ' sidebar__link--nested' : ''}${isActive ? ' active' : ''}`}
+    >
+      <span className="sidebar__link-icon" aria-hidden>
+        <item.Icon size={18} strokeWidth={2} />
+      </span>
+      <span className="sidebar__link-label">{item.label}</span>
+      {badge > 0 && (
+        <span className="sidebar__badge" aria-label={`${badge} new`}>{badge > 9 ? '9+' : badge}</span>
+      )}
+    </NavLink>
+  );
+}
+
 export function AppLayout() {
   const { user, logout } = useAuth();
   const orgView = useAuth((s) => s.orgView);
@@ -32,23 +61,30 @@ export function AppLayout() {
   const location = useLocation();
   const navigate = useNavigate();
   const qc = useQueryClient();
-  const { navRef, indicatorRef } = useSidebarMotion(location.pathname);
   // A super admin managing tenants (not drilled in) works against the master
   // template — it has no announcements/certs/projects/notifications, so skip those
   // queries entirely (avoids marking the template's notifications read, etc.).
   const superManaging = user?.role === UserRole.SUPER_ADMIN && !orgView;
   const badges = useNavBadges({ superManaging });
   const [navOpen, setNavOpen] = useState(false);
+  const [openGroups, setOpenGroups] = useState(loadOpen);
+
+  // A super admin managing tenants gets the (flat) org nav; drilled into an org they
+  // act as its admin (grouped admin nav).
+  const navRole = superManaging ? UserRole.SUPER_ADMIN : UserRole.ADMIN;
+  const nav = NAV_BY_ROLE[navRole] ?? [];
+  // The group holding the current page is always open (keeps the active item visible).
+  const activeGroup = nav.find((e) => e.group && e.items.some((it) => matchTo(location.pathname, it.to)))?.group ?? null;
+  const effectiveOpen = new Set(openGroups);
+  if (activeGroup) effectiveOpen.add(activeGroup);
+  const openSig = [...effectiveOpen].sort().join(',');
+  // Re-glide the indicator on route change AND whenever groups open/close.
+  const { navRef, indicatorRef } = useSidebarMotion(`${location.pathname}|${openSig}`);
 
   // Close the mobile drawer whenever the route changes.
   useEffect(() => setNavOpen(false), [location.pathname]);
 
   if (!user) return null;
-
-  // A super admin managing tenants gets the org nav; once drilled into an org they
-  // act as its admin (admin nav).
-  const navRole = superManaging ? UserRole.SUPER_ADMIN : UserRole.ADMIN;
-  const nav = NAV_BY_ROLE[navRole];
 
   function exitOrg() {
     clearOrgView();
@@ -64,13 +100,22 @@ export function AppLayout() {
     qc.clear();
     navigate('/login', { replace: true });
   }
+  function toggleGroup(name) {
+    setOpenGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(name)) next.delete(name); else next.add(name);
+      saveOpen(next);
+      return next;
+    });
+  }
   // Longest-prefix match so detail routes (/app/users/:id, etc.) resolve to their
   // section title instead of falling back to the first ("Dashboard") entry.
+  const allItems = flattenNav(nav);
   const current =
-    nav
+    allItems
       .filter((n) => location.pathname === n.to || location.pathname.startsWith(`${n.to}/`))
       .sort((a, b) => a.to.length - b.to.length)
-      .pop() ?? nav[0];
+      .pop() ?? allItems[0] ?? { label: '' };
 
   return (
     <div className="layout">
@@ -92,26 +137,34 @@ export function AppLayout() {
 
         <nav className="sidebar__nav" ref={navRef}>
           <span className="sidebar__indicator" ref={indicatorRef} aria-hidden />
-          {nav.map((item) => {
-            const count = badges[item.to] ?? 0;
+          {nav.map((entry) => {
+            if (!entry.group) {
+              return <SidebarLink key={entry.to} item={entry} badge={badges[entry.to] ?? 0} onNavigate={() => setNavOpen(false)} />;
+            }
+            const open = effectiveOpen.has(entry.group);
+            const groupCount = entry.items.reduce((n, it) => n + (badges[it.to] ?? 0), 0);
             return (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                end={item.to === '/app'}
-                onClick={() => setNavOpen(false)}
-                className={({ isActive }) => `sidebar__link${isActive ? ' active' : ''}`}
-              >
-                <span className="sidebar__link-icon" aria-hidden>
-                  <item.Icon size={18} strokeWidth={2} />
-                </span>
-                <span className="sidebar__link-label">{item.label}</span>
-                {count > 0 && (
-                  <span className="sidebar__badge" aria-label={`${count} new`}>
-                    {count > 9 ? '9+' : count}
-                  </span>
+              <div key={entry.group} className="sidebar__group">
+                <button
+                  type="button"
+                  className={`sidebar__group-head${open ? ' is-open' : ''}`}
+                  onClick={() => toggleGroup(entry.group)}
+                  aria-expanded={open}
+                >
+                  <span className="sidebar__group-name">{entry.group}</span>
+                  {!open && groupCount > 0 && (
+                    <span className="sidebar__badge" aria-label={`${groupCount} new`}>{groupCount > 9 ? '9+' : groupCount}</span>
+                  )}
+                  <ChevronRight size={15} strokeWidth={2.2} className="sidebar__group-chev" aria-hidden />
+                </button>
+                {open && (
+                  <div className="sidebar__group-items">
+                    {entry.items.map((it) => (
+                      <SidebarLink key={it.to} item={it} badge={badges[it.to] ?? 0} onNavigate={() => setNavOpen(false)} nested />
+                    ))}
+                  </div>
                 )}
-              </NavLink>
+              </div>
             );
           })}
         </nav>
