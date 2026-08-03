@@ -8,10 +8,12 @@
   margin-bottom: var(--space-6);
 }
 .profile-hero__cover {
-  height: 8.5rem;
+  height: 9.5rem;
   background:
     radial-gradient(120% 140% at 85% -20%, color-mix(in srgb, var(--color-secondary) 55%, transparent), transparent 60%),
     linear-gradient(120deg, var(--color-primary), var(--color-secondary));
+  background-size: cover;
+  background-position: center;
   position: relative;
 }
 .profile-hero__cover::after {
@@ -22,18 +24,52 @@
   background-image: radial-gradient(rgba(255, 255, 255, 0.16) 1px, transparent 1px);
   background-size: 16px 16px;
   opacity: 0.5;
+  pointer-events: none;
 }
-.profile-hero__main {
+/* When a real banner image is set, drop the dotted texture so it reads cleanly. */
+.profile-hero__cover--image::after { display: none; }
+/* Camera button at the top-right corner of the banner. */
+.profile-hero__cover-edit {
+  position: absolute;
+  top: var(--space-3);
+  right: var(--space-3);
+  z-index: 3;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: var(--radius-md);
+  background: rgba(15, 23, 42, 0.4);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  cursor: pointer;
+  backdrop-filter: blur(6px);
+  transition: transform 150ms var(--ease-out, ease), background-color 150ms ease;
+}
+.profile-hero__cover-edit:hover { background: rgba(15, 23, 42, 0.6); transform: scale(1.06); }
+.profile-hero__cover-edit:active { transform: scale(0.96); }
+.profile-hero__cover-edit:disabled { opacity: 0.6; cursor: default; }
+
+/* Body sits fully BELOW the cover; only the avatar overlaps it (absolute),
+   so the gamified stat chips never get clipped by the banner. */
+.profile-hero__body {
+  position: relative;
   display: flex;
-  align-items: flex-end;
+  align-items: flex-start;
+  justify-content: space-between;
   gap: var(--space-5);
-  padding: 0 var(--space-6) var(--space-5);
-  margin-top: -3.25rem;
+  padding: var(--space-4) var(--space-6) var(--space-5);
+  padding-left: calc(var(--space-6) + 7rem + var(--space-4));
   flex-wrap: wrap;
 }
-/* Avatar with a gradient ring; overlaps the cover. */
+/* Avatar with a gradient ring; anchored to the cover's bottom-left. */
 .profile-hero__avatar {
-  position: relative;
+  position: absolute;
+  left: var(--space-6);
+  top: 5.25rem;
+  z-index: 2;
   width: 7rem;
   height: 7rem;
   border-radius: 50%;
@@ -95,7 +131,7 @@
   display: grid;
   grid-template-columns: repeat(2, minmax(6.5rem, 1fr));
   gap: var(--space-2);
-  align-self: center;
+  align-self: flex-start;
 }
 .pstat {
   min-width: 6.5rem;
@@ -138,6 +174,12 @@
 @media (max-width: 640px) { .profile-links--two { grid-template-columns: 1fr; } }
 
 @media (max-width: 640px) {
+  /* Avatar tucks into the cover's bottom-left; the identity block drops below it. */
+  .profile-hero__avatar { width: 5.5rem; height: 5.5rem; top: 6.25rem; }
+  .profile-hero__body {
+    gap: var(--space-4);
+    padding-left: var(--space-6);
+    padding-top: 3.25rem;
+  }
   .profile-hero__stats { grid-template-columns: repeat(2, 1fr); width: 100%; }
-  .profile-hero__main { gap: var(--space-4); }
 }

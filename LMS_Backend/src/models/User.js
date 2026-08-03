@@ -28,6 +28,7 @@ const userSchema = new Schema(
     },
     phone: String,
     avatarUrl: String,
+    coverUrl: String, // profile banner image (optional; falls back to a gradient)
     bio: { type: String, trim: true },
     // Coding / professional platform links shown on the profile (see SOCIAL_PLATFORMS).
     links: {

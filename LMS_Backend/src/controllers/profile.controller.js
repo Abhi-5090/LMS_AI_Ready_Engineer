@@ -52,6 +52,18 @@ export const uploadAvatarFile = multer({
   },
 }).single('avatar');
 
+export const uploadCoverFile = multer({
+  storage: gridfsStorage('cover'),
+  limits: { fileSize: 8 * 1024 * 1024, files: 1 }, // 8 MB
+  fileFilter: (_req, file, cb) => {
+    const ext = path.extname(file.originalname).toLowerCase();
+    if (!ALLOWED_EXT.has(ext)) {
+      return cb(new ApiError(400, 'UNSUPPORTED_FILE', `Use an image. Not allowed: ${ext || file.mimetype}`));
+    }
+    cb(null, true);
+  },
+}).single('cover');
+
 /** Update the signed-in user's own profile (any role). */
 export async function updateMe(req, res) {
   const user = await User.findById(req.auth.userId);
@@ -133,6 +145,17 @@ export async function setAvatar(req, res) {
   // Best-effort cleanup of a previously uploaded avatar.
   await deleteByUrl(user.avatarUrl);
   user.avatarUrl = req.file.url;
+  await user.save();
+  ok(res, user.toJSON());
+}
+
+/** Replace the signed-in user's profile banner (cover) image. */
+export async function setCover(req, res) {
+  if (!req.file) throw ApiError.badRequest('Choose an image to upload');
+  const user = await User.findById(req.auth.userId);
+  if (!user) throw ApiError.notFound('User not found');
+  await deleteByUrl(user.coverUrl); // best-effort cleanup of the old banner
+  user.coverUrl = req.file.url;
   await user.save();
   ok(res, user.toJSON());
 }

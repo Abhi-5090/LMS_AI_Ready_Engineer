@@ -33,6 +33,19 @@ export function useUploadAvatar() {
   });
 }
 
+/** Upload a new profile banner (cover) image (multipart). */
+export function useUploadCover() {
+  const setUser = useAuth((s) => s.setUser);
+  return useMutation({
+    mutationFn: (file) => {
+      const fd = new FormData();
+      fd.append('cover', file);
+      return unwrap(api.post('/profile/cover', fd, { headers: { 'Content-Type': 'multipart/form-data' } }));
+    },
+    onSuccess: (user) => setUser(user),
+  });
+}
+
 /** Upload/replace the soft-copy resume (PDF, multipart). */
 export function useUploadResume() {
   const setUser = useAuth((s) => s.setUser);

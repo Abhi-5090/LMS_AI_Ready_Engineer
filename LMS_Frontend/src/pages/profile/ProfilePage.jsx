@@ -6,7 +6,7 @@ import { Stat } from '@/components/PageHeader';
 import { apiErrorMessage, downloadFile, fileSrc } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { useStudentAnalytics } from '@/lib/analytics';
-import { useTrainerStats, useUpdateProfile, useUploadAvatar, useUploadResume } from '@/lib/profile';
+import { useTrainerStats, useUpdateProfile, useUploadAvatar, useUploadCover, useUploadResume } from '@/lib/profile';
 import { useAddProject, useDeleteProject, useMyProjects, useTechTags } from '@/lib/projects';
 import { ProjectDetailModal } from '@/pages/projects/ProjectDetailModal';
 import '@/pages/projects/projects.css';
@@ -24,15 +24,17 @@ export function ProfilePage() {
     <>
       <ProfileHero user={user} isStudent={isStudent} />
       {isStudent ? (
-        <div className="profile-body">
-          <div className="profile-body__side">
-            <DetailsCard user={user} />
-            <LinksCard user={user} />
+        <div className="profile-stack">
+          <div className="profile-body">
+            <div className="profile-body__side">
+              <DetailsCard user={user} />
+            </div>
+            <div className="profile-body__main">
+              <ProjectsCard />
+              <ResumeCard user={user} />
+            </div>
           </div>
-          <div className="profile-body__main">
-            <ProjectsCard />
-            <ResumeCard user={user} />
-          </div>
+          <LinksCard user={user} wide />
         </div>
       ) : (
         <div className="profile-stack">
@@ -53,14 +55,22 @@ const PLATFORM_ICON = { github: Github, linkedin: Linkedin, leetcode: Code2, cod
 
 function ProfileHero({ user, isStudent }) {
   const avatar = useUploadAvatar();
+  const cover = useUploadCover();
   const toast = useToast();
   const fileRef = useRef(null);
+  const coverRef = useRef(null);
 
   async function onAvatar(e) {
     const file = e.target.files?.[0];
     if (fileRef.current) fileRef.current.value = '';
     if (!file) return;
     try { await avatar.mutateAsync(file); } catch (e2) { toast.error(apiErrorMessage(e2)); }
+  }
+  async function onCover(e) {
+    const file = e.target.files?.[0];
+    if (coverRef.current) coverRef.current.value = '';
+    if (!file) return;
+    try { await cover.mutateAsync(file); } catch (e2) { toast.error(apiErrorMessage(e2)); }
   }
 
   const links = [
@@ -70,18 +80,27 @@ function ProfileHero({ user, isStudent }) {
 
   return (
     <section className="profile-hero">
-      <div className="profile-hero__cover" />
-      <div className="profile-hero__main">
-        <div className="profile-hero__avatar">
-          <div className="profile-hero__avatar-inner">
-            {user.avatarUrl ? <img src={fileSrc(user.avatarUrl)} alt={user.name} /> : initials(user.name)}
-          </div>
-          <input ref={fileRef} type="file" accept="image/*" onChange={onAvatar} hidden />
-          <button type="button" className="profile-hero__avatar-edit" title="Change photo" aria-label="Change photo" onClick={() => fileRef.current?.click()}>
-            <Camera size={15} />
-          </button>
-        </div>
+      <div
+        className={`profile-hero__cover${user.coverUrl ? ' profile-hero__cover--image' : ''}`}
+        style={user.coverUrl ? { backgroundImage: `url(${fileSrc(user.coverUrl)})` } : undefined}
+      >
+        <input ref={coverRef} type="file" accept="image/*" onChange={onCover} hidden />
+        <button type="button" className="profile-hero__cover-edit" title="Change banner image" aria-label="Change banner image" disabled={cover.isPending} onClick={() => coverRef.current?.click()}>
+          <Camera size={15} />
+        </button>
+      </div>
 
+      <div className="profile-hero__avatar">
+        <div className="profile-hero__avatar-inner">
+          {user.avatarUrl ? <img src={fileSrc(user.avatarUrl)} alt={user.name} /> : initials(user.name)}
+        </div>
+        <input ref={fileRef} type="file" accept="image/*" onChange={onAvatar} hidden />
+        <button type="button" className="profile-hero__avatar-edit" title="Change photo" aria-label="Change photo" disabled={avatar.isPending} onClick={() => fileRef.current?.click()}>
+          <Camera size={15} />
+        </button>
+      </div>
+
+      <div className="profile-hero__body">
         <div className="profile-hero__id">
           <div className="profile-hero__name">
             {user.name}
