@@ -6,7 +6,7 @@ import { Stat } from '@/components/PageHeader';
 import { apiErrorMessage, downloadFile, fileSrc } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { useStudentAnalytics } from '@/lib/analytics';
-import { useTrainerStats, useUpdateProfile, useUploadAvatar, useUploadCover, useUploadResume } from '@/lib/profile';
+import { useRemoveAvatar, useRemoveCover, useTrainerStats, useUpdateProfile, useUploadAvatar, useUploadCover, useUploadResume } from '@/lib/profile';
 import { useAddProject, useDeleteProject, useMyProjects, useTechTags } from '@/lib/projects';
 import { ProjectDetailModal } from '@/pages/projects/ProjectDetailModal';
 import '@/pages/projects/projects.css';
@@ -56,6 +56,8 @@ const PLATFORM_ICON = { github: Github, linkedin: Linkedin, leetcode: Code2, cod
 function ProfileHero({ user, isStudent }) {
   const avatar = useUploadAvatar();
   const cover = useUploadCover();
+  const removeAvatar = useRemoveAvatar();
+  const removeCover = useRemoveCover();
   const toast = useToast();
   const fileRef = useRef(null);
   const coverRef = useRef(null);
@@ -72,6 +74,12 @@ function ProfileHero({ user, isStudent }) {
     if (!file) return;
     try { await cover.mutateAsync(file); } catch (e2) { toast.error(apiErrorMessage(e2)); }
   }
+  async function onRemoveAvatar() {
+    try { await removeAvatar.mutateAsync(); } catch (e2) { toast.error(apiErrorMessage(e2)); }
+  }
+  async function onRemoveCover() {
+    try { await removeCover.mutateAsync(); } catch (e2) { toast.error(apiErrorMessage(e2)); }
+  }
 
   const links = [
     ...SOCIAL_PLATFORMS.filter((p) => user.links?.[p.key]).map((p) => ({ key: p.key, label: p.label, url: user.links[p.key], Icon: PLATFORM_ICON[p.key] ?? Globe })),
@@ -85,9 +93,16 @@ function ProfileHero({ user, isStudent }) {
         style={user.coverUrl ? { backgroundImage: `url(${fileSrc(user.coverUrl)})` } : undefined}
       >
         <input ref={coverRef} type="file" accept="image/*" onChange={onCover} hidden />
-        <button type="button" className="profile-hero__cover-edit" title="Change banner image" aria-label="Change banner image" disabled={cover.isPending} onClick={() => coverRef.current?.click()}>
-          <Camera size={15} />
-        </button>
+        <div className="profile-hero__img-actions profile-hero__img-actions--cover">
+          {user.coverUrl && (
+            <button type="button" className="profile-hero__img-remove" title="Remove banner" aria-label="Remove banner" disabled={removeCover.isPending} onClick={onRemoveCover}>
+              <Trash2 size={14} />
+            </button>
+          )}
+          <button type="button" className="profile-hero__cover-edit" title="Change banner image" aria-label="Change banner image" disabled={cover.isPending} onClick={() => coverRef.current?.click()}>
+            <Camera size={15} />
+          </button>
+        </div>
       </div>
 
       <div className="profile-hero__body">
@@ -96,9 +111,16 @@ function ProfileHero({ user, isStudent }) {
             {user.avatarUrl ? <img src={fileSrc(user.avatarUrl)} alt={user.name} /> : initials(user.name)}
           </div>
           <input ref={fileRef} type="file" accept="image/*" onChange={onAvatar} hidden />
-          <button type="button" className="profile-hero__avatar-edit" title="Change photo" aria-label="Change photo" disabled={avatar.isPending} onClick={() => fileRef.current?.click()}>
-            <Camera size={15} />
-          </button>
+          <div className="profile-hero__img-actions profile-hero__img-actions--avatar">
+            {user.avatarUrl && (
+              <button type="button" className="profile-hero__img-remove" title="Remove photo" aria-label="Remove photo" disabled={removeAvatar.isPending} onClick={onRemoveAvatar}>
+                <Trash2 size={13} />
+              </button>
+            )}
+            <button type="button" className="profile-hero__avatar-edit" title="Change photo" aria-label="Change photo" disabled={avatar.isPending} onClick={() => fileRef.current?.click()}>
+              <Camera size={15} />
+            </button>
+          </div>
         </div>
 
         <div className="profile-hero__id">

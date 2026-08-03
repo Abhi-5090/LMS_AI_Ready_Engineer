@@ -11,7 +11,7 @@
   height: 9.5rem;
   background:
     radial-gradient(120% 140% at 85% -20%, color-mix(in srgb, var(--color-secondary) 55%, transparent), transparent 60%),
-    linear-gradient(120deg, var(--color-primary), var(--color-secondary));
+    linear-gradient(120deg, var(--color-secondary), var(--color-primary));
   background-size: cover;
   background-position: center;
   position: relative;
@@ -28,12 +28,13 @@
 }
 /* When a real banner image is set, drop the dotted texture so it reads cleanly. */
 .profile-hero__cover--image::after { display: none; }
-/* Camera button at the top-right corner of the banner. */
+/* Image action groups (camera + hover-revealed remove) for cover & avatar. */
+.profile-hero__img-actions { display: inline-flex; align-items: center; gap: 6px; }
+.profile-hero__img-actions--cover { position: absolute; top: var(--space-3); right: var(--space-3); z-index: 3; }
+.profile-hero__img-actions--avatar { position: absolute; right: -6px; bottom: -6px; z-index: 3; }
+
+/* Camera button on the banner. */
 .profile-hero__cover-edit {
-  position: absolute;
-  top: var(--space-3);
-  right: var(--space-3);
-  z-index: 3;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -52,6 +53,41 @@
 .profile-hero__cover-edit:active { transform: scale(0.96); }
 .profile-hero__cover-edit:disabled { opacity: 0.6; cursor: default; }
 
+/* Remove button — hidden until the image (banner/avatar) is hovered. */
+.profile-hero__img-remove {
+  display: grid;
+  place-items: center;
+  width: 2.1rem;
+  height: 2.1rem;
+  border-radius: 50%;
+  background: #ef4444;
+  color: #fff;
+  border: 3px solid #0e1526;
+  cursor: pointer;
+  opacity: 0;
+  transform: scale(0.8) translateX(8px);
+  pointer-events: none;
+  transition: opacity 160ms var(--ease-out, ease), transform 160ms var(--ease-out, ease), background-color 150ms ease;
+}
+.profile-hero__img-actions--cover .profile-hero__img-remove {
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  backdrop-filter: blur(6px);
+}
+.profile-hero__img-remove:hover { background: #dc2626; }
+.profile-hero__img-remove:active { transform: scale(0.94); }
+.profile-hero__img-remove:disabled { opacity: 0.6; cursor: default; }
+/* Reveal when hovering the banner, the avatar, or the action group itself. */
+.profile-hero__cover:hover .profile-hero__img-remove,
+.profile-hero__avatar:hover .profile-hero__img-remove,
+.profile-hero__img-actions:hover .profile-hero__img-remove {
+  opacity: 1;
+  transform: scale(1) translateX(0);
+  pointer-events: auto;
+}
+
 /* The identity block is a dark strip below the backdrop; the square avatar
    lifts up into the backdrop, name + details sit on the dark strip. */
 .profile-hero__body {
@@ -59,8 +95,8 @@
   display: flex;
   align-items: flex-start;
   gap: var(--space-5);
-  padding: var(--space-3) var(--space-6);
-  background: linear-gradient(180deg, #0e1526, #0a0f1c);
+  padding: var(--space-2) var(--space-6);
+  background: linear-gradient(180deg, #0e1526, #1b1b1b);
   color: rgba(255, 255, 255, 0.92);
   flex-wrap: wrap;
 }
@@ -68,7 +104,7 @@
    straddles the backdrop and the dark strip. */
 .profile-hero__avatar {
   position: relative;
-  margin-top: -5.5rem;
+  margin-top: -6rem;
   z-index: 2;
   width: 20%;
   min-width: 7.5rem;
@@ -96,9 +132,6 @@
 }
 .profile-hero__avatar-inner img { width: 100%; height: 100%; object-fit: cover; }
 .profile-hero__avatar-edit {
-  position: absolute;
-  right: -6px;
-  bottom: -6px;
   width: 2.1rem;
   height: 2.1rem;
   border-radius: 50%;

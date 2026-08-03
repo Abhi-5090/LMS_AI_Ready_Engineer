@@ -33,6 +33,15 @@ export function useUploadAvatar() {
   });
 }
 
+/** Remove the current avatar (falls back to the name initials). */
+export function useRemoveAvatar() {
+  const setUser = useAuth((s) => s.setUser);
+  return useMutation({
+    mutationFn: () => unwrap(api.delete('/profile/avatar')),
+    onSuccess: (user) => setUser(user),
+  });
+}
+
 /** Upload a new profile banner (cover) image (multipart). */
 export function useUploadCover() {
   const setUser = useAuth((s) => s.setUser);
@@ -42,6 +51,15 @@ export function useUploadCover() {
       fd.append('cover', file);
       return unwrap(api.post('/profile/cover', fd, { headers: { 'Content-Type': 'multipart/form-data' } }));
     },
+    onSuccess: (user) => setUser(user),
+  });
+}
+
+/** Remove the current profile banner (falls back to the gradient strip). */
+export function useRemoveCover() {
+  const setUser = useAuth((s) => s.setUser);
+  return useMutation({
+    mutationFn: () => unwrap(api.delete('/profile/cover')),
     onSuccess: (user) => setUser(user),
   });
 }

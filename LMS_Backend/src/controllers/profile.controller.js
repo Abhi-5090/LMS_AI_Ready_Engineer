@@ -149,6 +149,16 @@ export async function setAvatar(req, res) {
   ok(res, user.toJSON());
 }
 
+/** Remove the signed-in user's avatar (falls back to the name initials). */
+export async function removeAvatar(req, res) {
+  const user = await User.findById(req.auth.userId);
+  if (!user) throw ApiError.notFound('User not found');
+  await deleteByUrl(user.avatarUrl); // best-effort cleanup
+  user.avatarUrl = null;
+  await user.save();
+  ok(res, user.toJSON());
+}
+
 /** Replace the signed-in user's profile banner (cover) image. */
 export async function setCover(req, res) {
   if (!req.file) throw ApiError.badRequest('Choose an image to upload');
@@ -156,6 +166,16 @@ export async function setCover(req, res) {
   if (!user) throw ApiError.notFound('User not found');
   await deleteByUrl(user.coverUrl); // best-effort cleanup of the old banner
   user.coverUrl = req.file.url;
+  await user.save();
+  ok(res, user.toJSON());
+}
+
+/** Remove the signed-in user's profile banner (falls back to the gradient). */
+export async function removeCover(req, res) {
+  const user = await User.findById(req.auth.userId);
+  if (!user) throw ApiError.notFound('User not found');
+  await deleteByUrl(user.coverUrl); // best-effort cleanup
+  user.coverUrl = null;
   await user.save();
   ok(res, user.toJSON());
 }
