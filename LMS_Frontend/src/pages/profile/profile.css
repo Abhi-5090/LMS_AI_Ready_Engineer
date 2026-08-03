@@ -113,7 +113,7 @@
 .profile-hero__avatar-edit:hover { transform: scale(1.08); background: var(--color-primary-hover); }
 .profile-hero__avatar-edit:active { transform: scale(0.96); }
 
-.profile-hero__id { flex: 1; min-width: 12rem; padding-top: var(--space-2); }
+.profile-hero__id { flex: 1; min-width: 12rem; align-self: center; padding-top: var(--space-2); }
 /* Light-on-dark treatment for everything living on the strip. */
 .profile-hero__body .profile-hero__name { color: #fff; }
 .profile-hero__body .profile-hero__handle,
