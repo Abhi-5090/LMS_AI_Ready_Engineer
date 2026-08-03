@@ -290,6 +290,7 @@ export async function studentOverview(studentId) {
 
   const moduleStatus = (progress.modules ?? []).map((m) => ({
     module: m.module?.name ?? '—',
+    code: m.module?.code ?? '',
     order: m.module?.order ?? 0,
     status: m.status,
     attendancePercentage: m.attendancePercentage ?? 0,

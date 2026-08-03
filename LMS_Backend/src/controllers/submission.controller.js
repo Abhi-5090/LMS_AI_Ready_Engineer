@@ -422,6 +422,19 @@ export async function leaderboard(req, res) {
   const { id } = req.params;
   const { role, userId } = req.auth;
 
+  const assessment = await Assessment.findById(id).select('sourceTemplate batch');
+  if (!assessment) throw ApiError.notFound('Assessment not found');
+
+  // Consolidate across every re-assignment of this test to the batch so a student
+  // who took it more than once appears ONCE, with their latest graded result.
+  const groupKey = assessment.sourceTemplate || assessment._id;
+  const siblings = await Assessment.find({
+    isTemplate: false,
+    batch: assessment.batch,
+    $or: [{ sourceTemplate: groupKey }, { _id: groupKey }],
+  }).select('_id');
+  const instIds = siblings.map((s) => s._id);
+
   let studentIds = null; // null = no batch scoping (all participants)
   if (role === UserRole.STUDENT) {
     const me = await User.findById(userId).select('batch');
@@ -433,15 +446,22 @@ export async function leaderboard(req, res) {
     studentIds = (batch?.students ?? []).map((s) => s.toString());
   }
 
-  const filter = { assessment: id, status: SubmissionStatus.GRADED };
+  const filter = { assessment: { $in: instIds }, status: SubmissionStatus.GRADED };
   if (studentIds) filter.student = { $in: studentIds };
 
+  // Newest first, then keep only each student's most recent graded attempt.
   const subs = await Submission.find(filter)
-    .sort({ score: -1, submittedAt: 1 })
-    .limit(100) // leaderboard shows the top ranks; full count is reported separately
+    .sort({ submittedAt: -1 })
+    .limit(2000)
     .populate('student', 'name');
 
-  const entries = subs
+  const latestByStudent = new Map();
+  for (const s of subs) {
+    const sid = s.student?._id ? s.student._id.toString() : s.student?.toString();
+    if (sid && !latestByStudent.has(sid)) latestByStudent.set(sid, s); // first seen = latest
+  }
+
+  const entries = [...latestByStudent.values()]
     .map((s) => ({
       name: s.student?.name ?? 'Student',
       score: s.score ?? 0,
@@ -458,9 +478,9 @@ export async function leaderboard(req, res) {
       const bt = b.timeTakenMs ?? Infinity;
       return at - bt;
     })
-    .map((e, i) => ({ rank: i + 1, ...e }));
+    .map((e, i) => ({ rank: i + 1, ...e }))
+    .slice(0, 100); // show the top ranks
 
-  // True participant count (not capped by the top-100 entries limit).
-  const participants = await Submission.countDocuments(filter);
+  const participants = latestByStudent.size;
   ok(res, { participants, entries });
 }

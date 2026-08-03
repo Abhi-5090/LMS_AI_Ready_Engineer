@@ -12,7 +12,6 @@ import {
   useDeleteQuestion,
   useSetAllowedStudents,
   useSetAvailability,
-  useSubmissions,
   useUpdateAssessment,
 } from '@/lib/assessments';
 import {
@@ -489,24 +488,22 @@ function AllowedStudentsCard({ a }) {
 /** Who's completed it: every assigned student's status (incl. those who haven't started). */
 /** Best-in-class analytics for an assigned assessment: reach, completion, scores. */
 function AnalyticsCard({ a }) {
-  const { data: subs, isLoading } = useSubmissions(a.id);
-  const roster = a.batch?.students ?? [];
-  const allow = (a.allowedStudents ?? []).map(String);
-  const assigned = allow.length ? roster.filter((s) => allow.includes(String(s.id))) : roster;
-  const byStudent = new Map((subs ?? []).map((s) => [String(s.student?.id ?? s.student), s]));
+  // Consolidated across every re-assignment of this test — each student's LATEST
+  // attempt is what counts, so the analytics reflect all reattempts, not one instance.
+  const { data, isLoading } = useConsolidated(a.id);
+  const students = data?.students ?? [];
   const DONE = ['submitted', 'evaluating', 'graded'];
 
   let submitted = 0, inProgress = 0, notStarted = 0, graded = 0, passed = 0, scoreSum = 0, disqualified = 0;
-  for (const s of assigned) {
-    const sub = byStudent.get(String(s.id));
-    if (!sub) { notStarted += 1; continue; }
-    if (sub.disqualified) { disqualified += 1; submitted += 1; continue; }
-    if (DONE.includes(sub.status)) {
+  for (const { latest } of students) {
+    if (!latest) { notStarted += 1; continue; }
+    if (latest.disqualified) { disqualified += 1; submitted += 1; continue; }
+    if (DONE.includes(latest.status)) {
       submitted += 1;
-      if (sub.status === 'graded') { graded += 1; scoreSum += sub.score ?? 0; if (sub.passed) passed += 1; }
-    } else if (sub.status === 'in_progress') { inProgress += 1; } else { notStarted += 1; }
+      if (latest.status === 'graded') { graded += 1; scoreSum += latest.score ?? 0; if (latest.passed) passed += 1; }
+    } else if (latest.status === 'in_progress') { inProgress += 1; } else { notStarted += 1; }
   }
-  const total = assigned.length;
+  const total = students.length;
   const avgScore = graded ? Math.round(scoreSum / graded) : null;
   const passRate = graded ? Math.round((passed / graded) * 100) : null;
   const completionPct = total ? Math.round((submitted / total) * 100) : 0;
@@ -526,9 +523,9 @@ function AnalyticsCard({ a }) {
     <Card style={{ marginBottom: 'var(--space-6)' }}>
       <CardHeader
         title={<span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}><BarChart3 size={18} style={{ color: 'var(--color-primary)' }} /> Analytics</span>}
-        subtitle={total ? `${submitted} of ${total} submitted · ${completionPct}% complete` : 'No students assigned yet'}
+        subtitle={total ? `${submitted} of ${total} submitted · ${completionPct}% complete${data?.instanceCount > 1 ? ` · ${data.instanceCount} assignments merged` : ''}` : 'No students assigned yet'}
       />
-      {isLoading && !subs ? (
+      {isLoading && !data ? (
         <SkeletonText lines={3} />
       ) : total === 0 ? (
         <EmptyState icon={<BarChart3 size={24} />} title="No data yet" description="Assign students (on the schedule / allow-list) to see analytics." />
@@ -682,7 +679,8 @@ function ReattemptsCard({ a }) {
 
 function SubmissionsCard({ id }) {
   const toast = useToast();
-  const { data: subs, isLoading } = useSubmissions(id);
+  const { data, isLoading } = useConsolidated(id);
+  const subs = data?.submissions ?? null;
   const [exporting, setExporting] = useState(false);
   const hasSubs = subs && subs.length > 0;
   const onExport = async () => {
@@ -719,7 +717,11 @@ function SubmissionsCard({ id }) {
             <tbody>
               {subs.map((s) => (
                 <tr key={s.id}>
-                  <td>{s.student?.name}<div className="lms-muted" style={{ fontSize: 'var(--font-size-xs)' }}>{s.student?.email}</div></td>
+                  <td>
+                    {s.student?.name}
+                    {s.attempt > 1 && <span className="lms-muted" style={{ fontSize: 'var(--font-size-xs)' }}> · attempt {s.attempt}</span>}
+                    <div className="lms-muted" style={{ fontSize: 'var(--font-size-xs)' }}>{s.student?.email}</div>
+                  </td>
                   <td>{s.score ?? '—'}%</td>
                   <td>
                     {s.disqualified ? (

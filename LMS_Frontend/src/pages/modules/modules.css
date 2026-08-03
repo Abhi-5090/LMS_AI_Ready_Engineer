@@ -694,7 +694,7 @@
 .lb-rest__head span:nth-child(2) { justify-self: stretch; text-align: left; }
 /* Serial number: plain centered text, not a circular badge. */
 .lb-rank--n { width: auto; height: auto; display: inline-block; place-items: initial; background: none; border: none; border-radius: 0; color: var(--color-text-secondary); font-size: var(--font-size-sm); font-weight: var(--font-weight-semibold); }
-.lb-rest__list { flex: 1; min-height: 0; max-height: 13rem; overflow-y: auto; }
+.lb-rest__list { flex: 1; min-height: 0; max-height: 18rem; overflow-y: auto; } /* ~7 rows, then scroll */
 .lb-rest__empty { color: var(--color-text-muted); font-size: var(--font-size-sm); padding: var(--space-3) var(--space-2); }
 .lb-lrow--me { background: color-mix(in srgb, var(--color-primary) 12%, transparent); border-radius: var(--radius-md); }
 .lb-lscore { font-weight: var(--font-weight-bold); font-variant-numeric: tabular-nums; font-size: var(--font-size-sm); }

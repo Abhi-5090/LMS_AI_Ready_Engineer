@@ -554,7 +554,27 @@ export async function consolidatedSubmissions(req, res) {
     };
   });
 
-  ok(res, { instanceCount: siblings.length, instanceIds: instIds.map(String), students });
+  // Every individual submission across all instances (newest first) — the raw
+  // attempt list for the Submissions table, including proctoring detail.
+  const submissions = subs
+    .slice()
+    .sort((a, b) => new Date(b.submittedAt || 0).getTime() - new Date(a.submittedAt || 0).getTime())
+    .map((s) => ({
+      id: String(s._id),
+      student: s.student ? { id: String(s.student._id), name: s.student.name, email: s.student.email } : null,
+      attempt: (order.get(String(s.assessment)) ?? 0) + 1,
+      score: s.score ?? null,
+      passed: s.passed ?? null,
+      status: s.status,
+      submittedAt: s.submittedAt ?? null,
+      disqualified: s.disqualified ?? false,
+      disqualifiedReason: s.disqualifiedReason ?? '',
+      proctorShots: s.proctorShots ?? [],
+      warnings: s.warnings ?? 0,
+      warningLog: s.warningLog ?? [],
+    }));
+
+  ok(res, { instanceCount: siblings.length, instanceIds: instIds.map(String), students, submissions });
 }
 
 export async function updateAssessment(req, res) {

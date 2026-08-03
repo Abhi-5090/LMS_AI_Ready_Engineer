@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Award, CalendarCheck, CalendarX, Compass, GraduationCap, Percent, Target } from 'lucide-react';
+import { Award, CalendarCheck, CalendarX, Compass, GraduationCap, Percent } from 'lucide-react';
 import { Badge, Button, Card, CardHeader, EmptyState, ErrorState, SkeletonCards } from '@/components/ui';
 import { PageHeader, Stat } from '@/components/PageHeader';
 import { BarChart } from '@/components/charts/BarChart';
@@ -43,7 +43,8 @@ export function StudentDashboard() {
   const scores = a?.scores ?? [];
   const modStatus = a?.moduleStatus ?? [];
   const completionPct = prog.total ? Math.round((prog.completedCount / prog.total) * 100) : 0;
-  const currentModule = modStatus.find((m) => m.status === 'in_progress')?.module ?? '—';
+  const curMod = modStatus.find((m) => m.status === 'in_progress');
+  const currentModule = curMod?.code || curMod?.module || '—';
   const next = (upcoming ?? []).slice(0, 5);
 
   return (
@@ -70,7 +71,6 @@ export function StudentDashboard() {
             <div className="stat-grid">
               <Stat label="Attendance" value={`${att.percentage}%`} accent icon={<Percent size={20} />} />
               <Stat label="Modules Completed" value={`${prog.completedCount} / ${prog.total}`} icon={<GraduationCap size={20} />} />
-              <Stat label="Average Score" value={scoreSummary.gradedCount ? `${scoreSummary.avgScore}%` : '—'} icon={<Target size={20} />} />
               <Stat label="Certificates" value={a?.certificates ?? 0} icon={<Award size={20} />} />
               <Stat label="Current Module" value={currentModule} icon={<Compass size={20} />} />
             </div>
