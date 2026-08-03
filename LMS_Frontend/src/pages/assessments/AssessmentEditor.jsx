@@ -687,11 +687,22 @@ function SubmissionsCard({ id, title }) {
   const [exporting, setExporting] = useState('');
   const hasSubs = subs && subs.length > 0;
 
-  // Flatten the consolidated submissions into printable rows (every attempt).
-  const rows = (subs ?? []).map((s) => ({
+  // Report rows: ONE per student — their LATEST attempt only (no reattempt duplicates),
+  // with an Attempts count. The on-screen table below still lists every attempt.
+  const byStudent = new Map();
+  for (const s of subs ?? []) {
+    const key = s.student?.id ?? s.student?.email ?? s.id;
+    const cur = byStudent.get(key);
+    if (!cur) byStudent.set(key, { latest: s, count: 1 });
+    else {
+      cur.count += 1;
+      if ((s.attempt ?? 0) > (cur.latest.attempt ?? 0)) cur.latest = s;
+    }
+  }
+  const rows = [...byStudent.values()].map(({ latest: s, count }) => ({
     student: s.student?.name ?? '',
     email: s.student?.email ?? '',
-    attempt: `#${s.attempt}`,
+    attempts: count,
     status: SUB_STATUS_LABEL[s.status] ?? s.status,
     score: s.score == null ? '—' : `${s.score}%`,
     result: s.disqualified ? 'Disqualified' : s.status === 'graded' ? (s.passed ? 'Passed' : 'Failed') : '—',

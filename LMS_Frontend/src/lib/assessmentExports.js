@@ -7,7 +7,7 @@ const GREEN_HEX = 'FF008738'; // ARGB for ExcelJS
 const GREEN_RGB = [0, 135, 56]; // RGB for jsPDF
 const GREEN_TINT = [240, 250, 244];
 
-const COLUMNS = ['S.No', 'Student', 'Email', 'Attempt', 'Status', 'Score', 'Result', 'Warnings', 'Submitted'];
+const COLUMNS = ['S.No', 'Student', 'Email', 'Attempts', 'Status', 'Score', 'Result', 'Warnings', 'Submitted'];
 
 const slug = (t) => String(t || 'assessment').replace(/[^a-z0-9]+/gi, '-').replace(/^-+|-+$/g, '').toLowerCase() || 'assessment';
 
@@ -24,7 +24,7 @@ function downloadBlob(blob, filename) {
 
 /** rows: [{ sno, student, email, attempt, status, score, result, warnings, submitted }] */
 function toMatrix(rows) {
-  return rows.map((r, i) => [i + 1, r.student, r.email, r.attempt, r.status, r.score, r.result, r.warnings, r.submitted]);
+  return rows.map((r, i) => [i + 1, r.student, r.email, r.attempts, r.status, r.score, r.result, r.warnings, r.submitted]);
 }
 
 /** Download the consolidated submissions as a styled .xlsx (centered cells, green header). */
