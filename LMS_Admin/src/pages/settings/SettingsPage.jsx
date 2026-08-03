@@ -4,8 +4,9 @@ import { ThemeName } from '@/shared';
 import { Badge, Button, Card, CardHeader, ErrorState, Input, Select, SkeletonText } from '@/components/ui';
 import { PageHeader } from '@/components/PageHeader';
 import { apiErrorMessage } from '@/lib/api';
-import { useSettings, useTestAiConnection, useTestEmail, useTestZoomConnection, useUpdateSettings, useUploadSebConfig } from '@/lib/settings';
+import { useSettings, useTestAiConnection, useTestEmail, useUpdateSettings, useUploadSebConfig } from '@/lib/settings';
 import { useTheme } from '@/theme/ThemeProvider';
+import './settings.css';
 
 export function SettingsPage() {
   const { data, isLoading, isError, error, refetch } = useSettings();
@@ -65,7 +66,8 @@ export function SettingsPage() {
     <>
       <PageHeader title="Platform Settings" subtitle="Institution-wide rules applied across the platform." />
 
-      <Card style={{ maxWidth: '40rem' }}>
+      <div className="settings-grid">
+      <Card>
         <CardHeader title="Academic & Access Rules" />
         <form onSubmit={save} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-5)' }}>
           <Input
@@ -111,11 +113,12 @@ export function SettingsPage() {
         </form>
       </Card>
 
-      <AiGradingCard settings={data} />
       <EmailCard />
-      <ZoomCard settings={data} />
-      <LiveKitCard settings={data} />
+      <ProviderGradingCard settings={data} provider="claude" />
+      <ProviderGradingCard settings={data} provider="openai" />
       <SafeExamBrowserCard settings={data} />
+      <LiveKitCard settings={data} />
+      </div>
     </>
   );
 }
@@ -156,7 +159,7 @@ function SafeExamBrowserCard({ settings }) {
   }
 
   return (
-    <Card style={{ maxWidth: '40rem', marginTop: 'var(--space-6)' }}>
+    <Card>
       <CardHeader title="Safe Exam Browser (SEB)" subtitle="One global Config Key locks proctored exams to the SEB kiosk browser." />
       <div style={{ marginBottom: 'var(--space-3)' }}>
         {settings.sebConfigured ? <Badge tone="success">Config Key set</Badge> : <Badge tone="neutral">Not configured</Badge>}
@@ -214,7 +217,7 @@ function EmailCard() {
   }
 
   return (
-    <Card style={{ maxWidth: '40rem', marginTop: 'var(--space-6)' }}>
+    <Card>
       <CardHeader title="Email delivery (verification codes)" subtitle="Login/onboarding 6-digit codes are emailed via SMTP. Send a test to confirm it works on this server." />
       <form onSubmit={runTest} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
         <Input
@@ -237,74 +240,10 @@ function EmailCard() {
   );
 }
 
-function ZoomCard({ settings }) {
-  const update = useUpdateSettings();
-  const test = useTestZoomConnection();
-  const [form, setForm] = useState({ zoomAccountId: '', zoomClientId: '', zoomClientSecret: '' });
-  const [msg, setMsg] = useState('');
-  const [err, setErr] = useState('');
-
-  const locked = settings.zoomLocked;
-  const configured = settings.zoomConfigured;
-
-  async function save(e) {
-    e.preventDefault();
-    setMsg(''); setErr('');
-    try {
-      await update.mutateAsync(form);
-      setForm({ zoomAccountId: '', zoomClientId: '', zoomClientSecret: '' });
-      setMsg('Zoom credentials saved.');
-    } catch (e2) { setErr(apiErrorMessage(e2)); }
-  }
-
-  async function runTest() {
-    setMsg(''); setErr('');
-    try {
-      await test.mutateAsync();
-      setMsg('Zoom credentials are valid.');
-    } catch (e2) { setErr(apiErrorMessage(e2)); }
-  }
-
-  return (
-    <Card style={{ maxWidth: '40rem', marginTop: 'var(--space-6)' }}>
-      <CardHeader title="Zoom Integration" subtitle="Auto-create meeting links when scheduling Zoom classes (Server-to-Server OAuth)." />
-      <div style={{ marginBottom: 'var(--space-4)' }}>
-        Status:{' '}
-        {configured
-          ? <Badge tone="success">Configured ({settings.zoomSource})</Badge>
-          : <Badge tone="warning">Not configured — Zoom classes use manual links</Badge>}
-      </div>
-
-      {locked ? (
-        <p className="lms-muted">Zoom credentials are set via environment variables and managed outside this UI.</p>
-      ) : (
-        <form onSubmit={save} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
-          <Input label="Account ID" autoComplete="off" placeholder={configured ? '•••• (saved)' : ''} value={form.zoomAccountId} onChange={(e) => setForm({ ...form, zoomAccountId: e.target.value })} />
-          <Input label="Client ID" autoComplete="off" value={form.zoomClientId} onChange={(e) => setForm({ ...form, zoomClientId: e.target.value })} />
-          <Input label="Client Secret" type="password" autoComplete="off" value={form.zoomClientSecret} onChange={(e) => setForm({ ...form, zoomClientSecret: e.target.value })} />
-          <div>
-            <Button type="submit" loading={update.isPending}>Save credentials</Button>
-          </div>
-          <p className="lms-muted" style={{ fontSize: 'var(--font-size-xs)' }}>
-            Create a <strong>Server-to-Server OAuth</strong> app at zoom.us with the
-            <code> meeting:write</code> scope. Stored server-side, never shown again.
-          </p>
-        </form>
-      )}
-
-      <div style={{ marginTop: 'var(--space-4)', display: 'flex', gap: 'var(--space-3)', alignItems: 'center', flexWrap: 'wrap' }}>
-        <Button variant="outline" onClick={runTest} loading={test.isPending} disabled={!configured}>Test connection</Button>
-        {msg && <span style={{ color: 'var(--color-success)', fontSize: 'var(--font-size-sm)' }}>{msg}</span>}
-        {err && <span className="field__error">{err}</span>}
-      </div>
-    </Card>
-  );
-}
-
 function LiveKitCard({ settings }) {
   const configured = settings.livekitConfigured;
   return (
-    <Card style={{ maxWidth: '40rem', marginTop: 'var(--space-6)' }}>
+    <Card>
       <CardHeader title="LiveKit (in-app live classes)" subtitle="Powers live classes that run inside the learner app, with no external meeting link." />
       <div style={{ marginBottom: 'var(--space-4)' }}>
         Status:{' '}
@@ -323,7 +262,8 @@ function LiveKitCard({ settings }) {
 }
 
 /** One provider's write-only key field (Claude or OpenAI). */
-function ProviderKeyField({ label, envName, placeholder, locked, configured, field, update }) {
+/** One provider's write-only key form (no header/status — the card supplies those). */
+function ProviderKeyField({ keyLabel, envName, placeholder, locked, configured, field, update }) {
   const [key, setKey] = useState('');
   const [msg, setMsg] = useState('');
   const [err, setErr] = useState('');
@@ -338,99 +278,108 @@ function ProviderKeyField({ label, envName, placeholder, locked, configured, fie
     } catch (e2) { setErr(apiErrorMessage(e2)); }
   }
 
+  if (locked) {
+    return (
+      <p className="lms-muted" style={{ fontSize: 'var(--font-size-sm)', margin: 0 }}>
+        Set via the <code>{envName}</code> environment variable — managed outside this UI.
+      </p>
+    );
+  }
   return (
-    <div style={{ borderTop: '1px solid var(--color-border)', paddingTop: 'var(--space-4)', marginTop: 'var(--space-4)' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', marginBottom: 'var(--space-2)' }}>
-        <strong>{label}</strong>
-        {configured ? <Badge tone="success">Configured</Badge> : <Badge tone="neutral">Not set</Badge>}
+    <form onSubmit={save} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
+      <Input
+        label={`${keyLabel} API key`}
+        type="password"
+        autoComplete="off"
+        placeholder={configured ? 'A key is saved — enter a new one to replace it' : placeholder}
+        value={key}
+        onChange={(e) => setKey(e.target.value)}
+      />
+      <div style={{ display: 'flex', gap: 'var(--space-2)', alignItems: 'center', flexWrap: 'wrap' }}>
+        <Button type="submit" size="sm" loading={update.isPending}>Save</Button>
+        {configured && (
+          <Button type="button" size="sm" variant="outline" onClick={() => { setKey(''); update.mutate({ [field]: '' }); }}>
+            Clear
+          </Button>
+        )}
+        {msg && <span style={{ color: 'var(--color-success)', fontSize: 'var(--font-size-xs)' }}>{msg}</span>}
+        {err && <span className="field__error">{err}</span>}
       </div>
-      {locked ? (
-        <p className="lms-muted" style={{ fontSize: 'var(--font-size-sm)', margin: 0 }}>
-          Set via the <code>{envName}</code> environment variable — managed outside this UI.
-        </p>
-      ) : (
-        <form onSubmit={save} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
-          <Input
-            label={`${label} API key`}
-            type="password"
-            autoComplete="off"
-            placeholder={configured ? 'A key is saved — enter a new one to replace it' : placeholder}
-            value={key}
-            onChange={(e) => setKey(e.target.value)}
-          />
-          <div style={{ display: 'flex', gap: 'var(--space-2)', alignItems: 'center', flexWrap: 'wrap' }}>
-            <Button type="submit" size="sm" loading={update.isPending}>Save</Button>
-            {configured && (
-              <Button type="button" size="sm" variant="outline" onClick={() => { setKey(''); update.mutate({ [field]: '' }); }}>
-                Clear
-              </Button>
-            )}
-            {msg && <span style={{ color: 'var(--color-success)', fontSize: 'var(--font-size-xs)' }}>{msg}</span>}
-            {err && <span className="field__error">{err}</span>}
-          </div>
-        </form>
-      )}
-    </div>
+    </form>
   );
 }
 
-function AiGradingCard({ settings }) {
+const AI_PROVIDERS = {
+  claude: {
+    title: 'AI Grading — Claude',
+    subtitle: 'Anthropic Claude grades prompt-writing, scenario & coding answers.',
+    keyLabel: 'Claude',
+    envName: 'ANTHROPIC_API_KEY',
+    placeholder: 'sk-ant-…',
+    field: 'aiApiKey',
+    activeKey: 'anthropic',
+  },
+  openai: {
+    title: 'AI Grading — OpenAI (ChatGPT)',
+    subtitle: 'Prefer ChatGPT models? An OpenAI key grades the same submissions.',
+    keyLabel: 'OpenAI',
+    envName: 'OPENAI_API_KEY',
+    placeholder: 'sk-…',
+    field: 'openaiApiKey',
+    activeKey: 'openai',
+  },
+};
+
+/** One AI-grading provider card. Either key alone enables grading; if both are set,
+ *  Claude is the active one (shown by the "Active" badge). */
+function ProviderGradingCard({ settings, provider }) {
+  const cfg = AI_PROVIDERS[provider];
   const update = useUpdateSettings();
   const test = useTestAiConnection();
   const [msg, setMsg] = useState('');
   const [err, setErr] = useState('');
 
-  const configured = settings.aiConfigured;
-  const providerLabel = settings.aiProvider === 'openai' ? 'OpenAI' : settings.aiProvider === 'anthropic' ? 'Claude' : null;
+  const configured = provider === 'claude' ? settings.anthropicConfigured : settings.openaiConfigured;
+  const locked = provider === 'claude' ? settings.aiKeyLocked : settings.openaiKeyLocked;
+  const active = settings.aiProvider === cfg.activeKey;
 
   async function runTest() {
     setMsg(''); setErr('');
     try {
       const r = await test.mutateAsync();
       const label = r.provider === 'openai' ? 'OpenAI' : 'Claude';
-      setMsg(`Connected to ${label} (${r.model}).`);
+      setMsg(`Active provider connected: ${label} (${r.model}).`);
     } catch (e2) { setErr(apiErrorMessage(e2)); }
   }
 
   return (
-    <Card style={{ maxWidth: '40rem', marginTop: 'var(--space-6)' }}>
-      <CardHeader title="AI Grading" subtitle="Evaluates prompt-writing, scenario & coding submissions. Provide a Claude OR an OpenAI key — either one works." />
-      <div style={{ marginBottom: 'var(--space-1)' }}>
-        Status:{' '}
-        {configured
-          ? <Badge tone="success">Active: {providerLabel} ({settings.aiKeySource})</Badge>
-          : <Badge tone="warning">Not configured</Badge>}
+    <Card>
+      <CardHeader title={cfg.title} subtitle={cfg.subtitle} />
+      <div style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap', marginBottom: 'var(--space-3)' }}>
+        {configured ? <Badge tone="success">Configured</Badge> : <Badge tone="neutral">Not set</Badge>}
+        {active && <Badge tone="primary">Active</Badge>}
       </div>
-      <p className="lms-muted" style={{ fontSize: 'var(--font-size-xs)', marginTop: 0 }}>
-        If both are set, Claude is used. Keys are stored server-side, write-only, and never shown again.
-      </p>
 
       <ProviderKeyField
-        label="Claude (Anthropic)"
-        envName="ANTHROPIC_API_KEY"
-        placeholder="sk-ant-…"
-        locked={settings.aiKeyLocked}
-        configured={settings.anthropicConfigured}
-        field="aiApiKey"
-        update={update}
-      />
-      <ProviderKeyField
-        label="OpenAI"
-        envName="OPENAI_API_KEY"
-        placeholder="sk-…"
-        locked={settings.openaiKeyLocked}
-        configured={settings.openaiConfigured}
-        field="openaiApiKey"
+        keyLabel={cfg.keyLabel}
+        envName={cfg.envName}
+        placeholder={cfg.placeholder}
+        locked={locked}
+        configured={configured}
+        field={cfg.field}
         update={update}
       />
 
       <div style={{ marginTop: 'var(--space-4)', display: 'flex', gap: 'var(--space-3)', alignItems: 'center', flexWrap: 'wrap' }}>
-        <Button variant="outline" onClick={runTest} loading={test.isPending} disabled={!configured}>
+        <Button variant="outline" size="sm" onClick={runTest} loading={test.isPending} disabled={!settings.aiConfigured}>
           Test connection
         </Button>
         {msg && <span style={{ color: 'var(--color-success)', fontSize: 'var(--font-size-sm)' }}>{msg}</span>}
         {err && <span className="field__error">{err}</span>}
       </div>
+      <p className="lms-muted" style={{ fontSize: 'var(--font-size-xs)', marginTop: 'var(--space-3)', marginBottom: 0 }}>
+        Keys are stored server-side, write-only, and never shown again. If both providers are set, Claude is used.
+      </p>
     </Card>
   );
 }
