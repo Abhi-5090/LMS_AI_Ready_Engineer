@@ -26,8 +26,17 @@
   opacity: 0.5;
   pointer-events: none;
 }
-/* When a real banner image is set, drop the dotted texture so it reads cleanly. */
-.profile-hero__cover--image::after { display: none; }
+/* Uploaded banner: layered ON TOP of the gradient strip (never replaces it), so a
+   transparent PNG reveals the colour palette and an opaque image covers it. */
+.profile-hero__cover-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: 1;
+  pointer-events: none;
+}
 /* Image action groups (camera + hover-revealed remove) for cover & avatar. */
 .profile-hero__img-actions { display: inline-flex; align-items: center; gap: 6px; }
 .profile-hero__img-actions--cover { position: absolute; top: var(--space-3); right: var(--space-3); z-index: 3; }

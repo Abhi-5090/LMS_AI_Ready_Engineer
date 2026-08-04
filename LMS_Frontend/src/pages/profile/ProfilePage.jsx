@@ -88,10 +88,11 @@ function ProfileHero({ user, isStudent }) {
 
   return (
     <section className="profile-hero">
-      <div
-        className={`profile-hero__cover${user.coverUrl ? ' profile-hero__cover--image' : ''}`}
-        style={user.coverUrl ? { backgroundImage: `url(${fileSrc(user.coverUrl)})` } : undefined}
-      >
+      <div className="profile-hero__cover">
+        {/* The gradient strip is always the backdrop; the uploaded image is layered
+            on top — a transparent PNG lets the colour palette show through, an
+            image with its own background covers it. */}
+        {user.coverUrl && <img className="profile-hero__cover-img" src={fileSrc(user.coverUrl)} alt="" />}
         <input ref={coverRef} type="file" accept="image/*" onChange={onCover} hidden />
         <div className="profile-hero__img-actions profile-hero__img-actions--cover">
           {user.coverUrl && (
