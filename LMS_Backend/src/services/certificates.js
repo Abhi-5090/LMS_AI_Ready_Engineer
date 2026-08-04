@@ -13,15 +13,15 @@ function verifyUrl(certificateId) {
 const slugSegment = (s) => String(s || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
 
 /**
- * Certificate id: AIRE-<batch>-<module>-<5-digit serial>, e.g. AIRE-2028-LLM-00001.
- * The serial is a per-(batch, module) running number (first ever = 00001) drawn
- * from an atomic counter so concurrent issuance can't collide.
+ * Certificate id: <batch>-<module>-<5-digit serial>, e.g. 2028-LLM-00001. The
+ * serial is a per-(batch, module) running number (first ever = 00001) drawn from
+ * an atomic counter so concurrent issuance can't collide.
  */
 async function makeCertificateId({ batchCode, moduleCode }) {
   const b = slugSegment(batchCode) || 'NA';
   const m = slugSegment(moduleCode) || 'MOD';
   const seq = await nextSequence(`cert:${b}:${m}`);
-  return { certificateId: `AIRE-${b}-${m}-${String(seq).padStart(5, '0')}`, seq };
+  return { certificateId: `${b}-${m}-${String(seq).padStart(5, '0')}`, seq };
 }
 
 async function createCertificate({ student, module, isProgramCertificate, code }) {

@@ -141,7 +141,7 @@ export function CertificateDesignerModal({ open, onClose, moduleId, moduleName, 
   }, [file, tpl]);
   useEffect(() => () => { if (previewSrc?.startsWith('blob:')) URL.revokeObjectURL(previewSrc); }, [previewSrc]);
 
-  const sampleId = `AIRE-2028-${(moduleCode || 'MOD').toUpperCase()}-00001`;
+  const sampleId = `2028-${(moduleCode || 'MOD').toUpperCase()}-00001`;
   const hasTemplate = Boolean(tpl) || Boolean(file);
 
   async function save() {

@@ -113,7 +113,7 @@ export async function previewCertificateTemplate(req, res) {
   // Live preview: query values override the saved ones so the admin can position
   // things before saving. A sample id shows how the real one will sit.
   const style = readStyle(req.query, tpl.toObject());
-  const sampleId = `AIRE-2028-${(module?.code || 'MOD').toUpperCase()}-00001`;
+  const sampleId = `2028-${(module?.code || 'MOD').toUpperCase()}-00001`;
   const bytes = await renderCertificatePdf({
     buffer, mimeType: tpl.mimeType, name: req.query.name || 'Student Name',
     certificateId: req.query.certificateId || sampleId, ...style,
