@@ -7,6 +7,11 @@
 :root {
   --admin-glass: color-mix(in srgb, var(--color-surface) 72%, transparent);
   --admin-ring: color-mix(in srgb, var(--color-primary) 22%, transparent);
+  /* Aliases for tokens referenced around the app but not emitted by the theme
+     provider — resolved from the real theme vars so they stay correct in every
+     theme + light/dark mode (previously undefined → invisible/transparent). */
+  --color-text: var(--color-text-primary);
+  --color-surface-2: color-mix(in srgb, var(--color-text-primary) 5%, var(--color-surface));
 }
 
 /* App canvas — soft gradient wash with a faint brand glow */

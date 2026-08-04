@@ -28,6 +28,10 @@ export const GREEN_THEME = {
     surface: '#16231A',
     border: '#2A3A2E',
     textPrimary: '#F8FAFC',
+    // Brand green is too dark to read as text/icons on the dark surface, so dark
+    // mode uses a lightened primary (buttons keep white text, links become legible).
+    primary: '#3FB950',
+    primaryHover: '#2EA043',
   },
 };
 
@@ -54,6 +58,9 @@ export const ORANGE_THEME = {
     surface: '#1E1E1E',
     border: '#333333',
     textPrimary: '#F8FAFC',
+    // Slightly brighter orange for better legibility on the dark surface.
+    primary: '#FF6B3D',
+    primaryHover: '#F15D27',
   },
 };
 
@@ -90,9 +97,14 @@ export function themeToCssVars(name, mode) {
         }
       : p.neutral;
 
+  // Dark mode lightens the brand primary so it reads on dark surfaces (text/links/
+  // icons); light mode keeps the exact brand colour.
+  const primaryBase = mode === 'dark' ? (t.dark.primary ?? p.primary.base) : p.primary.base;
+  const primaryHover = mode === 'dark' ? (t.dark.primaryHover ?? p.primary.hover) : p.primary.hover;
+
   return {
-    '--color-primary': p.primary.base,
-    '--color-primary-hover': p.primary.hover,
+    '--color-primary': primaryBase,
+    '--color-primary-hover': primaryHover,
     '--color-primary-light': p.primary.light,
     '--color-secondary': p.secondary.base,
     '--color-secondary-hover': p.secondary.hover,
