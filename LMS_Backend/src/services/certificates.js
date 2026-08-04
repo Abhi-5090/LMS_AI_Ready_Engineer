@@ -13,12 +13,13 @@ function verifyUrl(certificateId) {
 const slugSegment = (s) => String(s || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
 
 /**
- * Certificate id: <batch>-<module>-<5-digit serial>, e.g. 2028-LLM-00001. The
- * serial is a per-(batch, module) running number (first ever = 00001) drawn from
- * an atomic counter so concurrent issuance can't collide.
+ * Certificate id: <batchCode>-<module>-<5-digit serial>, e.g. 2028-LLM-00001. The
+ * batch code is used in FULL (verbatim, just trimmed/uppercased); the serial is a
+ * per-(batch, module) running number (first ever = 00001) from an atomic counter
+ * so concurrent issuance can't collide.
  */
 async function makeCertificateId({ batchCode, moduleCode }) {
-  const b = slugSegment(batchCode) || 'NA';
+  const b = String(batchCode || '').trim().toUpperCase() || 'NA';
   const m = slugSegment(moduleCode) || 'MOD';
   const seq = await nextSequence(`cert:${b}:${m}`);
   return { certificateId: `${b}-${m}-${String(seq).padStart(5, '0')}`, seq };
