@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Award, Download, Eye, ExternalLink, FileText, Share2, Trash2, Upload } from 'lucide-react';
 import { Badge, Button, Card, CardHeader, EmptyState, ErrorState, Input, Modal, Skeleton, SkeletonCards, Spinner, useConfirm, useToast } from '@/components/ui';
 import { PageHeader } from '@/components/PageHeader';
@@ -9,7 +9,6 @@ import {
   useDeleteExternalCertificate,
   useMyExternalCertificates,
 } from '@/lib/externalCertificates';
-import { formatDate } from '@/lib/format';
 import './certificates.css';
 import '../modules/modules.css';
 
@@ -44,6 +43,40 @@ const CERT_STATUS = {
   approved: { label: 'Approved', tone: 'success' },
   rejected: { label: 'Rejected', tone: 'error' },
 };
+
+/** Renders the actual certificate PDF as the card's preview (non-interactive). */
+function CertificateThumb({ certificateId, title }) {
+  const [url, setUrl] = useState(null);
+  const [failed, setFailed] = useState(false);
+  useEffect(() => {
+    let active = true;
+    let created = null;
+    setUrl(null);
+    setFailed(false);
+    fetchCertificatePdfUrl(certificateId)
+      .then((u) => { if (active) { created = u; setUrl(u); } else URL.revokeObjectURL(u); })
+      .catch(() => { if (active) setFailed(true); });
+    return () => { active = false; if (created) URL.revokeObjectURL(created); };
+  }, [certificateId]);
+
+  return (
+    <div className="cert-thumb" aria-label={title}>
+      {failed ? (
+        <div className="cert-thumb__fallback"><Award size={30} /></div>
+      ) : !url ? (
+        <div className="cert-thumb__loading"><Spinner size={22} /></div>
+      ) : (
+        <object
+          data={`${url}#toolbar=0&navpanes=0&scrollbar=0&view=Fit`}
+          type="application/pdf"
+          className="cert-thumb__pdf"
+          tabIndex={-1}
+          aria-hidden="true"
+        />
+      )}
+    </div>
+  );
+}
 
 function StudentCertificates() {
   const toast = useToast();
@@ -104,35 +137,21 @@ function StudentCertificates() {
               description="No certificates yet. Complete a module — pass its final assessment and meet the attendance requirement — to earn one automatically."
             />
           ) : (
-            <div className="cert-card-grid">
+            <div className="cert-card-grid cert-card-grid--preview">
               {certs?.map((c) => (
-                <div key={c.id} className="cert-card">
-                  <div className="cert-card__body">
-                    <span className="cert-card__icon"><Award size={22} /></span>
-                    <div className="cert-card__meta">
-                      <div className="cert-card__title">
-                        {certTitle(c)}
-                        {c.isProgramCertificate && <Badge tone="success">Program</Badge>}
-                      </div>
-                      <div className="cert-card__sub lms-muted">{formatDate(c.issuedAt)} · {c.certificateId}</div>
-                    </div>
-                  </div>
-                  {/* Revealed on hover: preview · download · share. */}
-                  <div className="cert-card__actions">
-                    <button type="button" className="icon-btn" title="Preview certificate" aria-label={`Preview ${certTitle(c)}`} onClick={() => openPreview(c)}>
-                      <Eye size={16} />
+                <div key={c.id} className="cert-card cert-card--preview">
+                  {/* The whole certificate, rendered as the preview — nothing overlaid. */}
+                  <CertificateThumb certificateId={c.certificateId} title={certTitle(c)} />
+                  {/* Revealed on hover, at the bottom: preview · download · share. */}
+                  <div className="cert-card__hover">
+                    <button type="button" className="cert-hover-btn" aria-label={`Preview ${certTitle(c)}`} onClick={() => openPreview(c)}>
+                      <Eye size={15} /> Preview
                     </button>
-                    <button type="button" className="icon-btn" title="Download certificate" aria-label={`Download ${certTitle(c)}`} disabled={busyId === c.id} onClick={() => download(c)}>
-                      <Download size={16} />
+                    <button type="button" className="cert-hover-btn" aria-label={`Download ${certTitle(c)}`} disabled={busyId === c.id} onClick={() => download(c)}>
+                      <Download size={15} /> Download
                     </button>
-                    <button
-                      type="button"
-                      className="icon-btn"
-                      title="Share on LinkedIn"
-                      aria-label={`Share ${certTitle(c)}`}
-                      onClick={() => shareLink(`${window.location.origin}/verify/${c.certificateId}`, `${certTitle(c)} — AI Ready Engineer certificate`)}
-                    >
-                      <Share2 size={16} />
+                    <button type="button" className="cert-hover-btn" aria-label={`Share ${certTitle(c)}`} onClick={() => shareLink(`${window.location.origin}/verify/${c.certificateId}`, `${certTitle(c)} — AI Ready Engineer certificate`)}>
+                      <Share2 size={15} /> Share
                     </button>
                   </div>
                 </div>
