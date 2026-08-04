@@ -12,14 +12,19 @@ function verifyUrl(certificateId) {
 /** Uppercase alphanumeric slug for an id segment (drops spaces/punctuation). */
 const slugSegment = (s) => String(s || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
 
+/** Batch segment: the full batch code, always prefixed with AIRE (no doubling). */
+function batchSegment(batchCode) {
+  const raw = String(batchCode || '').trim().toUpperCase() || 'NA';
+  return raw.startsWith('AIRE') ? raw : `AIRE${raw}`;
+}
+
 /**
- * Certificate id: <batchCode>-<module>-<5-digit serial>, e.g. 2028-LLM-00001. The
- * batch code is used in FULL (verbatim, just trimmed/uppercased); the serial is a
- * per-(batch, module) running number (first ever = 00001) from an atomic counter
- * so concurrent issuance can't collide.
+ * Certificate id: AIRE<batchCode>-<module>-<5-digit serial>, e.g.
+ * AIRE2028-LLMFOUND-00001. The serial is a per-(batch, module) running number
+ * (first ever = 00001) from an atomic counter so concurrent issuance can't collide.
  */
 async function makeCertificateId({ batchCode, moduleCode }) {
-  const b = String(batchCode || '').trim().toUpperCase() || 'NA';
+  const b = batchSegment(batchCode);
   const m = slugSegment(moduleCode) || 'MOD';
   const seq = await nextSequence(`cert:${b}:${m}`);
   return { certificateId: `${b}-${m}-${String(seq).padStart(5, '0')}`, seq };
