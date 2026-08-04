@@ -25,8 +25,11 @@ export function useAddResource() {
       if (url) fd.append('url', url);
       if (file) fd.append('file', file);
       if (content != null) fd.append('content', content); // markdown for articles
-      // Content-Type undefined lets axios set multipart/form-data + boundary.
-      return unwrap(api.post('/resources', fd, { headers: { 'Content-Type': undefined } }));
+      // Force multipart so axios keeps the FormData intact (file + fields) and the
+      // browser attaches the boundary. Setting this to undefined does NOT strip the
+      // instance's default application/json, so axios serialises the FormData to JSON
+      // and drops the upload — this matches every other upload hook in the app.
+      return unwrap(api.post('/resources', fd, { headers: { 'Content-Type': 'multipart/form-data' } }));
     },
     onSuccess: (_d, vars) => qc.invalidateQueries({ queryKey: resourceKeys.forModule(vars.module) }),
   });
