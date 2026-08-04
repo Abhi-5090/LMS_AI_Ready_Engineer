@@ -21,6 +21,7 @@ import {
   Presentation,
   ClipboardList,
   MessagesSquare,
+  Bell,
 } from 'lucide-react';
 import { UserRole } from '@/shared';
 
@@ -44,6 +45,7 @@ export const NAV_BY_ROLE = {
     ] },
     { group: 'Support', Icon: LifeBuoy, items: [
       { label: 'Announcements', to: '/app/announcements', Icon: Megaphone },
+      { label: 'Notifications', to: '/app/notifications', Icon: Bell },
       { label: 'Doubts', to: '/app/doubts', Icon: HelpCircle },
     ] },
     { label: 'Profile', to: '/app/profile', Icon: UserCircle },
@@ -62,6 +64,7 @@ export const NAV_BY_ROLE = {
     ] },
     { group: 'Students & Comms', Icon: MessagesSquare, items: [
       { label: 'Announcements', to: '/app/announcements', Icon: Megaphone },
+      { label: 'Notifications', to: '/app/notifications', Icon: Bell },
       { label: 'Doubts', to: '/app/doubts', Icon: HelpCircle },
       { label: 'Approvals', to: '/app/approvals', Icon: BadgeCheck },
     ] },

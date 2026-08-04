@@ -1,0 +1,24 @@
+.notif-list { display: flex; flex-direction: column; gap: var(--space-2); }
+.notif-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  cursor: pointer;
+  transition: border-color 150ms ease, background-color 150ms ease, transform 150ms var(--ease-out, ease);
+}
+.notif-item:hover {
+  border-color: color-mix(in srgb, var(--color-primary) 40%, var(--color-border));
+  transform: translateY(-1px);
+}
+/* Unread rows get an accent bar + tint. */
+.notif-item--unread {
+  border-left: 3px solid var(--color-primary);
+  background: color-mix(in srgb, var(--color-primary) 6%, var(--color-surface));
+}
+.notif-item__title { font-weight: var(--font-weight-semibold); }
+.notif-item__body { color: var(--color-text-secondary); font-size: var(--font-size-sm); margin-top: 2px; }
+.notif-item__meta { color: var(--color-text-muted); font-size: var(--font-size-xs); margin-top: 6px; }

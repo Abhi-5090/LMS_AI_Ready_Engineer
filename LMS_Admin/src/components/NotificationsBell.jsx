@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Bell } from 'lucide-react';
+import { ArrowRight, Bell } from 'lucide-react';
 import { useToast } from '@/components/ui';
 import { useNotifications, useMarkAllNotificationsRead } from '@/lib/notifications';
 import { formatDate } from '@/lib/format';
@@ -17,6 +17,12 @@ export function NotificationsBell() {
 
   const list = items ?? [];
   const unread = list.filter((n) => !n.read).length;
+  const recent = list.slice(0, 3); // the bell shows only the 3 most recent
+
+  function openAll() {
+    setOpen(false);
+    navigate('/app/notifications');
+  }
 
   // Toast whenever genuinely-new notifications arrive (after the first load).
   useEffect(() => {
@@ -53,12 +59,14 @@ export function NotificationsBell() {
         <div className="bell__panel">
           <div className="bell__header">
             <span>Notifications</span>
-            <span className="bell__count">{list.length}</span>
+            <button type="button" className="bell__all" aria-label="View all notifications" title="View all notifications" onClick={openAll}>
+              <ArrowRight size={16} />
+            </button>
           </div>
           {list.length === 0 ? (
             <div className="bell__empty">You&apos;re all caught up — nothing new.</div>
           ) : (
-            list.slice(0, 12).map((n) => (
+            recent.map((n) => (
               <button
                 key={n.id}
                 type="button"

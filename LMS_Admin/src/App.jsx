@@ -29,6 +29,7 @@ import { CertificatesPage } from '@/pages/certificates/CertificatesPage';
 import { ApprovalsPage } from '@/pages/approvals/ApprovalsPage';
 import { AnalyticsPage } from '@/pages/analytics/AnalyticsPage';
 import { AnnouncementsPage } from '@/pages/announcements/AnnouncementsPage';
+import { NotificationsPage } from '@/pages/notifications/NotificationsPage';
 import { ProtectedRoute } from '@/routes/ProtectedRoute';
 
 /** ADMIN portal — admins manage their org; the super admin manages organizations
@@ -61,6 +62,7 @@ export default function App() {
           <Route path="question-bank" element={<Suspense fallback={<FullPageSpinner />}><QuestionBankPage /></Suspense>} />
           <Route path="syllabus-requests" element={<SyllabusRequestsPage />} />
           <Route path="syllabus-requests/:orgId" element={<SyllabusRequestsOrgPage />} />
+          <Route path="notifications" element={<NotificationsPage />} />
           <Route path="settings" element={<SettingsPage />} />
           <Route path="*" element={<Navigate to="/app" replace />} />
         </Route>
@@ -91,6 +93,7 @@ export default function App() {
         <Route path="batches/:id" element={<BatchDetailPage />} />
         <Route path="attendance" element={<AttendancePage />} />
         <Route path="announcements" element={<AnnouncementsPage />} />
+        <Route path="notifications" element={<NotificationsPage />} />
         <Route path="assessments" element={<AssessmentsPage />} />
         <Route path="assessments/:id" element={<AssessmentEditor />} />
         <Route path="question-bank" element={<Suspense fallback={<FullPageSpinner />}><QuestionBankPage /></Suspense>} />

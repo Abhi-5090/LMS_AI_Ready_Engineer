@@ -17,6 +17,7 @@ import {
   Library,
   Activity,
   SlidersHorizontal,
+  Bell,
 } from 'lucide-react';
 import { UserRole } from '@/shared';
 
@@ -34,6 +35,7 @@ export const NAV_BY_ROLE = {
     { label: 'Master Curriculum', to: '/app/modules', Icon: BookOpen },
     { label: 'Question Bank', to: '/app/question-bank', Icon: Database },
     { label: 'Syllabus Requests', to: '/app/syllabus-requests', Icon: Inbox },
+    { label: 'Notifications', to: '/app/notifications', Icon: Bell },
     { label: 'Settings', to: '/app/settings', Icon: Settings },
   ],
   [UserRole.ADMIN]: [
@@ -52,6 +54,7 @@ export const NAV_BY_ROLE = {
     { group: 'Operations', Icon: Activity, items: [
       { label: 'Attendance', to: '/app/attendance', Icon: ClipboardCheck },
       { label: 'Announcements', to: '/app/announcements', Icon: Megaphone },
+      { label: 'Notifications', to: '/app/notifications', Icon: Bell },
     ] },
     { group: 'System & Insights', Icon: SlidersHorizontal, items: [
       { label: 'Analytics', to: '/app/analytics', Icon: BarChart3 },

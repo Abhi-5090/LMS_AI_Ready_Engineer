@@ -78,6 +78,21 @@
   min-width: 1.4rem;
   text-align: center;
 }
+/* Arrow in the panel header → opens the full notifications page. */
+.bell__all {
+  display: grid;
+  place-items: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: var(--radius-md);
+  border: none;
+  background: color-mix(in srgb, var(--color-primary) 14%, transparent);
+  color: var(--color-primary-hover);
+  cursor: pointer;
+  transition: background-color 150ms ease, transform 150ms var(--ease-out, ease);
+}
+.bell__all:hover { background: color-mix(in srgb, var(--color-primary) 24%, transparent); transform: translateX(2px); }
+.bell__all:active { transform: scale(0.94); }
 .bell__empty {
   padding: var(--space-5);
   color: var(--color-text-muted);

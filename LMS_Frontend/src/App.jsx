@@ -23,6 +23,7 @@ import { VerifyCertificatePage } from '@/pages/certificates/VerifyCertificatePag
 import { AnalyticsPage } from '@/pages/analytics/AnalyticsPage';
 import { DoubtsPage } from '@/pages/doubts/DoubtsPage';
 import { AnnouncementsPage } from '@/pages/announcements/AnnouncementsPage';
+import { NotificationsPage } from '@/pages/notifications/NotificationsPage';
 import { ApprovalsPage } from '@/pages/approvals/ApprovalsPage';
 // Lazy — pulls in the LiveKit client only when a user actually enters a class.
 const ClassRoomPage = lazy(() => import('@/pages/classroom/ClassRoomPage').then((m) => ({ default: m.ClassRoomPage })));
@@ -76,6 +77,7 @@ export default function App() {
         <Route path="attendance" element={<AttendancePage />} />
         <Route path="doubts" element={<DoubtsPage />} />
         <Route path="announcements" element={<AnnouncementsPage />} />
+        <Route path="notifications" element={<NotificationsPage />} />
         <Route path="assessments" element={<AssessmentsPage />} />
         <Route path="assessments/:id" element={<AssessmentDetail />} />
         <Route path="question-bank" element={<Suspense fallback={<FullPageSpinner />}><QuestionBankPage /></Suspense>} />
