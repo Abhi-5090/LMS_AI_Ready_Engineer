@@ -141,18 +141,25 @@ function StudentCertificates() {
               {certs?.map((c) => (
                 <div key={c.id} className="cert-card cert-card--preview">
                   {/* The whole certificate, rendered as the preview — nothing overlaid. */}
-                  <CertificateThumb certificateId={c.certificateId} title={certTitle(c)} />
-                  {/* Revealed on hover, at the bottom: preview · download · share. */}
-                  <div className="cert-card__hover">
-                    <button type="button" className="cert-hover-btn" aria-label={`Preview ${certTitle(c)}`} onClick={() => openPreview(c)}>
-                      <Eye size={15} /> Preview
-                    </button>
-                    <button type="button" className="cert-hover-btn" aria-label={`Download ${certTitle(c)}`} disabled={busyId === c.id} onClick={() => download(c)}>
-                      <Download size={15} /> Download
-                    </button>
-                    <button type="button" className="cert-hover-btn" aria-label={`Share ${certTitle(c)}`} onClick={() => shareLink(`${window.location.origin}/verify/${c.certificateId}`, `${certTitle(c)} — AI Ready Engineer certificate`)}>
-                      <Share2 size={15} /> Share
-                    </button>
+                  <div className="cert-tile">
+                    <CertificateThumb certificateId={c.certificateId} title={certTitle(c)} />
+                    {/* Revealed on hover, at the bottom: preview · download · share. */}
+                    <div className="cert-card__hover">
+                      <button type="button" className="cert-hover-btn" aria-label={`Preview ${certTitle(c)}`} onClick={() => openPreview(c)}>
+                        <Eye size={15} /> Preview
+                      </button>
+                      <button type="button" className="cert-hover-btn" aria-label={`Download ${certTitle(c)}`} disabled={busyId === c.id} onClick={() => download(c)}>
+                        <Download size={15} /> Download
+                      </button>
+                      <button type="button" className="cert-hover-btn" aria-label={`Share ${certTitle(c)}`} onClick={() => shareLink(`${window.location.origin}/verify/${c.certificateId}`, `${certTitle(c)} — AI Ready Engineer certificate`)}>
+                        <Share2 size={15} /> Share
+                      </button>
+                    </div>
+                  </div>
+                  {/* Certificate name (module name) below the preview. */}
+                  <div className="cert-card__caption">
+                    {certTitle(c)}
+                    {c.isProgramCertificate && <Badge tone="success">Program</Badge>}
                   </div>
                 </div>
               ))}

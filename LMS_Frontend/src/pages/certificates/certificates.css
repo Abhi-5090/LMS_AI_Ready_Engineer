@@ -309,13 +309,31 @@
 .cert-preview-pdf { width: 100%; height: 70vh; border: none; border-radius: var(--radius-md); background: var(--color-surface-2); }
 
 /* ── Full-certificate preview tiles ─────────────────────────────────────────── */
-.cert-card-grid--preview { grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr)); }
+.cert-card-grid--preview { grid-template-columns: repeat(auto-fill, minmax(min(100%, 24rem), 1fr)); gap: var(--space-4); }
 .cert-card--preview {
-  display: block;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
   padding: 0;
+  overflow: hidden;
+}
+/* The certificate preview itself (fixed certificate aspect ratio). */
+.cert-tile {
+  position: relative;
   aspect-ratio: 1.55 / 1;
   overflow: hidden;
   background: var(--color-surface-2, var(--color-background));
+}
+/* Certificate name below the preview. */
+.cert-card__caption {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  font-weight: var(--font-weight-semibold);
+  text-align: center;
+  border-top: 1px solid var(--color-border);
 }
 .cert-thumb { position: absolute; inset: 0; display: grid; place-items: center; }
 /* The PDF is display-only — let hover/clicks pass through to the tile + buttons. */
