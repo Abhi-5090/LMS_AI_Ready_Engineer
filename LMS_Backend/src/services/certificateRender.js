@@ -1,11 +1,52 @@
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 
+// Map a font family + bold/italic to a pdf-lib StandardFont.
+const FONT_VARIANTS = {
+  Helvetica: { base: 'Helvetica', bold: 'HelveticaBold', italic: 'HelveticaOblique', boldItalic: 'HelveticaBoldOblique' },
+  Times: { base: 'TimesRoman', bold: 'TimesRomanBold', italic: 'TimesRomanItalic', boldItalic: 'TimesRomanBoldItalic' },
+  Courier: { base: 'Courier', bold: 'CourierBold', italic: 'CourierOblique', boldItalic: 'CourierBoldOblique' },
+};
+function fontFor(family, bold, italic) {
+  const set = FONT_VARIANTS[family] || FONT_VARIANTS.Helvetica;
+  const key = bold && italic ? 'boldItalic' : bold ? 'bold' : italic ? 'italic' : 'base';
+  return StandardFonts[set[key]];
+}
+
+/**
+ * Draw one line of text on the page. (xPercent, yPercent) anchor from the
+ * left/top; `align` decides whether x is the text's left edge, centre, or right
+ * edge. Size is `fontScale` % of the page height. Clamps to stay on the page.
+ */
+async function drawField(pdfDoc, page, { text, xPercent, yPercent, fontScale, family, bold, italic, align }) {
+  const clean = String(text || '').trim();
+  if (!clean) return;
+  const { width, height } = page.getSize();
+  const font = await pdfDoc.embedFont(fontFor(family, bold, italic));
+  const size = Math.max(6, (Number(fontScale) / 100) * height);
+  const textWidth = font.widthOfTextAtSize(clean, size);
+  const anchorX = width * (Number(xPercent) / 100);
+  let x;
+  if (align === 'left') x = anchorX;
+  else if (align === 'right') x = anchorX - textWidth;
+  else x = anchorX - textWidth / 2; // center
+  x = Math.max(0, Math.min(width - textWidth, x));
+  // yPercent is from the TOP; pdf-lib's y origin is the bottom.
+  const y = height * (1 - Number(yPercent) / 100) - size / 2;
+  page.drawText(clean, { x, y, size, font, color: rgb(0.12, 0.12, 0.14) });
+}
+
 /**
  * Render a completion certificate PDF: the admin's template (PDF or PNG/JPG image)
- * with the student's name drawn on it — horizontally centered, at the configured
- * vertical position and size. Returns the PDF bytes (Uint8Array).
+ * with the student's name — and, if enabled, the certificate ID — drawn on it at
+ * the configured position / font / alignment. Returns the PDF bytes (Uint8Array).
  */
-export async function renderCertificatePdf({ buffer, mimeType, name, nameXPercent = 50, nameYPercent = 55, fontScale = 6 }) {
+export async function renderCertificatePdf({
+  buffer, mimeType, name, certificateId,
+  nameXPercent = 50, nameYPercent = 55, fontScale = 6,
+  nameFont = 'Helvetica', nameBold = true, nameItalic = false, nameAlign = 'center',
+  idEnabled = false, idXPercent = 50, idYPercent = 90, idFontScale = 2.2,
+  idFont = 'Helvetica', idBold = false, idItalic = false, idAlign = 'center',
+}) {
   let pdfDoc;
   let page;
 
@@ -20,17 +61,19 @@ export async function renderCertificatePdf({ buffer, mimeType, name, nameXPercen
     page.drawImage(img, { x: 0, y: 0, width: img.width, height: img.height });
   }
 
-  const { width, height } = page.getSize();
-  const font = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
-  const fontSize = Math.max(8, (Number(fontScale) / 100) * height);
-  const text = String(name || '').trim() || 'Student';
-  const textWidth = font.widthOfTextAtSize(text, fontSize);
-  // Center the name on (nameXPercent, nameYPercent); clamp so it stays on the page.
-  const centerX = width * (Number(nameXPercent) / 100);
-  const x = Math.max(0, Math.min(width - textWidth, centerX - textWidth / 2));
-  // nameYPercent is measured from the TOP; pdf-lib's y origin is the bottom.
-  const y = height * (1 - Number(nameYPercent) / 100) - fontSize / 2;
-  page.drawText(text, { x, y, size: fontSize, font, color: rgb(0.12, 0.12, 0.14) });
+  await drawField(pdfDoc, page, {
+    text: String(name || '').trim() || 'Student',
+    xPercent: nameXPercent, yPercent: nameYPercent, fontScale,
+    family: nameFont, bold: nameBold, italic: nameItalic, align: nameAlign,
+  });
+
+  if (idEnabled && certificateId) {
+    await drawField(pdfDoc, page, {
+      text: certificateId,
+      xPercent: idXPercent, yPercent: idYPercent, fontScale: idFontScale,
+      family: idFont, bold: idBold, italic: idItalic, align: idAlign,
+    });
+  }
 
   return pdfDoc.save();
 }

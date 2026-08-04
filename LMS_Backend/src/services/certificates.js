@@ -1,6 +1,6 @@
 import QRCode from 'qrcode';
 import { AssessmentType, SubmissionStatus } from '#shared';
-import { Assessment, Certificate, Module, Submission } from '../models/index.js';
+import { Assessment, Certificate, Module, Submission, User, nextSequence } from '../models/index.js';
 import { env } from '../config/env.js';
 import { computeProgress } from './progression.js';
 
@@ -9,17 +9,31 @@ function verifyUrl(certificateId) {
   return `${env.appBaseUrl.replace(/\/$/, '')}/verify/${certificateId}`;
 }
 
-/** Human-readable, unique-ish certificate id, e.g. AIRE-PE-2025-7F3A2K. */
-function makeCertificateId(code) {
-  const year = new Date().getFullYear();
-  const rand = Math.random().toString(36).slice(2, 8).toUpperCase();
-  return `AIRE-${code}-${year}-${rand}`;
+/** Uppercase alphanumeric slug for an id segment (drops spaces/punctuation). */
+const slugSegment = (s) => String(s || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+
+/**
+ * Certificate id: AIRE-<batch>-<module>-<5-digit serial>, e.g. AIRE-2028-LLM-00001.
+ * The serial is a per-(batch, module) running number (first ever = 00001) drawn
+ * from an atomic counter so concurrent issuance can't collide.
+ */
+async function makeCertificateId({ batchCode, moduleCode }) {
+  const b = slugSegment(batchCode) || 'NA';
+  const m = slugSegment(moduleCode) || 'MOD';
+  const seq = await nextSequence(`cert:${b}:${m}`);
+  return { certificateId: `AIRE-${b}-${m}-${String(seq).padStart(5, '0')}`, seq };
 }
 
 async function createCertificate({ student, module, isProgramCertificate, code }) {
-  // Retry a couple of times in the (very unlikely) event of an id collision.
+  // The student's batch code feeds the id (and is stored for traceability).
+  const user = await User.findById(student).select('batch').populate('batch', 'code');
+  const batchId = user?.batch?._id ?? null;
+  const batchCode = user?.batch?.code ?? '';
+  const moduleCode = isProgramCertificate ? 'PROGRAM' : code;
+
+  // Retry only on the (astronomically unlikely) counter-backed id clash.
   for (let attempt = 0; attempt < 3; attempt += 1) {
-    const certificateId = makeCertificateId(code);
+    const { certificateId, seq } = await makeCertificateId({ batchCode, moduleCode });
     const url = verifyUrl(certificateId);
     let qrDataUrl;
     try {
@@ -32,15 +46,17 @@ async function createCertificate({ student, module, isProgramCertificate, code }
         certificateId,
         student,
         module,
+        batch: batchId,
+        seq,
         isProgramCertificate: Boolean(isProgramCertificate),
         issuedAt: new Date(),
         verifyUrl: url,
         qrDataUrl,
       });
     } catch (err) {
-      // Retry only on a random certificateId clash. A collision on the
-      // (student, module, kind) unique index means a concurrent call already
-      // issued this certificate — propagate so the caller can ignore it.
+      // Retry only on a certificateId clash. A collision on the (student, module,
+      // kind) unique index means a concurrent call already issued this
+      // certificate — propagate so the caller can ignore it.
       if (err?.code === 11000 && err?.keyPattern?.certificateId && attempt < 2) continue;
       throw err;
     }

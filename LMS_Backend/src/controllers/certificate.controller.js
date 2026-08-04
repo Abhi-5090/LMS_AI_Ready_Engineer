@@ -24,16 +24,42 @@ export const uploadTemplateFile = multer({
 
 // ── Certificate templates (admin, per module) ──────────────────────────────────
 
-/** Admin: upload / replace a module's certificate template (+ name placement). */
+// Multipart fields arrive as strings — small coercers with a fallback default.
+const numOr = (v, d) => (v !== undefined && v !== '' && Number.isFinite(Number(v)) ? Number(v) : d);
+const boolOr = (v, d) => (v === undefined ? d : v === true || v === 'true' || v === '1');
+const ALIGNS = new Set(['left', 'center', 'right']);
+const FONTS = new Set(['Helvetica', 'Times', 'Courier']);
+const enumOr = (v, set, d) => (set.has(v) ? v : d);
+
+/** Read every placement/style field from a source (req.body or req.query), falling back to a template. */
+function readStyle(src, tpl = {}) {
+  return {
+    nameXPercent: numOr(src.nameXPercent, tpl.nameXPercent ?? 50),
+    nameYPercent: numOr(src.nameYPercent, tpl.nameYPercent ?? 55),
+    fontScale: numOr(src.fontScale, tpl.fontScale ?? 6),
+    nameFont: enumOr(src.nameFont, FONTS, tpl.nameFont ?? 'Helvetica'),
+    nameBold: boolOr(src.nameBold, tpl.nameBold ?? true),
+    nameItalic: boolOr(src.nameItalic, tpl.nameItalic ?? false),
+    nameAlign: enumOr(src.nameAlign, ALIGNS, tpl.nameAlign ?? 'center'),
+    idEnabled: boolOr(src.idEnabled, tpl.idEnabled ?? false),
+    idXPercent: numOr(src.idXPercent, tpl.idXPercent ?? 50),
+    idYPercent: numOr(src.idYPercent, tpl.idYPercent ?? 90),
+    idFontScale: numOr(src.idFontScale, tpl.idFontScale ?? 2.2),
+    idFont: enumOr(src.idFont, FONTS, tpl.idFont ?? 'Helvetica'),
+    idBold: boolOr(src.idBold, tpl.idBold ?? false),
+    idItalic: boolOr(src.idItalic, tpl.idItalic ?? false),
+    idAlign: enumOr(src.idAlign, ALIGNS, tpl.idAlign ?? 'center'),
+  };
+}
+
+/** Admin: upload / replace a module's certificate template (+ name & id placement). */
 export async function putCertificateTemplate(req, res) {
   const { moduleId } = req.params;
   const module = await Module.findById(moduleId).select('_id name organization');
   if (!module) throw ApiError.notFound('Module not found');
 
   const existing = await CertificateTemplate.findOne({ module: moduleId });
-  const nameXPercent = req.body.nameXPercent !== undefined ? Number(req.body.nameXPercent) : existing?.nameXPercent ?? 50;
-  const nameYPercent = req.body.nameYPercent !== undefined ? Number(req.body.nameYPercent) : existing?.nameYPercent ?? 55;
-  const fontScale = req.body.fontScale !== undefined ? Number(req.body.fontScale) : existing?.fontScale ?? 6;
+  const style = readStyle(req.body, existing ?? {});
 
   let fileUrl = existing?.fileUrl;
   let fileName = existing?.fileName;
@@ -49,7 +75,7 @@ export async function putCertificateTemplate(req, res) {
   if (!fileUrl) throw ApiError.badRequest('Upload a certificate template file.');
 
   const doc = existing ?? new CertificateTemplate({ module: moduleId, organization: module.organization ?? null });
-  Object.assign(doc, { fileUrl, fileName, mimeType, nameXPercent, nameYPercent, fontScale, uploadedBy: req.auth.userId });
+  Object.assign(doc, { fileUrl, fileName, mimeType, ...style, uploadedBy: req.auth.userId });
   await doc.save();
   ok(res, doc.toJSON(), existing ? 200 : 201);
 }
@@ -78,19 +104,19 @@ export async function deleteCertificateTemplate(req, res) {
   ok(res, { deleted: true });
 }
 
-/** Admin: render a sample of the module's template to check the name placement. */
+/** Admin: render a sample of the module's template to check name + id placement. */
 export async function previewCertificateTemplate(req, res) {
   const tpl = await CertificateTemplate.findOne({ module: req.params.moduleId });
   if (!tpl) throw ApiError.notFound('No template for this module');
   const buffer = await readFileBuffer(tpl.fileUrl);
+  const module = await Module.findById(req.params.moduleId).select('code');
   // Live preview: query values override the saved ones so the admin can position
-  // the name before saving.
-  const q = req.query;
+  // things before saving. A sample id shows how the real one will sit.
+  const style = readStyle(req.query, tpl.toObject());
+  const sampleId = `AIRE-2028-${(module?.code || 'MOD').toUpperCase()}-00001`;
   const bytes = await renderCertificatePdf({
-    buffer, mimeType: tpl.mimeType, name: q.name || 'Student Name',
-    nameXPercent: q.nameXPercent !== undefined ? Number(q.nameXPercent) : tpl.nameXPercent,
-    nameYPercent: q.nameYPercent !== undefined ? Number(q.nameYPercent) : tpl.nameYPercent,
-    fontScale: q.fontScale !== undefined ? Number(q.fontScale) : tpl.fontScale,
+    buffer, mimeType: tpl.mimeType, name: req.query.name || 'Student Name',
+    certificateId: req.query.certificateId || sampleId, ...style,
   });
   res.setHeader('Content-Type', 'application/pdf');
   res.setHeader('Content-Disposition', 'inline; filename="certificate-preview.pdf"');
@@ -116,7 +142,9 @@ export async function downloadCertificate(req, res) {
   let bytes;
   if (tpl) {
     const buffer = await readFileBuffer(tpl.fileUrl);
-    bytes = await renderCertificatePdf({ buffer, mimeType: tpl.mimeType, name, nameXPercent: tpl.nameXPercent, nameYPercent: tpl.nameYPercent, fontScale: tpl.fontScale });
+    bytes = await renderCertificatePdf({
+      buffer, mimeType: tpl.mimeType, name, certificateId: cert.certificateId, ...readStyle({}, tpl.toObject()),
+    });
   } else {
     bytes = await renderDefaultCertificatePdf({ name, moduleName: cert.module?.name, certificateId: cert.certificateId });
   }

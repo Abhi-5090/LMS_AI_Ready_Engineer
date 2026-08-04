@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { Award, ChevronRight, Eye, Trash2, UploadCloud, X } from 'lucide-react';
+import { Award, ChevronRight, X } from 'lucide-react';
 import { UserRole } from '@/shared';
 import {
   Badge,
@@ -26,8 +26,9 @@ import {
   useUpdateModule,
   useUpdateObjectives,
 } from '@/lib/modules';
-import { useCertTemplate, usePutCertTemplate, useDeleteCertTemplate, useIssueModuleCertificates, openCertPreview } from '@/lib/certificateTemplates';
+import { useCertTemplate, useIssueModuleCertificates } from '@/lib/certificateTemplates';
 import { useToast } from '@/components/ui';
+import { CertificateDesignerModal } from './CertificateDesignerModal';
 import { SyllabusBoard } from './SyllabusBoard';
 import { LEVEL_OPTIONS, levelTone, titleCase, topicProgress } from './moduleUi';
 import './modules.css';
@@ -115,7 +116,7 @@ export function ModuleDetailPage() {
         </Card>
       )}
 
-      {isAdmin && <CertificateTemplateCard moduleId={module.id} moduleName={module.name} />}
+      {isAdmin && <CertificateTemplateCard moduleId={module.id} moduleName={module.name} moduleCode={module.code} />}
 
       <div className={`detail-grid${editingTemplate ? ' detail-grid--full' : ''}`}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-6)' }}>
@@ -355,37 +356,12 @@ function TrainersPanel({ module, isAdmin }) {
 }
 
 /** Admin: upload/manage this module's completion-certificate template. */
-function CertificateTemplateCard({ moduleId, moduleName }) {
+function CertificateTemplateCard({ moduleId, moduleName, moduleCode }) {
   const { data: tpl, isLoading } = useCertTemplate(moduleId);
-  const put = usePutCertTemplate();
-  const del = useDeleteCertTemplate();
   const issueAll = useIssueModuleCertificates();
   const toast = useToast();
-  const [file, setFile] = useState(null);
-  const [nameX, setNameX] = useState(50);
-  const [nameY, setNameY] = useState(55);
-  const [fontScale, setFontScale] = useState(6);
-  const fileRef = useRef(null);
+  const [designing, setDesigning] = useState(false);
 
-  useEffect(() => {
-    if (tpl) { setNameX(tpl.nameXPercent ?? 50); setNameY(tpl.nameYPercent ?? 55); setFontScale(tpl.fontScale ?? 6); }
-  }, [tpl]);
-
-  async function save() {
-    if (!tpl && !file) { toast.error('Choose a template file (PDF, PNG or JPG).'); return; }
-    try {
-      await put.mutateAsync({ moduleId, file, nameXPercent: nameX, nameYPercent: nameY, fontScale });
-      setFile(null);
-      if (fileRef.current) fileRef.current.value = '';
-      toast.success('Certificate template saved.');
-    } catch (e) { toast.error(apiErrorMessage(e)); }
-  }
-  async function onDelete() {
-    try { await del.mutateAsync(moduleId); toast.success('Template removed.'); } catch (e) { toast.error(apiErrorMessage(e)); }
-  }
-  async function preview() {
-    try { await openCertPreview(moduleId, 'Student Name', { nameXPercent: nameX, nameYPercent: nameY, fontScale }); } catch (e) { toast.error(apiErrorMessage(e)); }
-  }
   async function issueToPassers() {
     try {
       const r = await issueAll.mutateAsync(moduleId);
@@ -394,15 +370,13 @@ function CertificateTemplateCard({ moduleId, moduleName }) {
     } catch (e) { toast.error(apiErrorMessage(e)); }
   }
 
-  const currentName = file ? file.name : tpl ? (tpl.fileName || 'Template attached') : null;
-
   return (
     <Card className="certcard">
       <div className="certcard__head">
         <span className="certcard__icon"><Award size={20} /></span>
         <div style={{ minWidth: 0 }}>
           <div className="certcard__title">Completion certificate</div>
-          <div className="certcard__sub">Auto-issued to students who pass the {moduleName} final — their name is drawn onto your template.</div>
+          <div className="certcard__sub">Auto-issued to students who pass the {moduleName} final — their name (and, optionally, the certificate ID) is drawn onto your template.</div>
         </div>
         <span className={`certcard__status${tpl ? ' is-on' : ''}`}>{tpl ? 'Template ready' : 'Not set'}</span>
       </div>
@@ -411,41 +385,8 @@ function CertificateTemplateCard({ moduleId, moduleName }) {
         <SkeletonText lines={3} />
       ) : (
         <>
-          {/* Upload dropzone */}
-          <label className={`certdrop${currentName ? ' certdrop--set' : ''}`}>
-            <input ref={fileRef} type="file" accept=".pdf,.png,.jpg,.jpeg" onChange={(e) => setFile(e.target.files?.[0] ?? null)} hidden />
-            <span className="certdrop__text">
-              <span className="certdrop__name">{currentName ?? 'Click to upload a certificate template'}</span>
-              <span className="certdrop__hint">PDF, PNG or JPG · the student’s name is added automatically</span>
-              {file && <Badge tone="primary">New file</Badge>}
-            </span>
-            <span className="certdrop__icon"><UploadCloud size={26} /></span>
-          </label>
-
-          {/* Name placement */}
-          <div className="certfields">
-            <div className="certfield">
-              <span className="certfield__label">Horizontal position — <b>{nameX}%</b> from left {nameX === 50 ? '(centered)' : ''}</span>
-              <input type="range" min="0" max="100" value={nameX} onChange={(e) => setNameX(Number(e.target.value))} />
-            </div>
-            <div className="certfield">
-              <span className="certfield__label">Vertical position — <b>{nameY}%</b> from top</span>
-              <input type="range" min="0" max="100" value={nameY} onChange={(e) => setNameY(Number(e.target.value))} />
-            </div>
-            <div className="certfield certfield--num">
-              <span className="certfield__label">Font size</span>
-              <div className="certfield__num">
-                <Input type="number" min="1" max="20" value={fontScale} onChange={(e) => setFontScale(Number(e.target.value) || 6)} />
-                <span className="certfield__unit">% of height</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Actions */}
           <div className="certcard__actions">
-            <Button onClick={save} loading={put.isPending}>{tpl ? 'Save changes' : 'Upload template'}</Button>
-            {tpl && <Button variant="outline" onClick={preview}><Eye size={15} style={{ marginRight: 6 }} /> Preview</Button>}
-            {tpl && <Button variant="ghost" onClick={onDelete} loading={del.isPending}><Trash2 size={15} style={{ marginRight: 6 }} /> Remove</Button>}
+            <Button onClick={() => setDesigning(true)}>{tpl ? 'Design certificate' : 'Upload & design certificate'}</Button>
           </div>
 
           {/* Bulk issue */}
@@ -458,6 +399,15 @@ function CertificateTemplateCard({ moduleId, moduleName }) {
           </div>
         </>
       )}
+
+      <CertificateDesignerModal
+        open={designing}
+        onClose={() => setDesigning(false)}
+        moduleId={moduleId}
+        moduleName={moduleName}
+        moduleCode={moduleCode}
+        tpl={tpl}
+      />
     </Card>
   );
 }

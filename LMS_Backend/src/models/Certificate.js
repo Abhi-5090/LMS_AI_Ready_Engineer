@@ -6,6 +6,10 @@ const certificateSchema = new Schema(
     certificateId: { type: String, required: true, unique: true, index: true },
     student: { type: Schema.Types.ObjectId, ref: 'User', required: true, index: true },
     module: { type: Schema.Types.ObjectId, ref: 'Module' },
+    // The student's batch at issue-time and the per-(batch, module) serial baked
+    // into `certificateId` — kept for traceability / auditing.
+    batch: { type: Schema.Types.ObjectId, ref: 'Batch', default: null },
+    seq: { type: Number, default: null },
     isProgramCertificate: { type: Boolean, default: false },
     issuedAt: { type: Date, default: () => new Date() },
     verifyUrl: { type: String, required: true },
