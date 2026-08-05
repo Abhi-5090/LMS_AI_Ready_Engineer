@@ -238,8 +238,10 @@
 }
 .content {
   padding: var(--space-8) var(--space-6);
-  max-width: 1280px;
+  max-width: 1600px;
   width: 100%;
+  margin-inline: auto; /* centre on ultra-wide (1440 / 2560) screens */
+  overflow-x: clip;    /* stray-wide content is clipped, never a page-level scroll box */
 }
 
 /* ── Stat grid (shared dashboard pattern) ─────────────── */

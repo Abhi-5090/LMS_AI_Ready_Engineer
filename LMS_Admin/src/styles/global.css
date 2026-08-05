@@ -25,10 +25,17 @@ body {
   line-height: 1.5;
   color: var(--color-text-primary);
   background-color: var(--color-background);
+  /* Long words / URLs / ids wrap instead of forcing horizontal overflow. */
+  overflow-wrap: break-word;
   transition:
     background-color var(--transition-base),
     color var(--transition-base);
 }
+
+/* ── Responsive hardening (320 → 2560) ────────────────────────────────────── */
+/* Media never overflows its container at any width. */
+img, svg, video, canvas { max-width: 100%; }
+img { height: auto; }
 
 a {
   color: var(--color-primary);
