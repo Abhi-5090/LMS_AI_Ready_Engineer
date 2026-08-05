@@ -14,9 +14,9 @@ import '../modules/modules.css';
 
 const QTYPES = [
   { value: 'mcq', label: 'MCQ' },
-  { value: 'scenario', label: 'Scenario / data-query' },
+  { value: 'scenario', label: 'Scenario based' },
   { value: 'prompt_writing', label: 'Prompt writing' },
-  { value: 'coding', label: 'Coding' },
+  { value: 'coding', label: 'Repo evaluation' },
 ];
 
 export function SuperAdminDashboard() {
