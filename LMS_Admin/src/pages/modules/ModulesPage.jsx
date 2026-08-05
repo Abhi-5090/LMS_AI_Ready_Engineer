@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { UserRole } from '@/shared';
-import { BookOpen, ChevronDown, ChevronUp, Trash2 } from 'lucide-react';
+import { BookOpen, ChevronDown, ChevronUp, LayoutGrid, Table2, Trash2 } from 'lucide-react';
 import { Badge, Button, Card, EmptyState, ErrorState, Input, Modal, Select, SkeletonCards, Textarea, useConfirm, useToast } from '@/components/ui';
 import { PageHeader } from '@/components/PageHeader';
 import { apiErrorMessage } from '@/lib/api';
@@ -20,6 +20,9 @@ export function ModulesPage() {
   const navigate = useNavigate();
 
   const [showArchived, setShowArchived] = useState(false);
+  // Cards vs. table view (remembered across visits).
+  const [view, setView] = useState(() => localStorage.getItem('lms.modulesView') || 'cards');
+  const chooseView = (v) => { setView(v); localStorage.setItem('lms.modulesView', v); };
   const { data: modules, isLoading, isError, error, refetch } = useModules({ archived: showArchived });
 
   const [creating, setCreating] = useState(false);
@@ -114,6 +117,14 @@ export function ModulesPage() {
           </label>
         )}
         <span />
+        <div className="view-toggle" role="group" aria-label="View">
+          <button type="button" className={`view-toggle__btn${view === 'cards' ? ' is-on' : ''}`} aria-pressed={view === 'cards'} title="Card view" onClick={() => chooseView('cards')}>
+            <LayoutGrid size={15} /> Cards
+          </button>
+          <button type="button" className={`view-toggle__btn${view === 'table' ? ' is-on' : ''}`} aria-pressed={view === 'table'} title="Table view" onClick={() => chooseView('table')}>
+            <Table2 size={15} /> Table
+          </button>
+        </div>
         {isAdmin && <Button onClick={() => setCreating(true)}>+ New Module</Button>}
       </div>
 
@@ -132,6 +143,54 @@ export function ModulesPage() {
           }
           action={isAdmin ? <Button onClick={() => setCreating(true)}>+ New Module</Button> : undefined}
         />
+      ) : view === 'table' ? (
+        <div className="table-wrap">
+          <table className="table">
+            <thead>
+              <tr><th>#</th><th>Module</th><th>Level</th><th>Syllabus</th>{isAdmin && <th aria-label="Actions" />}</tr>
+            </thead>
+            <tbody>
+              {modules?.map((m, i) => {
+                const { done, total, pct } = topicProgress(m.topics);
+                const canReorder = isAdmin && !showArchived && !m.archived;
+                return (
+                  <tr key={m.id} className="row-click" onClick={() => navigate(`/app/modules/${m.id}`)}>
+                    <td>
+                      <div className="module-card__order-ctl">
+                        {canReorder && (
+                          <button type="button" className="ord-btn" title="Move up" disabled={i === 0 || reorderModules.isPending} onClick={(e) => move(e, i, -1)}><ChevronUp size={14} /></button>
+                        )}
+                        <span className="module-card__order">{m.order}</span>
+                        {canReorder && (
+                          <button type="button" className="ord-btn" title="Move down" disabled={i === (modules?.length ?? 0) - 1 || reorderModules.isPending} onClick={(e) => move(e, i, 1)}><ChevronDown size={14} /></button>
+                        )}
+                      </div>
+                    </td>
+                    <td>{m.name}<div className="lms-muted" style={{ fontSize: 'var(--font-size-xs)' }}>{m.code}</div></td>
+                    <td><span style={{ display: 'inline-flex', gap: 4, flexWrap: 'wrap' }}><Badge tone={levelTone(m.level)}>{titleCase(m.level)}</Badge>{m.archived && <Badge tone="neutral">Archived</Badge>}</span></td>
+                    <td>
+                      <div className="lms-secondary-text" style={{ fontSize: 'var(--font-size-xs)', marginBottom: 4 }}>{done}/{total} sections</div>
+                      <div className="module-card__progress-track" style={{ minWidth: '8rem' }}><div className="module-card__progress-fill" style={{ width: `${pct}%` }} /></div>
+                    </td>
+                    {isAdmin && (
+                      <td>
+                        <div className="list-actions">
+                          <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); navigate(`/app/modules/${m.id}`); }}>Manage</Button>
+                          {m.archived ? (
+                            <Button size="sm" variant="ghost" onClick={(e) => onUnarchive(e, m.id)}>Unarchive</Button>
+                          ) : (
+                            <Button size="sm" variant="ghost" onClick={(e) => onArchive(e, m.id)}>Archive</Button>
+                          )}
+                          <Button size="sm" variant="ghost" title="Delete permanently" onClick={(e) => onDelete(e, m)}><Trash2 size={14} /></Button>
+                        </div>
+                      </td>
+                    )}
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       ) : (
         <div className="module-grid">
           {modules?.map((m, i) => {
