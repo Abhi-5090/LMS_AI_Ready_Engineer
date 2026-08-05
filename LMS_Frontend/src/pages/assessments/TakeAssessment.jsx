@@ -224,8 +224,14 @@ function AnswersModal({ a, submission, onClose }) {
   const { groups } = groupQuestionsByType(a.questions);
 
   const jump = (qid) => {
-    const el = bodyRef.current?.querySelector(`#ans-q-${qid}`);
-    if (el && bodyRef.current) bodyRef.current.scrollTo({ top: el.offsetTop - 8, behavior: 'smooth' });
+    const body = bodyRef.current;
+    const el = body?.querySelector(`#ans-q-${qid}`);
+    if (!el || !body) return;
+    // The section heading is sticky at the top of the body, so land the question
+    // just BELOW it (otherwise the header covers the question's number/first line).
+    const head = el.closest('.ans-section')?.querySelector('.ans-section__head');
+    const offset = (head?.offsetHeight ?? 0) + 8;
+    body.scrollTo({ top: Math.max(0, el.offsetTop - offset), behavior: 'smooth' });
   };
 
   const optClass = (isCorrect, isPicked) => `ans-opt${isCorrect ? ' ans-opt--correct' : ''}${isPicked && !isCorrect ? ' ans-opt--wrong' : ''}${isPicked ? ' ans-opt--picked' : ''}`;
