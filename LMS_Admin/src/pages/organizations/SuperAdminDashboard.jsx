@@ -87,7 +87,7 @@ export function SuperAdminDashboard() {
               {chart.length === 0 ? (
                 <EmptyState icon={<BarChart3 size={26} />} title="No organizations yet" description="Create your first organization to see analytics." />
               ) : (
-                <BarChart data={chart} multicolor emptyText="No students yet." />
+                <BarChart data={chart} column multicolor emptyText="No students yet." />
               )}
             </Card>
           </div>
