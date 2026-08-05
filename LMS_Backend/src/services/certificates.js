@@ -1,6 +1,6 @@
 import QRCode from 'qrcode';
 import { AssessmentType, SubmissionStatus } from '#shared';
-import { Assessment, Certificate, Module, Submission, User, nextSequence } from '../models/index.js';
+import { Assessment, Certificate, Module, Submission, User } from '../models/index.js';
 import { env } from '../config/env.js';
 import { computeProgress } from './progression.js';
 
@@ -18,16 +18,29 @@ function batchSegment(batchCode) {
   return raw.startsWith('AIRE') ? raw : `AIRE${raw}`;
 }
 
+const escapeRegex = (s) => String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
 /**
  * Certificate id: AIRE<batchCode>-<module>-<5-digit serial>, e.g.
- * AIRE2028-LLMFOUND-00001. The serial is a per-(batch, module) running number
- * (first ever = 00001) from an atomic counter so concurrent issuance can't collide.
+ * AIRE2028-LLMFOUND-00001. The serial is ONE PAST the highest serial currently in
+ * the database for that batch+module — so it restarts at 00001 whenever no such
+ * certificates exist (e.g. after they have all been deleted) instead of climbing
+ * forever. A concurrent clash is caught by the unique index and retried, which
+ * recomputes the (now higher) max.
  */
 async function makeCertificateId({ batchCode, moduleCode }) {
   const b = batchSegment(batchCode);
   const m = slugSegment(moduleCode) || 'MOD';
-  const seq = await nextSequence(`cert:${b}:${m}`);
-  return { certificateId: `${b}-${m}-${String(seq).padStart(5, '0')}`, seq };
+  const prefix = `${b}-${m}-`;
+  const rx = new RegExp(`^${escapeRegex(prefix)}(\\d+)$`);
+  const existing = await Certificate.find({ certificateId: rx }).select('certificateId').lean();
+  let max = 0;
+  for (const c of existing) {
+    const n = parseInt(c.certificateId.slice(prefix.length), 10);
+    if (Number.isFinite(n) && n > max) max = n;
+  }
+  const seq = max + 1;
+  return { certificateId: `${prefix}${String(seq).padStart(5, '0')}`, seq };
 }
 
 async function createCertificate({ student, module, isProgramCertificate, code }) {

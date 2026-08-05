@@ -23,4 +23,3 @@ export { Doubt } from './Doubt.js';
 export { Announcement } from './Announcement.js';
 export { Notification } from './Notification.js';
 export { AuditLog } from './AuditLog.js';
-export { Counter, nextSequence } from './Counter.js';
