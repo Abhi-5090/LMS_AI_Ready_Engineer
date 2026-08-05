@@ -136,8 +136,8 @@ export async function adminOverview() {
   const progRows = await ModuleProgress.aggregate([
     { $group: { _id: { module: '$module', status: '$status' }, n: { $sum: 1 } } },
   ]);
-  const moduleDocs = await Module.find({ archived: false }).select('name order').sort({ order: 1 });
-  const byModule = new Map(moduleDocs.map((m) => [String(m._id), { module: m.name, order: m.order, completed: 0, inProgress: 0 }]));
+  const moduleDocs = await Module.find({ archived: false }).select('name code order').sort({ order: 1 });
+  const byModule = new Map(moduleDocs.map((m) => [String(m._id), { module: m.name, code: m.code, order: m.order, completed: 0, inProgress: 0 }]));
   for (const row of progRows) {
     const entry = byModule.get(String(row._id.module));
     if (!entry) continue;
@@ -188,7 +188,7 @@ export async function adminOverview() {
   return {
     counts: { students, trainers, batches, modules, certificates, assessments: activeAssessments },
     attendanceDistribution,
-    lowAttendance: { threshold, count: lowAttendance.length, students: lowAttendance.slice(0, 10) },
+    lowAttendance: { threshold, count: lowAttendance.length, students: lowAttendance },
     batchSizes,
     batchPerformance,
     moduleCompletion,

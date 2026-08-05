@@ -309,3 +309,7 @@ h1, h2, h3 { letter-spacing: -0.02em; }
   justify-content: center;
   line-height: 1;
 }
+
+/* Students-at-risk table on the admin dashboard: ~10 rows, then scroll. */
+.risk-table-scroll { max-height: 24rem; overflow-y: auto; }
+.risk-table-scroll .table thead th { position: sticky; top: 0; z-index: 1; }

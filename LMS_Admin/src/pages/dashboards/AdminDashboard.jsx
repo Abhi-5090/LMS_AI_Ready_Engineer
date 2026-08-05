@@ -124,7 +124,7 @@ export function AdminDashboard() {
           <Card>
             <CardHeader title="Progress by Module" subtitle="Completed and in-progress students per module" />
             <StackedBarChart
-              rows={moduleCompletion.map((m) => ({ label: m.module, segments: [{ value: m.completed || 0 }, { value: m.inProgress || 0 }] }))}
+              rows={moduleCompletion.map((m) => ({ label: m.code || m.module, segments: [{ value: m.completed || 0 }, { value: m.inProgress || 0 }] }))}
               series={[
                 { key: 'completed', label: 'Completed', color: C.success },
                 { key: 'inProgress', label: 'In progress', color: C.primary },
@@ -161,12 +161,23 @@ export function AdminDashboard() {
                     <TriangleAlert size={16} style={{ color: 'var(--color-error)' }} />
                     <Badge tone="error">{low.count} student(s) at risk</Badge>
                   </p>
-                  {low.students.slice(0, 6).map((s, i) => (
-                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: 'var(--space-2) 0', borderBottom: '1px solid var(--color-border)' }}>
-                      <span>{s.student} <span className="lms-muted">· {s.batch}</span></span>
-                      <Badge tone="error">{s.percentage}%</Badge>
-                    </div>
-                  ))}
+                  {/* Full at-risk list — ~10 rows visible, the rest scrolls. */}
+                  <div className="table-wrap risk-table-scroll">
+                    <table className="table">
+                      <thead>
+                        <tr><th>Student</th><th>Batch</th><th>Attendance</th></tr>
+                      </thead>
+                      <tbody>
+                        {low.students.map((s, i) => (
+                          <tr key={i}>
+                            <td>{s.student}</td>
+                            <td className="lms-muted">{s.batch}</td>
+                            <td><Badge tone="error">{s.percentage}%</Badge></td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </>
               )}
             </Card>
