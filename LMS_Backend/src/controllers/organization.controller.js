@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { UserRole, UserStatus } from '#shared';
 import * as models from '../models/index.js';
-import { Batch, Module, Organization, User, Assessment, Submission } from '../models/index.js';
+import { Batch, Module, Organization, User, Assessment, Submission, QuestionBankItem } from '../models/index.js';
 import { ApiError } from '../utils/ApiError.js';
 import { ok } from '../utils/http.js';
 import { audit } from '../services/audit.js';
@@ -170,7 +170,7 @@ export async function deleteOrganization(req, res) {
 export async function getOverview(_req, res) {
   const template = await Organization.findOne({ isTemplate: true }).select('_id');
   const notTemplate = template ? { organization: { $ne: template._id } } : {};
-  const [organizations, activeOrgs, admins, trainers, students, batches, modules, assessments, submissions] = await Promise.all([
+  const [organizations, activeOrgs, admins, trainers, students, batches, modules, assessments, submissions, questionBanks] = await Promise.all([
     Organization.countDocuments({ isTemplate: { $ne: true } }),
     Organization.countDocuments({ isTemplate: { $ne: true }, status: 'active' }),
     User.countDocuments({ role: UserRole.ADMIN }),
@@ -180,6 +180,7 @@ export async function getOverview(_req, res) {
     Module.countDocuments(notTemplate), // exclude the template's modules
     Assessment.countDocuments(),
     Submission.countDocuments(),
+    QuestionBankItem.countDocuments(notTemplate), // exclude the template's bank
   ]);
 
   // Growth: new organizations + new students per month over the last 6 months.
@@ -212,6 +213,7 @@ export async function getOverview(_req, res) {
     modules,
     assessments,
     submissions,
+    questionBanks,
     growth: months.map(({ key, ...m }) => m),
   });
 }

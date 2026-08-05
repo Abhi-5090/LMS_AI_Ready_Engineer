@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
-import { BarChart3, BookOpen, Building2, ClipboardList, FileText, GraduationCap, LogIn, ShieldCheck, UserCog, UsersRound } from 'lucide-react';
+import { BarChart3, BookOpen, Building2, ClipboardList, Database, FileText, GraduationCap, LogIn, ShieldCheck, UserCog, UsersRound } from 'lucide-react';
 import { Badge, Button, Card, CardHeader, EmptyState, ErrorState, SkeletonCards } from '@/components/ui';
 import { PageHeader, Stat } from '@/components/PageHeader';
 import { BarChart } from '@/components/charts/BarChart';
@@ -34,8 +34,19 @@ export function SuperAdminDashboard() {
   }
 
   const sorted = [...(orgs ?? [])].sort((a, b) => (b.counts?.students ?? 0) - (a.counts?.students ?? 0));
-  const chart = sorted.slice(0, 8).map((x) => ({ label: x.code, value: x.counts?.students ?? 0 }));
+  const chart = sorted.slice(0, 10).map((x) => ({ label: x.code, value: x.counts?.students ?? 0 }));
   const growth = (o?.growth ?? []).map((g) => ({ label: g.label, value: g.students }));
+  const content = o ? [
+    { label: 'Modules', value: o.modules ?? 0 },
+    { label: 'Assessments', value: o.assessments ?? 0 },
+    { label: 'Question Banks', value: o.questionBanks ?? 0 },
+    { label: 'Submissions', value: o.submissions ?? 0 },
+  ] : [];
+  const team = o ? [
+    { label: 'Admins', value: o.admins ?? 0, color: 'var(--color-primary)' },
+    { label: 'Trainers', value: o.trainers ?? 0, color: 'var(--color-secondary)' },
+    { label: 'Students', value: o.students ?? 0, color: 'var(--color-accent)' },
+  ] : [];
 
   return (
     <>
@@ -53,10 +64,12 @@ export function SuperAdminDashboard() {
             <Stat label="Batches" value={o.batches} icon={<UsersRound size={18} />} />
             <Stat label="Modules" value={o.modules} icon={<BookOpen size={18} />} />
             <Stat label="Assessments" value={o.assessments} icon={<FileText size={18} />} />
+            <Stat label="Question Banks" value={o.questionBanks ?? 0} icon={<Database size={18} />} />
             <Stat label="Submissions" value={o.submissions} icon={<ClipboardList size={18} />} />
           </div>
 
-          <div className="dash-grid-3" style={{ marginTop: 'var(--space-6)' }}>
+          {/* Row 1 — Organization status (1/3) + Students per organization (2/3). */}
+          <div className="dash-grid-1-2" style={{ marginTop: 'var(--space-6)' }}>
             <Card>
               <CardHeader title="Organization Status" subtitle={`${o.activeOrgs} active · ${o.suspendedOrgs} suspended`} />
               <DonutChart
@@ -77,9 +90,25 @@ export function SuperAdminDashboard() {
                 <BarChart data={chart} multicolor emptyText="No students yet." />
               )}
             </Card>
+          </div>
+
+          {/* Row 2 — New students by month, full width. */}
+          <div style={{ marginTop: 'var(--space-6)' }}>
             <Card>
               <CardHeader title="New Students / Month" subtitle="Platform growth, last 6 months" />
               <TrendChart data={growth} emptyText="No growth data yet." />
+            </Card>
+          </div>
+
+          {/* Row 3 — extra analytics in complementary formats. */}
+          <div className="dash-grid-2" style={{ marginTop: 'var(--space-6)' }}>
+            <Card>
+              <CardHeader title="Platform Content" subtitle="Curriculum & assessment volume across all organizations" />
+              <BarChart data={content} multicolor emptyText="No content yet." />
+            </Card>
+            <Card>
+              <CardHeader title="Team Composition" subtitle="Admins, trainers & students platform-wide" />
+              <DonutChart data={team} centerValue={(o.admins ?? 0) + (o.trainers ?? 0) + (o.students ?? 0)} centerLabel="People" emptyText="No users yet." />
             </Card>
           </div>
 

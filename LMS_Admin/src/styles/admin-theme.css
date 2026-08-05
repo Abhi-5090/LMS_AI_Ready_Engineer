@@ -242,15 +242,19 @@ h1, h2, h3 { letter-spacing: -0.02em; }
 .dash-stack .stat-grid { margin-bottom: 0; }
 
 .dash-grid-3,
-.dash-grid-2 {
+.dash-grid-2,
+.dash-grid-1-2 {
   display: grid;
   gap: var(--space-6);
 }
 .dash-grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .dash-grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+/* One-third + two-thirds row. */
+.dash-grid-1-2 { grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); }
 @media (max-width: 1024px) {
   .dash-grid-3 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .dash-grid-2 { grid-template-columns: 1fr; }
+  .dash-grid-1-2 { grid-template-columns: 1fr; }
 }
 @media (max-width: 640px) {
   .dash-grid-3 { grid-template-columns: 1fr; }
