@@ -156,3 +156,27 @@
   color: var(--color-primary);
 }
 .ext-cert__open:hover { color: var(--color-primary-hover); text-decoration: underline; }
+
+/* ── Admin certificates: toolbar + scrollable table ─────────────────────────── */
+.cert-toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  margin-bottom: var(--space-4);
+}
+.cert-toolbar__search { position: relative; flex: 1; min-width: 16rem; }
+.cert-toolbar__search .input { padding-left: 2.2rem; }
+.cert-toolbar__search-icon {
+  position: absolute;
+  left: 0.7rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--color-text-muted);
+  pointer-events: none;
+}
+.cert-toolbar__count { color: var(--color-text-secondary); font-size: var(--font-size-sm); white-space: nowrap; }
+
+/* ~10 rows visible; the rest scrolls. Header stays pinned while scrolling. */
+.cert-table-scroll { max-height: 36rem; overflow-y: auto; }
+.cert-table-scroll .table thead th { position: sticky; top: 0; z-index: 1; }

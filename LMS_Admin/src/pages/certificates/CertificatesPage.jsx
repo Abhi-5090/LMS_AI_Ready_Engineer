@@ -1,7 +1,7 @@
-import { useState } from 'react';
-import { Award } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { Award, Download, Search } from 'lucide-react';
 import { UserRole } from '@/shared';
-import { Badge, Button, Card, CardHeader, EmptyState, ErrorState, Modal, SkeletonCards, SkeletonTable } from '@/components/ui';
+import { Badge, Button, Card, CardHeader, EmptyState, ErrorState, Input, Modal, SkeletonCards, SkeletonTable, useToast } from '@/components/ui';
 import { PageHeader } from '@/components/PageHeader';
 import { apiErrorMessage } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
@@ -82,6 +82,43 @@ function StudentCertificates() {
 
 function AdminCertificates() {
   const { data: certs, isLoading, isError, error, refetch } = useAllCertificates();
+  const toast = useToast();
+  const [q, setQ] = useState('');
+
+  // Search by student name/email OR by certificate (module name + certificate ID).
+  const filtered = useMemo(() => {
+    const list = certs ?? [];
+    const needle = q.trim().toLowerCase();
+    if (!needle) return list;
+    return list.filter((c) =>
+      [c.student?.name, c.student?.email, certTitle(c), c.certificateId]
+        .some((v) => String(v ?? '').toLowerCase().includes(needle)),
+    );
+  }, [certs, q]);
+
+  async function exportExcel() {
+    if (filtered.length === 0) { toast.error('Nothing to export.'); return; }
+    try {
+      const XLSX = await import('xlsx'); // load the heavy parser only on demand
+      const rows = filtered.map((c) => ({
+        Student: c.student?.name ?? '',
+        Email: c.student?.email ?? '',
+        Certificate: certTitle(c),
+        Type: c.isProgramCertificate ? 'Program' : 'Module',
+        Issued: formatDate(c.issuedAt),
+        'Certificate ID': c.certificateId,
+      }));
+      const ws = XLSX.utils.json_to_sheet(rows);
+      ws['!cols'] = [{ wch: 22 }, { wch: 28 }, { wch: 26 }, { wch: 10 }, { wch: 14 }, { wch: 24 }];
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Certificates');
+      XLSX.writeFile(wb, `certificates-${new Date().toISOString().slice(0, 10)}.xlsx`);
+    } catch (e) {
+      toast.error(apiErrorMessage(e));
+    }
+  }
+
+  const hasCerts = certs && certs.length > 0;
 
   return (
     <>
@@ -90,31 +127,53 @@ function AdminCertificates() {
         <ErrorState message={apiErrorMessage(error)} onRetry={refetch} />
       ) : isLoading && !certs ? (
         <SkeletonTable rows={5} cols={5} />
-      ) : certs && certs.length === 0 ? (
+      ) : !hasCerts ? (
         <EmptyState
           icon={<Award size={26} />}
           title="No certificates have been issued yet"
           description="Certificates issued to students across the institution will appear here."
         />
       ) : (
-        <div className="table-wrap">
-          <table className="table">
-            <thead>
-              <tr><th>Student</th><th>Certificate</th><th>Type</th><th>Issued</th><th>ID</th></tr>
-            </thead>
-            <tbody>
-              {certs?.map((c) => (
-                <tr key={c.id}>
-                  <td>{c.student?.name}<div className="lms-muted" style={{ fontSize: 'var(--font-size-xs)' }}>{c.student?.email}</div></td>
-                  <td>{certTitle(c)}</td>
-                  <td>{c.isProgramCertificate ? <Badge tone="success">Program</Badge> : <Badge tone="neutral">Module</Badge>}</td>
-                  <td>{formatDate(c.issuedAt)}</td>
-                  <td style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--font-size-xs)' }}>{c.certificateId}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <>
+          <div className="cert-toolbar">
+            <div className="cert-toolbar__search">
+              <Search size={16} className="cert-toolbar__search-icon" aria-hidden />
+              <Input
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                placeholder="Search by student name, email, certificate or ID…"
+                aria-label="Search certificates"
+              />
+            </div>
+            <span className="cert-toolbar__count">{filtered.length} of {certs.length}</span>
+            <Button variant="outline" onClick={exportExcel} disabled={filtered.length === 0}>
+              <Download size={15} style={{ marginRight: 6 }} /> Export to Excel
+            </Button>
+          </div>
+
+          <div className="table-wrap cert-table-scroll">
+            <table className="table">
+              <thead>
+                <tr><th>Student</th><th>Certificate</th><th>Type</th><th>Issued</th><th>ID</th></tr>
+              </thead>
+              <tbody>
+                {filtered.length === 0 ? (
+                  <tr><td colSpan={5} className="lms-muted" style={{ textAlign: 'center', padding: 'var(--space-6)' }}>No certificates match “{q}”.</td></tr>
+                ) : (
+                  filtered.map((c) => (
+                    <tr key={c.id}>
+                      <td>{c.student?.name}<div className="lms-muted" style={{ fontSize: 'var(--font-size-xs)' }}>{c.student?.email}</div></td>
+                      <td>{certTitle(c)}</td>
+                      <td>{c.isProgramCertificate ? <Badge tone="success">Program</Badge> : <Badge tone="neutral">Module</Badge>}</td>
+                      <td>{formatDate(c.issuedAt)}</td>
+                      <td style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--font-size-xs)' }}>{c.certificateId}</td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
     </>
   );
