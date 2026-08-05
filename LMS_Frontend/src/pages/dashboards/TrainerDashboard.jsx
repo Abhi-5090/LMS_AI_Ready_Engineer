@@ -123,7 +123,7 @@ export function TrainerDashboard() {
               })}
               series={[
                 { key: 'passed', label: 'Passed', color: 'var(--color-primary)' },
-                { key: 'failed', label: 'Not passed', color: 'var(--color-secondary)' },
+                { key: 'failed', label: 'Not passed', color: 'var(--color-error)' },
               ]}
             />
             <div className="table-wrap" style={{ marginTop: 'var(--space-5)' }}>

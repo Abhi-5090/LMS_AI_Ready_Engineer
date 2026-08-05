@@ -32,6 +32,9 @@ export const GREEN_THEME = {
     // mode uses a lightened primary (buttons keep white text, links become legible).
     primary: '#3FB950',
     primaryHover: '#2EA043',
+    // Success (#008738) is likewise too dark on the dark surface — lighten it so
+    // "passed/correct/done" text and icons stay legible.
+    success: '#3FB950',
   },
 };
 
@@ -61,6 +64,8 @@ export const ORANGE_THEME = {
     // Slightly brighter orange for better legibility on the dark surface.
     primary: '#FF6B3D',
     primaryHover: '#F15D27',
+    // Success stays green but lightened so it reads on the dark surface.
+    success: '#3FB950',
   },
 };
 
@@ -101,6 +106,7 @@ export function themeToCssVars(name, mode) {
   // icons); light mode keeps the exact brand colour.
   const primaryBase = mode === 'dark' ? (t.dark.primary ?? p.primary.base) : p.primary.base;
   const primaryHover = mode === 'dark' ? (t.dark.primaryHover ?? p.primary.hover) : p.primary.hover;
+  const successColor = mode === 'dark' ? (t.dark.success ?? p.status.success) : p.status.success;
 
   return {
     '--color-primary': primaryBase,
@@ -118,7 +124,7 @@ export function themeToCssVars(name, mode) {
     '--color-text-primary': neutral.textPrimary,
     '--color-text-secondary': neutral.textSecondary,
     '--color-text-muted': neutral.textMuted,
-    '--color-success': p.status.success,
+    '--color-success': successColor,
     '--color-warning': p.status.warning,
     '--color-error': p.status.error,
     '--color-info': p.status.info,
