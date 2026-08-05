@@ -52,10 +52,11 @@ export function SuperAdminDashboard() {
     { label: 'Question Banks', value: o.questionBanks ?? 0 },
     { label: 'Submissions', value: o.submissions ?? 0 },
   ] : [];
+  // No explicit colors — let the (theme-visible) chart palette fill each slice.
   const team = o ? [
-    { label: 'Admins', value: o.admins ?? 0, color: 'var(--color-primary)' },
-    { label: 'Trainers', value: o.trainers ?? 0, color: 'var(--color-secondary)' },
-    { label: 'Students', value: o.students ?? 0, color: 'var(--color-accent)' },
+    { label: 'Admins', value: o.admins ?? 0 },
+    { label: 'Trainers', value: o.trainers ?? 0 },
+    { label: 'Students', value: o.students ?? 0 },
   ] : [];
   const qData = (questionStats ?? []).map((m) => ({ label: m.code, value: m[qType] || 0 }));
 
@@ -85,7 +86,7 @@ export function SuperAdminDashboard() {
               <DonutChart
                 data={[
                   { label: 'Active', value: o.activeOrgs, color: 'var(--color-primary)' },
-                  { label: 'Suspended', value: o.suspendedOrgs, color: 'var(--color-warning)' },
+                  { label: 'Suspended', value: o.suspendedOrgs, color: '#F5A623' },
                 ]}
                 centerValue={o.organizations}
                 centerLabel="Organizations"

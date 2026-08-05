@@ -139,6 +139,12 @@ export function themeToCssVars(name, mode) {
  * @returns {string[]}
  */
 export function chartSeriesColors(name) {
+  // The orange brand's secondary/accent are near-black / pale, so they vanish as
+  // chart series (especially in dark mode). Give orange a curated, high-visibility
+  // multi-hue palette. Green's palette reads fine, so it is left as-is.
+  if (name === 'orange') {
+    return ['#F15D27', '#2563EB', '#7C3AED', '#F5A623', '#0EA5E9', '#DB2777'];
+  }
   const p = THEMES[name].light;
   return [
     p.primary.base,

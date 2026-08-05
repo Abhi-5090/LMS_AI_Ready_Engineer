@@ -235,9 +235,13 @@ export async function getQuestionStats(_req, res) {
     Module.find(notTemplate).select('name code order').lean(),
   ]);
 
+  // Exclude the project / certification modules — only the core curriculum modules
+  // should appear in this chart.
+  const EXCLUDE = /project|certificat/i;
   const modById = new Map(modules.map((m) => [String(m._id), m]));
   const byCode = new Map();
   for (const m of modules) {
+    if (EXCLUDE.test(m.name || '') || EXCLUDE.test(m.code || '')) continue;
     if (!byCode.has(m.code)) {
       byCode.set(m.code, { code: m.code, name: m.name, order: m.order ?? 0, mcq: 0, scenario: 0, prompt_writing: 0, coding: 0, total: 0 });
     }

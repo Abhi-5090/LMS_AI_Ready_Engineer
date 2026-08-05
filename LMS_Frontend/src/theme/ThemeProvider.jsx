@@ -2,8 +2,8 @@ import {
   createContext,
   useCallback,
   useContext,
-  useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 import {
@@ -36,9 +36,15 @@ export function ThemeProvider({ children }) {
     () => localStorage.getItem(MODE_KEY) || ThemeMode.LIGHT,
   );
 
-  useEffect(() => {
+  // Apply the theme's CSS vars SYNCHRONOUSLY during render — before children read
+  // them (charts resolve var() via getComputedStyle at render time). Doing this in
+  // an effect would leave charts one theme behind on every switch.
+  const appliedRef = useRef('');
+  const themeKey = `${theme}|${mode}`;
+  if (typeof document !== 'undefined' && appliedRef.current !== themeKey) {
     applyVars(theme, mode);
-  }, [theme, mode]);
+    appliedRef.current = themeKey;
+  }
 
   const setTheme = useCallback((t) => {
     localStorage.setItem(THEME_KEY, t);
