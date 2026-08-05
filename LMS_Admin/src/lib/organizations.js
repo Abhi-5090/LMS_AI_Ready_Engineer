@@ -17,6 +17,11 @@ export function useOverview() {
   return useQuery({ queryKey: orgKeys.overview, queryFn: () => unwrap(api.get('/organizations/overview')) });
 }
 
+/** Question-bank counts per module split by type (super-admin dashboard). */
+export function useQuestionStats() {
+  return useQuery({ queryKey: ['organizations', 'question-stats'], queryFn: () => unwrap(api.get('/organizations/question-stats')) });
+}
+
 export function useDeleteOrganization() {
   const qc = useQueryClient();
   return useMutation({

@@ -10,6 +10,7 @@ router.use(authenticate, requireRole(UserRole.SUPER_ADMIN));
 
 router.get('/', asyncHandler(org.listOrganizations));
 router.get('/overview', asyncHandler(org.getOverview)); // before '/:id'
+router.get('/question-stats', asyncHandler(org.getQuestionStats)); // before '/:id'
 router.get('/template', asyncHandler(org.getTemplate)); // the master-curriculum org
 router.post('/', validate({ body: org.createOrgSchema }), asyncHandler(org.createOrganization));
 router.get('/:id', validate({ params: org.orgIdParam }), asyncHandler(org.getOrganization));

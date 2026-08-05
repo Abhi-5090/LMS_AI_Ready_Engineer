@@ -217,3 +217,39 @@ export async function getOverview(_req, res) {
     growth: months.map(({ key, ...m }) => m),
   });
 }
+
+/**
+ * Super-admin: question-bank counts per module, split by question type, across
+ * all (non-template) organizations. Modules are merged by code (every org clones
+ * the same curriculum), so the chart shows one entry per module code.
+ */
+export async function getQuestionStats(_req, res) {
+  const template = await Organization.findOne({ isTemplate: true }).select('_id');
+  const notTemplate = template ? { organization: { $ne: template._id } } : {};
+
+  const [rows, modules] = await Promise.all([
+    QuestionBankItem.aggregate([
+      { $match: notTemplate },
+      { $group: { _id: { module: '$module', type: '$type' }, n: { $sum: 1 } } },
+    ]),
+    Module.find(notTemplate).select('name code order').lean(),
+  ]);
+
+  const modById = new Map(modules.map((m) => [String(m._id), m]));
+  const byCode = new Map();
+  for (const m of modules) {
+    if (!byCode.has(m.code)) {
+      byCode.set(m.code, { code: m.code, name: m.name, order: m.order ?? 0, mcq: 0, scenario: 0, prompt_writing: 0, coding: 0, total: 0 });
+    }
+  }
+  for (const r of rows) {
+    const m = modById.get(String(r._id.module));
+    if (!m) continue;
+    const e = byCode.get(m.code);
+    if (!e || !(r._id.type in e)) continue;
+    e[r._id.type] += r.n;
+    e.total += r.n;
+  }
+
+  ok(res, [...byCode.values()].sort((a, b) => a.order - b.order));
+}

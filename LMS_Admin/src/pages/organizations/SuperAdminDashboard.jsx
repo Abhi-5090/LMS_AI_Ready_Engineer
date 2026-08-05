@@ -1,15 +1,23 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
-import { BarChart3, BookOpen, Building2, ClipboardList, Database, FileText, GraduationCap, LogIn, ShieldCheck, UserCog, UsersRound } from 'lucide-react';
-import { Badge, Button, Card, CardHeader, EmptyState, ErrorState, SkeletonCards } from '@/components/ui';
+import { BarChart3, BookOpen, Building2, ClipboardList, FileText, GraduationCap, LogIn, ShieldCheck, UserCog, UsersRound } from 'lucide-react';
+import { Badge, Button, Card, CardHeader, EmptyState, ErrorState, Select, SkeletonCards } from '@/components/ui';
 import { PageHeader, Stat } from '@/components/PageHeader';
 import { BarChart } from '@/components/charts/BarChart';
 import { DonutChart } from '@/components/charts/DonutChart';
 import { TrendChart } from '@/components/charts/TrendChart';
 import { apiErrorMessage } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
-import { useOrganizations, useOverview } from '@/lib/organizations';
+import { useOrganizations, useOverview, useQuestionStats } from '@/lib/organizations';
 import '../modules/modules.css';
+
+const QTYPES = [
+  { value: 'mcq', label: 'MCQ' },
+  { value: 'scenario', label: 'Scenario / data-query' },
+  { value: 'prompt_writing', label: 'Prompt writing' },
+  { value: 'coding', label: 'Coding' },
+];
 
 export function SuperAdminDashboard() {
   const navigate = useNavigate();
@@ -17,6 +25,8 @@ export function SuperAdminDashboard() {
   const setOrgView = useAuth((s) => s.setOrgView);
   const { data: o, isLoading, isError, error, refetch } = useOverview();
   const { data: orgs } = useOrganizations();
+  const { data: questionStats } = useQuestionStats();
+  const [qType, setQType] = useState('mcq');
 
   function enter(org) {
     setOrgView({ id: org.id, name: org.name });
@@ -47,6 +57,7 @@ export function SuperAdminDashboard() {
     { label: 'Trainers', value: o.trainers ?? 0, color: 'var(--color-secondary)' },
     { label: 'Students', value: o.students ?? 0, color: 'var(--color-accent)' },
   ] : [];
+  const qData = (questionStats ?? []).map((m) => ({ label: m.code, value: m[qType] || 0 }));
 
   return (
     <>
@@ -64,7 +75,6 @@ export function SuperAdminDashboard() {
             <Stat label="Batches" value={o.batches} icon={<UsersRound size={18} />} />
             <Stat label="Modules" value={o.modules} icon={<BookOpen size={18} />} />
             <Stat label="Assessments" value={o.assessments} icon={<FileText size={18} />} />
-            <Stat label="Question Banks" value={o.questionBanks ?? 0} icon={<Database size={18} />} />
             <Stat label="Submissions" value={o.submissions} icon={<ClipboardList size={18} />} />
           </div>
 
@@ -74,7 +84,7 @@ export function SuperAdminDashboard() {
               <CardHeader title="Organization Status" subtitle={`${o.activeOrgs} active · ${o.suspendedOrgs} suspended`} />
               <DonutChart
                 data={[
-                  { label: 'Active', value: o.activeOrgs, color: 'var(--color-success)' },
+                  { label: 'Active', value: o.activeOrgs, color: 'var(--color-primary)' },
                   { label: 'Suspended', value: o.suspendedOrgs, color: 'var(--color-warning)' },
                 ]}
                 centerValue={o.organizations}
@@ -109,6 +119,19 @@ export function SuperAdminDashboard() {
             <Card>
               <CardHeader title="Team Composition" subtitle="Admins, trainers & students platform-wide" />
               <DonutChart data={team} centerValue={(o.admins ?? 0) + (o.trainers ?? 0) + (o.students ?? 0)} centerLabel="People" emptyText="No users yet." />
+            </Card>
+          </div>
+
+          {/* Questions per module, filtered by question type. */}
+          <div style={{ marginTop: 'var(--space-6)' }}>
+            <Card>
+              <div className="panel-head">
+                <CardHeader title="Questions per Module" subtitle="Question-bank volume by type, across all organizations" />
+                <div style={{ minWidth: '13rem' }}>
+                  <Select value={qType} onChange={(e) => setQType(e.target.value)} options={QTYPES} aria-label="Question type" />
+                </div>
+              </div>
+              <BarChart data={qData} column multicolor emptyText="No questions in the bank yet." />
             </Card>
           </div>
 
