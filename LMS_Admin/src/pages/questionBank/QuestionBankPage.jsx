@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import * as XLSX from 'xlsx';
-import { AlertTriangle, ArrowDown, ArrowDownUp, ArrowUp, Boxes, CheckCircle2, Copy, Download, FileQuestion, FileText, FolderOpen, Library, Lock, Pencil, Plus, Trash2, UploadCloud, X } from 'lucide-react';
+import { AlertTriangle, ArrowDown, ArrowDownUp, ArrowUp, Boxes, CheckCircle2, ChevronLeft, Copy, Download, FileQuestion, FileText, FolderOpen, LayoutGrid, Library, Lock, Pencil, Plus, Table2, Trash2, UploadCloud, X } from 'lucide-react';
 import { QuestionType, QuestionComplexity, UserRole } from '@/shared';
 import { Badge, Button, Card, CardHeader, EmptyState, Input, Modal, Select, SkeletonTable, useConfirm, useToast } from '@/components/ui';
 import { PageHeader } from '@/components/PageHeader';
 import { apiErrorMessage, fileSrc } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { useModules } from '@/lib/modules';
+import { levelTone, titleCase } from '../modules/moduleUi';
 import {
   useAddBankQuestion,
   useUploadQuestionMedia,
@@ -53,6 +54,9 @@ export function QuestionBankPage() {
   const canImportFromMaster = role === UserRole.SUPER_ADMIN && Boolean(orgView);
   const { data: modules } = useModules();
   const [moduleId, setModuleId] = useState('');
+  // Module picker view (cards vs. table), remembered across visits.
+  const [pickerView, setPickerView] = useState(() => localStorage.getItem('lms.qbankView') || 'cards');
+  const choosePickerView = (v) => { setPickerView(v); localStorage.setItem('lms.qbankView', v); };
   const [topicFilter, setTopicFilter] = useState(''); // '' = all topics, or a topicId
   const [typeFilter, setTypeFilter] = useState(''); // '' = all types, or a QuestionType
   const [sort, setSort] = useState(null); // null | { key:'type'|'complexity'|'topic', dir:'asc'|'desc' }
@@ -113,16 +117,27 @@ export function QuestionBankPage() {
       />
 
       <div className="toolbar">
-        <div style={{ flex: '1 1 12rem', minWidth: 0, maxWidth: '17rem' }}>
-          <Select
-            value={moduleId}
-            onChange={(e) => { setModuleId(e.target.value); setTopicFilter(''); setTypeFilter(''); }}
-            options={[
-              { value: '', label: 'Select a module…' },
-              ...(modules ?? []).map((m) => ({ value: m.id, label: `${m.name} (${m.code})` })),
-            ]}
-          />
-        </div>
+        {!moduleId && (
+          <>
+            <span />
+            <div className="view-toggle" role="group" aria-label="View">
+              <button type="button" className={`view-toggle__btn${pickerView === 'cards' ? ' is-on' : ''}`} aria-pressed={pickerView === 'cards'} title="Card view" onClick={() => choosePickerView('cards')}>
+                <LayoutGrid size={15} /> Cards
+              </button>
+              <button type="button" className={`view-toggle__btn${pickerView === 'table' ? ' is-on' : ''}`} aria-pressed={pickerView === 'table'} title="Table view" onClick={() => choosePickerView('table')}>
+                <Table2 size={15} /> Table
+              </button>
+            </div>
+          </>
+        )}
+        {moduleId && (
+          <Button variant="outline" onClick={() => { setModuleId(''); setTopicFilter(''); setTypeFilter(''); }}>
+            <ChevronLeft size={15} style={{ marginRight: 4 }} /> Modules
+          </Button>
+        )}
+        {moduleId && moduleObj && (
+          <span style={{ fontWeight: 'var(--font-weight-semibold)' }}>{moduleObj.name} <span className="lms-muted" style={{ fontSize: 'var(--font-size-xs)' }}>· {moduleObj.code}</span></span>
+        )}
         {moduleId && (
           <div style={{ flex: '1 1 9rem', minWidth: 0, maxWidth: '13rem' }}>
             <Select
@@ -165,11 +180,43 @@ export function QuestionBankPage() {
       </div>
 
       {!moduleId ? (
-        <EmptyState
-          icon={<FolderOpen size={26} />}
-          title="Choose a module"
-          description="Choose a module to view and build its question bank."
-        />
+        (modules ?? []).length === 0 ? (
+          <EmptyState icon={<FolderOpen size={26} />} title="No modules yet" description="Create a module first, then build its question bank." />
+        ) : pickerView === 'table' ? (
+          <div className="table-wrap">
+            <table className="table">
+              <thead><tr><th>#</th><th>Module</th><th>Level</th><th>Topics</th></tr></thead>
+              <tbody>
+                {(modules ?? []).map((m) => (
+                  <tr key={m.id} className="row-click" onClick={() => setModuleId(m.id)}>
+                    <td>{m.order}</td>
+                    <td>{m.name}<div className="lms-muted" style={{ fontSize: 'var(--font-size-xs)' }}>{m.code}</div></td>
+                    <td><Badge tone={levelTone(m.level)}>{titleCase(m.level)}</Badge></td>
+                    <td>{(m.topics ?? []).length}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="module-grid">
+            {(modules ?? []).map((m) => (
+              <Card key={m.id} hover className="module-card" onClick={() => setModuleId(m.id)}>
+                <div className="module-card__top">
+                  <span className="module-card__order">{m.order}</span>
+                  <div className="module-card__meta"><Badge tone={levelTone(m.level)}>{titleCase(m.level)}</Badge></div>
+                </div>
+                <div>
+                  <div className="module-card__name">{m.name}</div>
+                  <div className="lms-muted" style={{ fontSize: 'var(--font-size-sm)' }}>{m.code}</div>
+                </div>
+                <div className="lms-secondary-text" style={{ fontSize: 'var(--font-size-xs)' }}>
+                  {(m.topics ?? []).length} topic{(m.topics ?? []).length === 1 ? '' : 's'} · open the question bank
+                </div>
+              </Card>
+            ))}
+          </div>
+        )
       ) : isLoading && !items ? (
         <SkeletonTable rows={5} cols={7} />
       ) : (
