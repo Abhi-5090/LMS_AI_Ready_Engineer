@@ -116,16 +116,17 @@ export function ModulesPage() {
             Show archived
           </label>
         )}
-        <span />
-        <div className="view-toggle" role="group" aria-label="View">
-          <button type="button" className={`view-toggle__btn${view === 'cards' ? ' is-on' : ''}`} aria-pressed={view === 'cards'} title="Card view" onClick={() => chooseView('cards')}>
-            <LayoutGrid size={15} /> Cards
-          </button>
-          <button type="button" className={`view-toggle__btn${view === 'table' ? ' is-on' : ''}`} aria-pressed={view === 'table'} title="Table view" onClick={() => chooseView('table')}>
-            <Table2 size={15} /> Table
-          </button>
+        <div className="toolbar__right">
+          <div className="view-toggle" role="group" aria-label="View">
+            <button type="button" className={`view-toggle__btn${view === 'cards' ? ' is-on' : ''}`} aria-pressed={view === 'cards'} title="Card view" onClick={() => chooseView('cards')}>
+              <LayoutGrid size={15} /> Cards
+            </button>
+            <button type="button" className={`view-toggle__btn${view === 'table' ? ' is-on' : ''}`} aria-pressed={view === 'table'} title="Table view" onClick={() => chooseView('table')}>
+              <Table2 size={15} /> Table
+            </button>
+          </div>
+          {isAdmin && <Button onClick={() => setCreating(true)}>+ New Module</Button>}
         </div>
-        {isAdmin && <Button onClick={() => setCreating(true)}>+ New Module</Button>}
       </div>
 
       {isError && <ErrorState message={apiErrorMessage(error)} onRetry={refetch} />}

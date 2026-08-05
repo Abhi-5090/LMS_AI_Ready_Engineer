@@ -296,10 +296,16 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: var(--space-4);
+  gap: var(--space-3);
   margin-bottom: var(--space-5);
-  flex-wrap: wrap;
+  /* Stay on a single row across laptop widths; scroll horizontally if it truly
+     can't fit rather than wrapping into stacked rows. */
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  padding-bottom: 2px;
 }
+/* Right-aligned cluster (e.g. view toggle + primary button sit together). */
+.toolbar__right { display: flex; align-items: center; gap: var(--space-3); margin-left: auto; flex: none; }
 
 /* Batch detail: Students panel (full width) stacked above the
    Modules & Trainers mapping panel (full width). */

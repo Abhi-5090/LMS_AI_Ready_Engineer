@@ -118,8 +118,7 @@ export function QuestionBankPage() {
 
       <div className="toolbar">
         {!moduleId && (
-          <>
-            <span />
+          <div className="toolbar__right">
             <div className="view-toggle" role="group" aria-label="View">
               <button type="button" className={`view-toggle__btn${pickerView === 'cards' ? ' is-on' : ''}`} aria-pressed={pickerView === 'cards'} title="Card view" onClick={() => choosePickerView('cards')}>
                 <LayoutGrid size={15} /> Cards
@@ -128,7 +127,7 @@ export function QuestionBankPage() {
                 <Table2 size={15} /> Table
               </button>
             </div>
-          </>
+          </div>
         )}
         {moduleId && (
           <Button variant="outline" onClick={() => { setModuleId(''); setTopicFilter(''); setTypeFilter(''); }}>
@@ -139,7 +138,7 @@ export function QuestionBankPage() {
           <span style={{ fontWeight: 'var(--font-weight-semibold)' }}>{moduleObj.name} <span className="lms-muted" style={{ fontSize: 'var(--font-size-xs)' }}>· {moduleObj.code}</span></span>
         )}
         {moduleId && (
-          <div style={{ flex: '1 1 9rem', minWidth: 0, maxWidth: '13rem' }}>
+          <div style={{ flex: '0 0 12rem', minWidth: 0 }}>
             <Select
               value={topicFilter}
               onChange={(e) => setTopicFilter(e.target.value)}
@@ -151,7 +150,7 @@ export function QuestionBankPage() {
           </div>
         )}
         {moduleId && (
-          <div style={{ flex: '1 1 9rem', minWidth: 0, maxWidth: '13rem' }}>
+          <div style={{ flex: '0 0 12rem', minWidth: 0 }}>
             <Select
               value={typeFilter}
               onChange={(e) => setTypeFilter(e.target.value)}
