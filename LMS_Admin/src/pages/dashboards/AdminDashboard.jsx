@@ -93,8 +93,8 @@ export function AdminDashboard() {
               <CardHeader title="Module Status" subtitle="Enrolment progress across all modules" />
               <DonutChart
                 data={[
-                  { label: 'Completed', value: totalCompleted, color: C.success },
-                  { label: 'In progress', value: totalInProgress, color: C.primary },
+                  { label: 'Completed', value: totalCompleted, color: C.primary },
+                  { label: 'In progress', value: totalInProgress, color: C.secondary },
                 ]}
                 centerValue={totalCompleted + totalInProgress}
                 centerLabel="Enrolments"
@@ -132,8 +132,8 @@ export function AdminDashboard() {
             <StackedBarChart
               rows={moduleCompletion.map((m) => ({ label: m.code || m.module, segments: [{ value: m.completed || 0 }, { value: m.inProgress || 0 }] }))}
               series={[
-                { key: 'completed', label: 'Completed', color: C.success },
-                { key: 'inProgress', label: 'In progress', color: C.primary },
+                { key: 'completed', label: 'Completed', color: C.primary },
+                { key: 'inProgress', label: 'In progress', color: C.secondary },
               ]}
               emptyText="No module progress recorded yet."
             />
