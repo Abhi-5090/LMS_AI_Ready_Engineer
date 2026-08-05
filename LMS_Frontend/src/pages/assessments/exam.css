@@ -79,7 +79,7 @@
   color: var(--color-primary);
   transition: background var(--transition-base, 200ms) var(--ease-out, ease), color 200ms ease;
 }
-.exam-timer--warn { background: color-mix(in srgb, #f5a623 18%, var(--color-surface)); color: #b8730a; }
+.exam-timer--warn { background: color-mix(in srgb, #f5a623 18%, var(--color-surface)); color: color-mix(in srgb, #f5a623 60%, var(--color-text-primary)); }
 .exam-timer--danger { background: color-mix(in srgb, var(--color-error) 16%, var(--color-surface)); color: var(--color-error); animation: exam-pulse 1s var(--ease-in-out, ease-in-out) infinite; }
 @keyframes exam-pulse { 50% { opacity: 0.55; } }
 
