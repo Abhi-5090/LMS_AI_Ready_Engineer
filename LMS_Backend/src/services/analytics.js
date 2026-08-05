@@ -301,13 +301,19 @@ export async function studentOverview(studentId) {
     { [ModuleProgressStatus.COMPLETED]: 0, [ModuleProgressStatus.IN_PROGRESS]: 0, [ModuleProgressStatus.LOCKED]: 0 },
   );
 
-  const scores = subs.map((s) => ({
-    title: s.assessment?.title ?? 'Assessment',
-    type: s.assessment?.type ?? '',
-    score: s.score ?? 0,
-    passed: Boolean(s.passed),
-    at: s.submittedAt,
-  }));
+  // Only count submissions that still point at a real assessment. Orphaned
+  // submissions (their assessment was deleted) would otherwise drag the average
+  // down with stale 0/near-0 scores — so the "average score" reflects only the
+  // assessments the student actually has.
+  const scores = subs
+    .filter((s) => s.assessment)
+    .map((s) => ({
+      title: s.assessment?.title ?? 'Assessment',
+      type: s.assessment?.type ?? '',
+      score: s.score ?? 0,
+      passed: Boolean(s.passed),
+      at: s.submittedAt,
+    }));
   const gradedCount = scores.length;
   const avgScore = gradedCount ? Math.round(scores.reduce((a, s) => a + s.score, 0) / gradedCount) : 0;
   const passRate = gradedCount ? Math.round((scores.filter((s) => s.passed).length / gradedCount) * 100) : 0;
