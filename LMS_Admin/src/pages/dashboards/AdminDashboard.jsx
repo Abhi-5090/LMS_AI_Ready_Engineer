@@ -1,5 +1,5 @@
-import { Award, BookOpen, ClipboardCheck, FileText, GraduationCap, MessageCircleQuestion, Star, TriangleAlert, UserCog, UsersRound } from 'lucide-react';
-import { Badge, Card, CardHeader, ErrorState, SkeletonCards } from '@/components/ui';
+import { Award, BookOpen, ClipboardCheck, FileText, GraduationCap, MessageCircleQuestion, Star, UserCog, UsersRound } from 'lucide-react';
+import { Card, CardHeader, ErrorState, SkeletonCards } from '@/components/ui';
 import { apiErrorMessage } from '@/lib/api';
 import { PageHeader, Stat } from '@/components/PageHeader';
 import { CountUp } from '@/lib/anim';
@@ -34,6 +34,12 @@ export function AdminDashboard() {
 
   const totalCompleted = moduleCompletion.reduce((s, m) => s + (m.completed || 0), 0);
   const totalInProgress = moduleCompletion.reduce((s, m) => s + (m.inProgress || 0), 0);
+
+  // At-risk students grouped per batch → a vertical bar per batch (0 if none).
+  const riskByBatch = batchPerf.map((b) => ({
+    label: b.batch,
+    value: (low.students ?? []).filter((s) => s.batch === b.batch).length,
+  }));
 
   const students = counts.students ?? 0;
   const onTrack = Math.max(0, students - low.count);
@@ -152,33 +158,12 @@ export function AdminDashboard() {
               <TrendChart data={certTrend} color={C.success} emptyText="No certificates issued recently." />
             </Card>
             <Card>
-              <CardHeader title="Students at Risk" subtitle={`Below ${low.threshold}% attendance`} />
+              <CardHeader title="Students at Risk" subtitle={`Below ${low.threshold}% attendance · ${low.count} student(s) at risk`} />
               {low.count === 0 ? (
                 <p className="lms-muted">No students are below the attendance threshold. 🎉</p>
               ) : (
-                <>
-                  <p style={{ marginBottom: 'var(--space-3)', display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
-                    <TriangleAlert size={16} style={{ color: 'var(--color-error)' }} />
-                    <Badge tone="error">{low.count} student(s) at risk</Badge>
-                  </p>
-                  {/* Full at-risk list — ~10 rows visible, the rest scrolls. */}
-                  <div className="table-wrap risk-table-scroll">
-                    <table className="table">
-                      <thead>
-                        <tr><th>Student</th><th>Batch</th><th>Attendance</th></tr>
-                      </thead>
-                      <tbody>
-                        {low.students.map((s, i) => (
-                          <tr key={i}>
-                            <td>{s.student}</td>
-                            <td className="lms-muted">{s.batch}</td>
-                            <td><Badge tone="error">{s.percentage}%</Badge></td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </>
+                // One vertical bar per batch; height = number of at-risk students there.
+                <BarChart data={riskByBatch} column multicolor emptyText="No students at risk." />
               )}
             </Card>
           </div>

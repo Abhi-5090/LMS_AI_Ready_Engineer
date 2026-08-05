@@ -72,20 +72,16 @@ function AdminAnalytics() {
             All students are meeting the attendance requirement.
           </p>
         ) : (
-          <div className="table-wrap">
-            <table className="table">
-              <thead><tr><th>Student</th><th>Batch</th><th>Attendance</th></tr></thead>
-              <tbody>
-                {(lowAttendance.students ?? []).map((s, i) => (
-                  <tr key={i}>
-                    <td>{s.student}</td>
-                    <td>{s.batch}</td>
-                    <td><Badge tone="error">{s.percentage}%</Badge></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          // One vertical bar per batch; height = number of at-risk students there.
+          <BarChart
+            column
+            multicolor
+            emptyText="No students at risk."
+            data={batchSizes.map((b) => ({
+              label: b.batch,
+              value: (lowAttendance.students ?? []).filter((s) => s.batch === b.batch).length,
+            }))}
+          />
         )}
       </Card>
     </>
