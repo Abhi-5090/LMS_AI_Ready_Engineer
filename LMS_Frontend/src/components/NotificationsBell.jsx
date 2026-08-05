@@ -66,20 +66,18 @@ export function NotificationsBell() {
           {list.length === 0 ? (
             <div className="bell__empty">You&apos;re all caught up — nothing new.</div>
           ) : (
-            <div className="bell__list">
-              {recent.map((n) => (
-                <button
-                  key={n.id}
-                  type="button"
-                  className={`bell__item${n.read ? '' : ' bell__item--unread'}`}
-                  onClick={() => { setOpen(false); if (n.link) navigate(n.link); }}
-                >
-                  <div className="bell__title">{n.title}</div>
-                  {n.body && <div className="bell__body">{n.body}</div>}
-                  <div className="bell__meta">{formatDate(n.createdAt)}</div>
-                </button>
-              ))}
-            </div>
+            recent.map((n) => (
+              <button
+                key={n.id}
+                type="button"
+                className={`bell__item${n.read ? '' : ' bell__item--unread'}`}
+                onClick={() => { setOpen(false); if (n.link) navigate(n.link); }}
+              >
+                <div className="bell__title">{n.title}</div>
+                {n.body && <div className="bell__body">{n.body}</div>}
+                <div className="bell__meta">{formatDate(n.createdAt)}</div>
+              </button>
+            ))
           )}
         </div>
       )}
