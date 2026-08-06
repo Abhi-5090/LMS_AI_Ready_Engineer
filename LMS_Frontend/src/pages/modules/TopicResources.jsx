@@ -35,7 +35,6 @@ export function TopicResources({ module, topic, canEdit, view = 'grid' }) {
 
   const resources = (all ?? []).filter((r) => (r.topic ?? null) === topic.id);
   const byType = TYPE_META.map((t) => ({ ...t, items: resources.filter((r) => r.type === t.value) }));
-  const maxRows = byType.reduce((m, t) => Math.max(m, t.items.length), 0);
 
   const removeResource = async (r) => {
     if (await confirm({ title: 'Delete this resource?', tone: 'danger', confirmLabel: 'Delete' })) del.mutate({ id: r.id, module: module.id });
@@ -110,56 +109,45 @@ export function TopicResources({ module, topic, canEdit, view = 'grid' }) {
       {isLoading ? (
         <SkeletonText lines={3} />
       ) : view === 'table' ? (
-        <div className="res-matrix-wrap">
-          <div className="res-matrix-scroll">
-            <table className="res-matrix">
-              <thead>
-                <tr><th className="res-matrix__group" colSpan={byType.length}>TYPE</th></tr>
-                <tr>
-                  {byType.map((t) => (
-                    <th key={t.value}>
-                      <span className="res-matrix__th">
-                        <t.Icon size={14} strokeWidth={2} /> {t.label}
-                        <span className="res-matrix__th-count">{t.items.length}</span>
-                      </span>
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {maxRows === 0 ? (
-                  <tr><td colSpan={byType.length} className="res-matrix__empty lms-muted">No resources for this topic yet.</td></tr>
-                ) : (
-                  Array.from({ length: maxRows }).map((_, i) => (
-                    <tr key={i}>
-                      {byType.map((t) => {
-                        const r = t.items[i];
-                        return (
-                          <td key={t.value}>
-                            {r && (
-                              <span className="res-matrix__cell">
-                                <ResTitle r={r} className="res-matrix__link" />
-                                {canEdit && r.type === ResourceType.ARTICLE && (
-                                  <button type="button" className="icon-btn res-matrix__del" aria-label={`Edit ${r.title}`} onClick={() => setEditing(r)}>
-                                    <PencilLine size={12} />
-                                  </button>
-                                )}
-                                {canEdit && (
-                                  <button type="button" className="icon-btn icon-btn--danger res-matrix__del" aria-label={`Delete ${r.title}`} onClick={() => removeResource(r)}>
-                                    <Trash2 size={12} />
-                                  </button>
-                                )}
-                              </span>
+        <div className="table-wrap res-table-wrap">
+          <table className="table res-table">
+            <thead>
+              <tr><th>Type</th><th>Resource</th>{canEdit && <th aria-label="Actions" />}</tr>
+            </thead>
+            <tbody>
+              {resources.length === 0 ? (
+                <tr><td colSpan={canEdit ? 3 : 2} className="lms-muted" style={{ textAlign: 'center', padding: 'var(--space-6)' }}>No resources for this topic yet.</td></tr>
+              ) : (
+                // Grouped by type (same order as the cards view) → one clean row each.
+                byType.flatMap((t) => t.items).map((r) => {
+                  const meta = byType.find((t) => t.value === r.type);
+                  const Icon = meta?.Icon;
+                  return (
+                    <tr key={r.id}>
+                      <td>
+                        <span className="res-type">{Icon && <Icon size={14} strokeWidth={2} />} {meta?.single ?? r.type}</span>
+                      </td>
+                      <td><ResTitle r={r} className="res-table__link" /></td>
+                      {canEdit && (
+                        <td>
+                          <div className="res-table__actions">
+                            {r.type === ResourceType.ARTICLE && (
+                              <button type="button" className="icon-btn" aria-label={`Edit ${r.title}`} onClick={() => setEditing(r)}>
+                                <PencilLine size={14} />
+                              </button>
                             )}
-                          </td>
-                        );
-                      })}
+                            <button type="button" className="icon-btn icon-btn--danger" aria-label={`Delete ${r.title}`} onClick={() => removeResource(r)}>
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
+                        </td>
+                      )}
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
         </div>
       ) : (
         <div className="topic-res__groups">

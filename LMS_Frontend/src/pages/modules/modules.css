@@ -989,3 +989,23 @@
    keep the header pinned. Height is set per-table inline. */
 .asmt-scroll { overflow-y: auto; }
 .asmt-scroll thead th { position: sticky; top: 0; z-index: 1; background: var(--color-surface); }
+
+/* ── Topic resources: clean flat table (replaces the ragged type-matrix) ────── */
+.res-table-wrap { width: 100%; }
+.res-table th:first-child, .res-table td:first-child { white-space: nowrap; width: 1%; }
+.res-type {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+.res-type svg { color: var(--color-primary); flex: none; }
+.res-table__link {
+  color: var(--color-text-primary);
+  font-weight: var(--font-weight-medium);
+  overflow-wrap: anywhere;
+}
+.res-table__link:hover { color: var(--color-primary); }
+.res-table__actions { display: inline-flex; gap: var(--space-1); }
