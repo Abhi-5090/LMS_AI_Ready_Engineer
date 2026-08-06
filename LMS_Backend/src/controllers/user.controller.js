@@ -183,10 +183,16 @@ export async function bulkCreateUsers(req, res) {
     enrolled = enrollIds.length;
   }
 
+  // Rows that matched a user who already existed — surfaced separately so the UI
+  // can report "already existing: N" (these are still enrolled when a batch is given).
+  const existing = skipped.filter((s) => s.reason === 'Already exists');
+
   ok(res, {
     createdCount: created.length,
     skippedCount: skipped.length,
     enrolledCount: enrolled,
+    existingCount: existing.length,
+    existing,
     created,
     skipped,
   }, 201);

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import * as XLSX from 'xlsx';
-import { UploadCloud, FileSpreadsheet, Download, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { UploadCloud, FileSpreadsheet, Download, CheckCircle2, AlertTriangle, Users } from 'lucide-react';
 import { UserRole } from '@/shared';
 import { Button, Select } from '@/components/ui';
 import { apiErrorMessage } from '@/lib/api';
@@ -108,15 +108,27 @@ export function BulkUploadUsers({ batchId = null, lockRole = false, onClose, onU
       <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', color: 'var(--color-success)' }}>
           <CheckCircle2 size={20} />
-          <strong>{result.createdCount} user(s) created{batchId ? `, ${result.enrolledCount} enrolled` : ''}.</strong>
+          <strong>{result.createdCount} new user(s) added{batchId ? `, ${result.enrolledCount} enrolled` : ''}.</strong>
         </div>
-        {result.skippedCount > 0 && (
+        {result.existingCount > 0 && (
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--color-text-secondary)', marginBottom: 4 }}>
+              <Users size={16} /> {result.existingCount} already existing{batchId ? ' (enrolled into this batch)' : ''} — not re-created
+            </div>
+            <ul style={{ margin: 0, paddingLeft: '1.1rem', maxHeight: 140, overflow: 'auto', fontSize: 'var(--font-size-sm)' }}>
+              {result.existing.map((s, i) => (
+                <li key={i} className="lms-muted">{s.email}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+        {result.skippedCount - (result.existingCount ?? 0) > 0 && (
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--color-warning)', marginBottom: 4 }}>
-              <AlertTriangle size={16} /> {result.skippedCount} skipped
+              <AlertTriangle size={16} /> {result.skippedCount - (result.existingCount ?? 0)} skipped
             </div>
             <ul style={{ margin: 0, paddingLeft: '1.1rem', maxHeight: 160, overflow: 'auto', fontSize: 'var(--font-size-sm)' }}>
-              {result.skipped.map((s, i) => (
+              {result.skipped.filter((s) => s.reason !== 'Already exists').map((s, i) => (
                 <li key={i} className="lms-muted">{s.email} — {s.reason}</li>
               ))}
             </ul>
