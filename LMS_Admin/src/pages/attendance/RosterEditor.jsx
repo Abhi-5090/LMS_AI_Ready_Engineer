@@ -221,13 +221,13 @@ export function RosterEditor({ classId, onSaved }) {
               </thead>
               <tbody>
                 {rows.map((r) => (
-                  <tr key={r.student} className={`att-roster-row att-roster-row--${r.status}`}>
+                  <tr key={r.student}>
                     <td>
                       {r.name}
                       <div className="lms-muted" style={{ fontSize: 'var(--font-size-xs)' }}>{r.email}</div>
                     </td>
                     <td>
-                      <Select value={r.status} onChange={(e) => setRow(r.student, { status: e.target.value })} options={ATT_OPTIONS} />
+                      <Select value={r.status} onChange={(e) => setRow(r.student, { status: e.target.value })} options={ATT_OPTIONS} className={`att-status-select att-status-select--${r.status}`} />
                     </td>
                     <td>
                       <Input
