@@ -125,18 +125,18 @@
    over the base .select styles. */
 .select.att-status-select { font-weight: var(--font-weight-semibold); }
 .select.att-status-select--present {
-  background: var(--color-success);
+  background: color-mix(in srgb, var(--color-success) 14%, var(--color-surface));
   border-color: var(--color-success);
-  color: #fff;
+  color: var(--color-success);
 }
 .select.att-status-select--absent {
-  background: var(--color-error);
+  background: color-mix(in srgb, var(--color-error) 14%, var(--color-surface));
   border-color: var(--color-error);
-  color: #fff;
+  color: var(--color-error);
 }
 .select.att-status-select--late {
-  background: #f59e0b;
+  background: color-mix(in srgb, #f59e0b 16%, var(--color-surface));
   border-color: #f59e0b;
-  color: #fff;
+  color: color-mix(in srgb, #f59e0b 60%, var(--color-text-primary));
 }
 /* excused: keeps the default select appearance (no override). */
