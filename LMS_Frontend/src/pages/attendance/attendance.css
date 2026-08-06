@@ -133,3 +133,12 @@
   z-index: 1;
   background: var(--color-surface);
 }
+
+/* Colour ONLY the status dropdown box by the selected status: present = green,
+   absent = red, late = yellow, excused = default. White text on the solid colour
+   for clear visibility. Compound selectors win over the base .select styles. */
+.select.att-status-select { font-weight: var(--font-weight-semibold); }
+.select.att-status-select--present { background: var(--color-success); border-color: var(--color-success); color: #fff; }
+.select.att-status-select--absent  { background: var(--color-error);   border-color: var(--color-error);   color: #fff; }
+.select.att-status-select--late     { background: #f59e0b; border-color: #f59e0b; color: #fff; }
+/* excused: keeps the default select appearance (no override). */

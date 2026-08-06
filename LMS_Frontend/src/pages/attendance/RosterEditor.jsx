@@ -281,7 +281,7 @@ export function RosterEditor({ classId, onSaved }) {
                           <div className="lms-muted" style={{ fontSize: 'var(--font-size-xs)' }}>{r.email}</div>
                         </td>
                         <td>
-                          <Select value={r.status} onChange={(e) => setRow(r.student, { status: e.target.value })} options={ATT_OPTIONS} />
+                          <Select value={r.status} onChange={(e) => setRow(r.student, { status: e.target.value })} options={ATT_OPTIONS} className={`att-status-select att-status-select--${r.status}`} />
                         </td>
                         <td className="lms-muted" style={{ fontVariantNumeric: 'tabular-nums' }}>{fmtWatch(r.watchSeconds)}</td>
                         <td>
