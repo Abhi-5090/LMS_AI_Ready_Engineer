@@ -111,3 +111,25 @@
   z-index: 1;
   background: var(--color-surface);
 }
+
+/* ── Roster: scrollable (~10 rows) + status-coloured rows ───────────────────── */
+.att-roster-scroll { max-height: 34rem; overflow-y: auto; }
+.att-roster-scroll .table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--color-background);
+}
+/* Colour each student's row by their marked status: present = green, absent =
+   red, late = yellow, excused = default (no tint). A left accent bar + a soft
+   tint make the status readable at a glance. */
+.att-roster-row--present td:first-child { box-shadow: inset 3px 0 0 var(--color-success); }
+.att-roster-row--absent  td:first-child { box-shadow: inset 3px 0 0 var(--color-error); }
+.att-roster-row--late    td:first-child { box-shadow: inset 3px 0 0 #f59e0b; }
+.att-roster-row--present { background: color-mix(in srgb, var(--color-success) 8%, transparent); }
+.att-roster-row--absent  { background: color-mix(in srgb, var(--color-error) 9%, transparent); }
+.att-roster-row--late    { background: color-mix(in srgb, #f59e0b 13%, transparent); }
+/* Keep the hover cue but tinted toward the row's status colour. */
+.att-roster-row--present:hover { background: color-mix(in srgb, var(--color-success) 15%, transparent); }
+.att-roster-row--absent:hover  { background: color-mix(in srgb, var(--color-error) 16%, transparent); }
+.att-roster-row--late:hover    { background: color-mix(in srgb, #f59e0b 22%, transparent); }

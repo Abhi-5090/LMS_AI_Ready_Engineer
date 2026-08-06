@@ -210,8 +210,8 @@ export function RosterEditor({ classId, onSaved }) {
             ))}
           </div>
 
-          <div className="table-wrap">
-            <table className="table">
+          <div className="table-wrap att-roster-scroll">
+            <table className="table att-roster">
               <thead>
                 <tr>
                   <th>Student</th>
@@ -221,7 +221,7 @@ export function RosterEditor({ classId, onSaved }) {
               </thead>
               <tbody>
                 {rows.map((r) => (
-                  <tr key={r.student}>
+                  <tr key={r.student} className={`att-roster-row att-roster-row--${r.status}`}>
                     <td>
                       {r.name}
                       <div className="lms-muted" style={{ fontSize: 'var(--font-size-xs)' }}>{r.email}</div>
