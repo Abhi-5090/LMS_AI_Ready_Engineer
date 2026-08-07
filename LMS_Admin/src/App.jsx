@@ -10,6 +10,7 @@ import { OrganizationDetailPage } from '@/pages/organizations/OrganizationDetail
 import { SuperAdminDashboard } from '@/pages/organizations/SuperAdminDashboard';
 import { SyllabusRequestsPage } from '@/pages/organizations/SyllabusRequestsPage';
 import { SyllabusRequestsOrgPage } from '@/pages/organizations/SyllabusRequestsOrgPage';
+import { ProgramBrochurePage } from '@/pages/program/ProgramBrochurePage';
 import { SettingsPage } from '@/pages/settings/SettingsPage';
 import { UsersPage } from '@/pages/users/UsersPage';
 import { StudentDetailPage } from '@/pages/students/StudentDetailPage';
@@ -62,6 +63,7 @@ export default function App() {
           <Route path="question-bank" element={<Suspense fallback={<FullPageSpinner />}><QuestionBankPage /></Suspense>} />
           <Route path="syllabus-requests" element={<SyllabusRequestsPage />} />
           <Route path="syllabus-requests/:orgId" element={<SyllabusRequestsOrgPage />} />
+          <Route path="program" element={<ProgramBrochurePage />} />
           <Route path="notifications" element={<NotificationsPage />} />
           <Route path="settings" element={<SettingsPage />} />
           <Route path="*" element={<Navigate to="/app" replace />} />

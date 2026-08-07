@@ -35,6 +35,7 @@ export const NAV_BY_ROLE = {
     { label: 'Master Curriculum', to: '/app/modules', Icon: BookOpen },
     { label: 'Question Bank', to: '/app/question-bank', Icon: Database },
     { label: 'Syllabus Requests', to: '/app/syllabus-requests', Icon: Inbox },
+    { label: 'Program Brochure', to: '/app/program', Icon: FileText },
     { label: 'Notifications', to: '/app/notifications', Icon: Bell },
     { label: 'Settings', to: '/app/settings', Icon: Settings },
   ],

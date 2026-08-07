@@ -19,6 +19,8 @@ const settingsSchema = new Schema(
     // gate — never returned by the API, like the other keys) + the .seb config URL.
     sebConfigKey: { type: String, select: false, default: '' },
     sebConfigUrl: { type: String, default: '' },
+    // Super-admin "Program Brochure" PDF (GridFS URL under /uploads).
+    programBrochureUrl: { type: String, default: '' },
     // Admin-configurable Claude API key for AI grading. Stored server-side only;
     // NEVER returned by the API (the controller exposes a boolean instead) and
     // hidden from default queries. The env var takes precedence over this.

@@ -1,12 +1,15 @@
+import path from 'node:path';
+import multer from 'multer';
 import { z } from 'zod';
 import { UserRole, UserStatus } from '#shared';
 import * as models from '../models/index.js';
-import { Batch, Module, Organization, User, Assessment, Submission, QuestionBankItem } from '../models/index.js';
+import { Batch, Module, Organization, User, Assessment, Submission, QuestionBankItem, getSettings } from '../models/index.js';
 import { ApiError } from '../utils/ApiError.js';
 import { ok } from '../utils/http.js';
 import { audit } from '../services/audit.js';
 import { invalidateAuthUser } from '../services/authCache.js';
 import { seedCurriculumForOrg } from '../services/orgSeed.js';
+import { gridfsStorage, deleteByUrl } from '../services/fileStore.js';
 
 // Every tenant collection that must be purged when an organization is deleted.
 const TENANT_MODELS = [
@@ -256,4 +259,34 @@ export async function getQuestionStats(_req, res) {
   }
 
   ok(res, [...byCode.values()].sort((a, b) => a.order - b.order));
+}
+
+// ── Program Brochure (super-admin: one PDF shown in the Program Browser) ────────
+export const uploadBrochureFile = multer({
+  storage: gridfsStorage('brochure'),
+  limits: { fileSize: 25 * 1024 * 1024, files: 1 }, // 25 MB
+  fileFilter: (_req, file, cb) => {
+    const ext = path.extname(file.originalname).toLowerCase();
+    if (ext !== '.pdf' && file.mimetype !== 'application/pdf') {
+      return cb(new ApiError(400, 'UNSUPPORTED_FILE', 'The program brochure must be a PDF.'));
+    }
+    cb(null, true);
+  },
+}).single('file');
+
+/** Super admin: current program-brochure PDF url (or empty). */
+export async function getProgramBrochure(_req, res) {
+  const s = await getSettings();
+  ok(res, { url: s.programBrochureUrl || '' });
+}
+
+/** Super admin: upload / replace the program-brochure PDF. */
+export async function setProgramBrochure(req, res) {
+  if (!req.file) throw ApiError.badRequest('Choose a PDF to upload.');
+  const s = await getSettings();
+  const prev = s.programBrochureUrl;
+  s.programBrochureUrl = req.file.url;
+  await s.save();
+  if (prev) deleteByUrl(prev).catch(() => {}); // best-effort cleanup of the old file
+  ok(res, { url: s.programBrochureUrl });
 }

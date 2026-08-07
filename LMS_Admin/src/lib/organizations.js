@@ -22,6 +22,24 @@ export function useQuestionStats() {
   return useQuery({ queryKey: ['organizations', 'question-stats'], queryFn: () => unwrap(api.get('/organizations/question-stats')) });
 }
 
+/** Super admin: the program-brochure PDF url (or empty). */
+export function useProgramBrochure() {
+  return useQuery({ queryKey: ['organizations', 'program-brochure'], queryFn: () => unwrap(api.get('/organizations/program-brochure')) });
+}
+
+/** Super admin: upload/replace the program-brochure PDF. */
+export function useUploadProgramBrochure() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (file) => {
+      const fd = new FormData();
+      fd.append('file', file);
+      return unwrap(api.post('/organizations/program-brochure', fd, { headers: { 'Content-Type': 'multipart/form-data' } }));
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['organizations', 'program-brochure'] }),
+  });
+}
+
 export function useDeleteOrganization() {
   const qc = useQueryClient();
   return useMutation({
