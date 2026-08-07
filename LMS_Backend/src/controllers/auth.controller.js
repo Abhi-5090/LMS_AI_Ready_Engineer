@@ -23,14 +23,19 @@ const OTP_MAX_ATTEMPTS = 5;
 // user could self-activate through the OTP → set-password flow, bypassing approval.
 const ONBOARDABLE = [UserStatus.ACTIVE];
 
+// Email is a case-INSENSITIVE identity: trim + lowercase every login/lookup so it
+// matches the stored (lowercased) address regardless of typed case. Passwords are
+// left untouched — bcrypt.compare is case-SENSITIVE by design.
+const emailField = z.string().trim().toLowerCase().email().max(160);
+
 export const loginSchema = z.object({
-  email: z.string().email().max(160),
+  email: emailField,
   password: z.string().min(1).max(128),
 });
 
 export const registerSchema = z.object({
   name: z.string().min(2).max(120),
-  email: z.string().email().max(160),
+  email: emailField,
   password: z.string().min(8, 'Password must be at least 8 characters').max(128),
 });
 
@@ -125,10 +130,10 @@ export async function me(req, res) {
 
 // ── Passwordless onboarding / password reset via email OTP ──────────────────
 
-export const checkEmailSchema = z.object({ email: z.string().email().max(160) });
-export const requestOtpSchema = z.object({ email: z.string().email().max(160) });
+export const checkEmailSchema = z.object({ email: emailField });
+export const requestOtpSchema = z.object({ email: emailField });
 export const verifyOtpSchema = z.object({
-  email: z.string().email().max(160),
+  email: emailField,
   otp: z.string().regex(/^\d{6}$/, 'Enter the 6-digit code'),
 });
 export const setPasswordSchema = z.object({
