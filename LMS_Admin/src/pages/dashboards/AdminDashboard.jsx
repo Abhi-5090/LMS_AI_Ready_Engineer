@@ -126,17 +126,23 @@ export function AdminDashboard() {
             </Card>
           </div>
 
-          {/* Progress by module */}
+          {/* Progress by module — split into two columns so all modules fit on one screen. */}
           <Card>
             <CardHeader title="Progress by Module" subtitle="Completed and in-progress students per module" />
-            <StackedBarChart
-              rows={moduleCompletion.map((m) => ({ label: m.code || m.module, segments: [{ value: m.completed || 0 }, { value: m.inProgress || 0 }] }))}
-              series={[
+            {(() => {
+              const mkRows = (list) => list.map((m) => ({ label: m.code || m.module, segments: [{ value: m.completed || 0 }, { value: m.inProgress || 0 }] }));
+              const series = [
                 { key: 'completed', label: 'Completed', color: C.primary },
                 { key: 'inProgress', label: 'In progress', color: C.secondary },
-              ]}
-              emptyText="No module progress recorded yet."
-            />
+              ];
+              const half = Math.ceil(moduleCompletion.length / 2);
+              return (
+                <div className="dash-grid-2">
+                  <StackedBarChart rows={mkRows(moduleCompletion.slice(0, half))} series={series} emptyText="No module progress recorded yet." />
+                  <StackedBarChart rows={mkRows(moduleCompletion.slice(half))} series={series} emptyText="" />
+                </div>
+              );
+            })()}
           </Card>
 
           {/* Batch enrolment + attendance */}
