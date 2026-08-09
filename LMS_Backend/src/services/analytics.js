@@ -365,3 +365,93 @@ export async function studentOverview(studentId) {
 function toId(id) {
   return typeof id === 'string' ? new mongoose.Types.ObjectId(id) : id;
 }
+
+// ── Batch ────────────────────────────────────────────────────────────────────
+
+/** Everything the analytics page needs for ONE batch: attendance, module
+ *  progress, per-assessment performance (scoped to this batch's students),
+ *  certificates, and at-risk students. Returns null if the batch is missing. */
+export async function batchOverview(batchId) {
+  const batch = await Batch.findById(batchId).select('name code students modules taughtTopics startDate endDate').lean();
+  if (!batch) return null;
+
+  const studentIds = (batch.students || []).map(toId);
+  const moduleIds = (batch.modules || []).map(toId);
+  const settings = await getSettings();
+  const threshold = settings.minAttendance;
+
+  const [attRows, attByStudent, progRows, moduleDocs, assessmentDocs, certificates, studentDocs] = await Promise.all([
+    Attendance.aggregate([{ $match: { batch: toId(batchId) } }, { $group: { _id: null, ...ATT_GROUP } }]),
+    Attendance.aggregate([{ $match: { batch: toId(batchId) } }, { $group: { _id: '$student', ...ATT_GROUP } }]),
+    ModuleProgress.aggregate([
+      { $match: { student: { $in: studentIds }, module: { $in: moduleIds } } },
+      { $group: { _id: { module: '$module', status: '$status' }, n: { $sum: 1 } } },
+    ]),
+    Module.find({ _id: { $in: moduleIds } }).select('name code order topics').sort({ order: 1 }).lean(),
+    Assessment.find({ module: { $in: moduleIds }, isTemplate: { $ne: true } }).select('title type module').populate('module', 'name code').lean(),
+    Certificate.countDocuments({ student: { $in: studentIds } }),
+    User.find({ _id: { $in: studentIds } }).select('name').lean(),
+  ]);
+
+  const att = attRows[0] ?? { attended: 0, present: 0, late: 0, absent: 0, excused: 0, total: 0 };
+  const attendance = { percentage: pctFrom(att), present: att.present, late: att.late, absent: att.absent, excused: att.excused, total: att.total };
+
+  // Module progress (completed / in-progress students per module) + syllabus completion.
+  const byModule = new Map(moduleDocs.map((m) => [String(m._id), { module: m.name, code: m.code, order: m.order ?? 0, completed: 0, inProgress: 0 }]));
+  for (const r of progRows) {
+    const e = byModule.get(String(r._id.module));
+    if (!e) continue;
+    if (r._id.status === ModuleProgressStatus.COMPLETED) e.completed += r.n;
+    else if (r._id.status === ModuleProgressStatus.IN_PROGRESS) e.inProgress += r.n;
+  }
+  const moduleProgress = [...byModule.values()].sort((a, b) => a.order - b.order);
+
+  const taught = new Map((batch.taughtTopics || []).map((tt) => [String(tt.module), new Set((tt.topics || []).map((t) => String(t)))]));
+  let modulesCompleted = 0;
+  for (const m of moduleDocs) {
+    const topics = (m.topics || []).map((t) => String(t._id));
+    if (topics.length === 0) continue;
+    const ts = taught.get(String(m._id)) || new Set();
+    if (topics.every((t) => ts.has(t))) modulesCompleted += 1;
+  }
+  const completionPct = moduleIds.length ? Math.round((modulesCompleted / moduleIds.length) * 100) : 0;
+
+  // Per-assessment performance, scoped to THIS batch's students.
+  const assessIds = assessmentDocs.map((a) => a._id);
+  const subRows = assessIds.length
+    ? await Submission.aggregate([
+      { $match: { assessment: { $in: assessIds }, student: { $in: studentIds }, status: GRADED } },
+      { $group: { _id: '$assessment', submissions: { $sum: 1 }, passed: { $sum: { $cond: ['$passed', 1, 0] } }, sumScore: { $sum: '$score' } } },
+    ])
+    : [];
+  const statsById = new Map(subRows.map((r) => [String(r._id), r]));
+  const assessments = assessmentDocs.map((a) => {
+    const s = statsById.get(String(a._id));
+    const submissions = s?.submissions ?? 0;
+    return {
+      title: a.title,
+      type: a.type,
+      module: a.module?.name ?? '—',
+      submissions,
+      passRate: submissions ? Math.round((s.passed / submissions) * 100) : 0,
+      avgScore: submissions ? Math.round(s.sumScore / submissions) : 0,
+    };
+  });
+
+  // At-risk: batch students below the attendance threshold.
+  const nameById = new Map(studentDocs.map((u) => [String(u._id), u.name]));
+  const atRisk = attByStudent
+    .map((r) => ({ name: nameById.get(String(r._id)) ?? '—', percentage: pctFrom(r), total: r.total }))
+    .filter((r) => r.total > 0 && r.percentage < threshold)
+    .sort((a, b) => a.percentage - b.percentage);
+
+  return {
+    batch: { id: String(batch._id), name: batch.name, code: batch.code, students: studentIds.length, startDate: batch.startDate, endDate: batch.endDate },
+    counts: { students: studentIds.length, modules: moduleIds.length, assessments: assessmentDocs.length, certificates, modulesCompleted, completionPct },
+    attendanceThreshold: threshold,
+    attendance,
+    moduleProgress,
+    assessments,
+    atRisk,
+  };
+}

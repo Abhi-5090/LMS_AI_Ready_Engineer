@@ -1,8 +1,16 @@
-import { adminOverview, studentOverview, trainerOverview } from '../services/analytics.js';
+import { adminOverview, batchOverview, studentOverview, trainerOverview } from '../services/analytics.js';
+import { ApiError } from '../utils/ApiError.js';
 import { ok } from '../utils/http.js';
 
 export async function getAdminAnalytics(_req, res) {
   ok(res, await adminOverview());
+}
+
+/** Analytics for a single batch (attendance, module progress, assessments, at-risk). */
+export async function getBatchAnalytics(req, res) {
+  const data = await batchOverview(req.params.batchId);
+  if (!data) throw ApiError.notFound('Batch not found');
+  ok(res, data);
 }
 
 export async function getTrainerAnalytics(req, res) {

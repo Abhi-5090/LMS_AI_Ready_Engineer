@@ -21,3 +21,12 @@ export function useTrainerAnalytics({ enabled = true } = {}) {
     enabled,
   });
 }
+
+/** Per-batch analytics (attendance, module progress, assessments, at-risk). */
+export function useBatchAnalytics(batchId) {
+  return useQuery({
+    queryKey: ['analytics', 'batch', batchId],
+    queryFn: () => unwrap(api.get(`/analytics/batch/${batchId}`)),
+    enabled: Boolean(batchId),
+  });
+}
