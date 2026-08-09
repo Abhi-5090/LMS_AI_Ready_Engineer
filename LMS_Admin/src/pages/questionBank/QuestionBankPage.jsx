@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import * as XLSX from 'xlsx';
-import { AlertTriangle, ArrowDown, ArrowDownUp, ArrowUp, Boxes, CheckCircle2, ChevronLeft, Copy, Download, FileQuestion, FileText, FolderOpen, LayoutGrid, Library, Lock, Pencil, Plus, Table2, Trash2, UploadCloud, X } from 'lucide-react';
+import { AlertTriangle, ArrowDown, ArrowDownUp, ArrowUp, Boxes, CheckCircle2, ChevronLeft, Copy, Download, FileQuestion, FileText, FolderOpen, LayoutGrid, Library, List, Lock, Pencil, Plus, Trash2, UploadCloud, X } from 'lucide-react';
 import { QuestionType, QuestionComplexity, UserRole } from '@/shared';
 import { Badge, Button, Card, CardHeader, EmptyState, Input, Modal, Select, SkeletonTable, useConfirm, useToast } from '@/components/ui';
 import { PageHeader } from '@/components/PageHeader';
@@ -120,11 +120,11 @@ export function QuestionBankPage() {
         {!moduleId && (
           <div className="toolbar__right">
             <div className="view-toggle" role="group" aria-label="View">
-              <button type="button" className={`view-toggle__btn${pickerView === 'cards' ? ' is-on' : ''}`} aria-pressed={pickerView === 'cards'} title="Card view" onClick={() => choosePickerView('cards')}>
-                <LayoutGrid size={15} /> Cards
+              <button type="button" className={`view-toggle__btn${pickerView === 'cards' ? ' is-on' : ''}`} aria-pressed={pickerView === 'cards'} title="Grid view" aria-label="Grid view" onClick={() => choosePickerView('cards')}>
+                <LayoutGrid size={16} />
               </button>
-              <button type="button" className={`view-toggle__btn${pickerView === 'table' ? ' is-on' : ''}`} aria-pressed={pickerView === 'table'} title="Table view" onClick={() => choosePickerView('table')}>
-                <Table2 size={15} /> Table
+              <button type="button" className={`view-toggle__btn${pickerView === 'table' ? ' is-on' : ''}`} aria-pressed={pickerView === 'table'} title="List view" aria-label="List view" onClick={() => choosePickerView('table')}>
+                <List size={16} />
               </button>
             </div>
           </div>

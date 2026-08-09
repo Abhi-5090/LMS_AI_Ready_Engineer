@@ -24,7 +24,7 @@ const ROLE_OPTS = Object.values(UserRole).map((v) => ({ value: v, label: titleCa
 const STATUS_OPTS = Object.values(UserStatus).map((v) => ({ value: v, label: titleCase(v) }));
 
 const NEW_USER = { name: '', email: '', password: '', role: UserRole.STUDENT, phone: '' };
-const PAGE_SIZE = 20;
+const PAGE_SIZE = 500; // load the full filtered set; the table scrolls instead of paginating
 
 export function UsersPage() {
   const navigate = useNavigate();
@@ -100,7 +100,6 @@ export function UsersPage() {
   }
 
   const total = data?.total ?? 0;
-  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   return (
     <>
@@ -140,7 +139,7 @@ export function UsersPage() {
         />
       ) : (
         <>
-          <div className="table-wrap">
+          <div className="table-wrap users-scroll">
             <table className="table">
               <thead>
                 <tr><th>Name</th><th>Role</th><th>Status</th><th>Joined</th><th /></tr>
@@ -174,14 +173,10 @@ export function UsersPage() {
             </table>
           </div>
 
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'var(--space-4)' }}>
+          <div style={{ marginTop: 'var(--space-3)' }}>
             <span className="lms-muted" style={{ fontSize: 'var(--font-size-sm)' }}>
-              {total} user{total === 1 ? '' : 's'} · page {filters.page} of {totalPages}
+              Showing {data?.items.length ?? 0} of {total} user{total === 1 ? '' : 's'} — scroll for more, or filter above.
             </span>
-            <div className="list-actions">
-              <Button size="sm" variant="outline" disabled={filters.page <= 1} onClick={() => setFilter({ page: filters.page - 1 })}>Previous</Button>
-              <Button size="sm" variant="outline" disabled={filters.page >= totalPages} onClick={() => setFilter({ page: filters.page + 1 })}>Next</Button>
-            </div>
           </div>
         </>
       )}

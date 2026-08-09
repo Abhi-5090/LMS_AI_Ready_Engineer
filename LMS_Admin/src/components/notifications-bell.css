@@ -107,6 +107,9 @@
 .bell__title {
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-medium);
+  /* .bell__item is a <button>, which doesn't inherit the themed text colour —
+     set it explicitly so the title isn't black-on-dark in dark mode. */
+  color: var(--color-text-primary);
 }
 .bell__meta {
   font-size: var(--font-size-xs);

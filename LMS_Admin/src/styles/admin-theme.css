@@ -317,3 +317,7 @@ h1, h2, h3 { letter-spacing: -0.02em; }
 /* Students-at-risk table on the admin dashboard: ~10 rows, then scroll. */
 .risk-table-scroll { max-height: 24rem; overflow-y: auto; }
 .risk-table-scroll .table thead th { position: sticky; top: 0; z-index: 1; }
+
+/* Users directory: ~10 rows visible, then scroll (no pagination). */
+.users-scroll { max-height: 38rem; overflow-y: auto; }
+.users-scroll thead th { position: sticky; top: 0; z-index: 1; background: var(--color-background); }

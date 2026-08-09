@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { UserRole } from '@/shared';
-import { BookOpen, ChevronDown, ChevronUp, LayoutGrid, Table2, Trash2 } from 'lucide-react';
+import { BookOpen, ChevronDown, ChevronUp, LayoutGrid, List, Trash2 } from 'lucide-react';
 import { Badge, Button, Card, EmptyState, ErrorState, Input, Modal, Select, SkeletonCards, Textarea, useConfirm, useToast } from '@/components/ui';
 import { PageHeader } from '@/components/PageHeader';
 import { apiErrorMessage } from '@/lib/api';
@@ -118,11 +118,11 @@ export function ModulesPage() {
         )}
         <div className="toolbar__right">
           <div className="view-toggle" role="group" aria-label="View">
-            <button type="button" className={`view-toggle__btn${view === 'cards' ? ' is-on' : ''}`} aria-pressed={view === 'cards'} title="Card view" onClick={() => chooseView('cards')}>
-              <LayoutGrid size={15} /> Cards
+            <button type="button" className={`view-toggle__btn${view === 'cards' ? ' is-on' : ''}`} aria-pressed={view === 'cards'} title="Grid view" aria-label="Grid view" onClick={() => chooseView('cards')}>
+              <LayoutGrid size={16} />
             </button>
-            <button type="button" className={`view-toggle__btn${view === 'table' ? ' is-on' : ''}`} aria-pressed={view === 'table'} title="Table view" onClick={() => chooseView('table')}>
-              <Table2 size={15} /> Table
+            <button type="button" className={`view-toggle__btn${view === 'table' ? ' is-on' : ''}`} aria-pressed={view === 'table'} title="List view" aria-label="List view" onClick={() => chooseView('table')}>
+              <List size={16} />
             </button>
           </div>
           {isAdmin && <Button onClick={() => setCreating(true)}>+ New Module</Button>}
