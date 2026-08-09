@@ -1,8 +1,12 @@
 import axios from 'axios';
 
-const ACCESS_KEY = 'lms.accessToken';
-const REFRESH_KEY = 'lms.refreshToken';
-const FILE_KEY = 'lms.fileToken';
+// Namespaced per app: the admin and student SPAs are served from the same origin
+// and therefore share one localStorage. Distinct keys keep the two sessions
+// isolated so signing into one never clobbers the other's tokens (which used to
+// cause spurious logouts).
+const ACCESS_KEY = 'lms.admin.accessToken';
+const REFRESH_KEY = 'lms.admin.refreshToken';
+const FILE_KEY = 'lms.admin.fileToken';
 
 export const tokenStore = {
   get access() {
@@ -99,20 +103,28 @@ api.interceptors.request.use((config) => {
 // On a 401, try a one-shot refresh, then replay the original request.
 let refreshing = null;
 
+/**
+ * Attempt a token refresh. Returns:
+ *   { token }          — refreshed; retry the original request
+ *   { invalid: true }  — refresh token is genuinely bad (401 / missing) → sign out
+ *   { invalid: false } — transient failure (server restarting, network drop, 5xx)
+ *                        → KEEP the session; the next request will just retry
+ */
 async function refreshAccessToken() {
   const refresh = tokenStore.refresh;
-  if (!refresh) return null;
+  if (!refresh) return { invalid: true };
   try {
-    const { data } = await axios.post('/api/auth/refresh', {
-      refreshToken: refresh,
-    });
-    if (data.data) {
+    const { data } = await axios.post('/api/auth/refresh', { refreshToken: refresh });
+    if (data?.data?.tokens) {
       tokenStore.set(data.data.tokens);
-      return data.data.tokens.accessToken;
+      return { token: data.data.tokens.accessToken };
     }
-    return null;
-  } catch {
-    return null;
+    return { invalid: true };
+  } catch (err) {
+    // ONLY a real 401 means the refresh token is invalid/expired. A network error
+    // or 5xx (e.g. the backend momentarily restarting) is transient — never log
+    // the user out for that, or they get bounced to /login every few minutes.
+    return { invalid: err?.response?.status === 401 };
   }
 }
 
@@ -123,18 +135,20 @@ api.interceptors.response.use(
     if (error.response?.status === 401 && original && !original._retried) {
       original._retried = true;
       refreshing = refreshing ?? refreshAccessToken();
-      const newToken = await refreshing;
+      const result = await refreshing;
       refreshing = null;
-      if (newToken) {
+      if (result?.token) {
         original.headers = original.headers ?? {};
-        original.headers.Authorization = `Bearer ${newToken}`;
+        original.headers.Authorization = `Bearer ${result.token}`;
         return api(original);
       }
-      // Refresh failed → the session is dead. Clear it and send them to login
-      // instead of stranding them on a half-broken, error-filled page.
-      tokenStore.clear();
-      if (!window.location.pathname.startsWith('/login')) {
-        window.location.assign('/login');
+      // Sign out ONLY when the refresh token is genuinely invalid — not on a
+      // transient blip (which would strand the user on /login repeatedly).
+      if (result?.invalid) {
+        tokenStore.clear();
+        if (!window.location.pathname.startsWith('/login')) {
+          window.location.assign('/login');
+        }
       }
     }
     return Promise.reject(error);
