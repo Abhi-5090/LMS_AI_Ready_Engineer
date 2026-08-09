@@ -1009,3 +1009,7 @@
 }
 .res-table__link:hover { color: var(--color-primary); }
 .res-table__actions { display: inline-flex; gap: var(--space-1); }
+
+/* Batch card: completion bar + class-hours line. */
+.batch-card__progress { display: flex; flex-direction: column; gap: 6px; margin-top: 2px; }
+.batch-card__progress-top { display: flex; justify-content: space-between; gap: var(--space-2); font-size: var(--font-size-xs); font-weight: var(--font-weight-semibold); }

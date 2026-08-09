@@ -136,6 +136,14 @@ export function BatchesPage() {
                   <Badge tone="neutral">{b.trainers?.length ?? 0} trainers</Badge>
                   <Badge tone="neutral">{b.modules?.length ?? 0} modules</Badge>
                 </div>
+                <div className="batch-card__progress">
+                  <div className="batch-card__progress-top">
+                    <span>{b.completionPct ?? 0}% complete</span>
+                    <span className="lms-muted">{b.modulesCompleted ?? 0}/{b.moduleCount ?? (b.modules?.length ?? 0)} modules</span>
+                  </div>
+                  <div className="module-card__progress-track"><div className="module-card__progress-fill" style={{ width: `${b.completionPct ?? 0}%` }} /></div>
+                  <div className="lms-muted" style={{ fontSize: 'var(--font-size-xs)' }}>{b.hoursCompleted ?? 0} h of classes completed</div>
+                </div>
                 {isAdmin && (
                   <div className="list-actions">
                     <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); navigate(`/app/batches/${b.id}`); }}>

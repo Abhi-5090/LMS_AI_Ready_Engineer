@@ -95,7 +95,48 @@ export async function listBatches(req, res) {
     filter.students = userId;
   }
   const batches = await Batch.find(filter).sort({ startDate: -1 }).populate(POP);
-  ok(res, batches.map((b) => b.toJSON()));
+  ok(res, await withBatchProgress(batches));
+}
+
+// ── Per-batch progress: completion % (modules fully taught) + class hours held ──
+const minutesOf = (t) => { const [h, m] = String(t ?? '').split(':').map(Number); return (h || 0) * 60 + (m || 0); };
+const durationMins = (start, end) => Math.max(0, minutesOf(end) - minutesOf(start));
+
+/** Attach completionPct / modulesCompleted / moduleCount / hoursCompleted to each batch. */
+async function withBatchProgress(batches) {
+  if (batches.length === 0) return [];
+  const now = new Date();
+  const batchIds = batches.map((b) => b._id);
+  const allModuleIds = [...new Set(batches.flatMap((b) => (b.modules || []).map((m) => String(m._id ?? m))))];
+
+  const [modDocs, sessions] = await Promise.all([
+    Module.find({ _id: { $in: allModuleIds } }).select('topics').lean(),
+    ClassSchedule.find({ batch: { $in: batchIds }, date: { $lte: now } }).select('batch startTime endTime').lean(),
+  ]);
+  const topicsByModule = new Map(modDocs.map((m) => [String(m._id), (m.topics || []).map((t) => String(t._id))]));
+  const minsByBatch = new Map();
+  for (const s of sessions) {
+    minsByBatch.set(String(s.batch), (minsByBatch.get(String(s.batch)) || 0) + durationMins(s.startTime, s.endTime));
+  }
+
+  return batches.map((b) => {
+    const json = b.toJSON();
+    const moduleIds = (b.modules || []).map((m) => String(m._id ?? m));
+    const taught = new Map((b.taughtTopics || []).map((tt) => [String(tt.module), new Set((tt.topics || []).map((t) => String(t)))]));
+    let completed = 0;
+    for (const mid of moduleIds) {
+      const topics = topicsByModule.get(mid) || [];
+      if (topics.length === 0) continue; // a module with no topics can't be "complete"
+      const taughtSet = taught.get(mid) || new Set();
+      if (topics.every((t) => taughtSet.has(t))) completed += 1;
+    }
+    const moduleCount = moduleIds.length;
+    json.moduleCount = moduleCount;
+    json.modulesCompleted = completed;
+    json.completionPct = moduleCount ? Math.round((completed / moduleCount) * 100) : 0;
+    json.hoursCompleted = Math.round(((minsByBatch.get(String(b._id)) || 0) / 60) * 10) / 10;
+    return json;
+  });
 }
 
 export async function getBatch(req, res) {
