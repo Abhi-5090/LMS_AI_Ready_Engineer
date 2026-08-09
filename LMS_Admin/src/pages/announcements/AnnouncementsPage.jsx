@@ -97,27 +97,23 @@ export function AnnouncementsPage() {
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
           {items?.map((a) => (
-            <Card key={a.id}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 'var(--space-3)', alignItems: 'flex-start' }}>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: 'flex', gap: 'var(--space-2)', alignItems: 'center', flexWrap: 'wrap' }}>
-                    <strong>{a.title}</strong>
-                    <AnnouncementTargets a={a} />
-                  </div>
-                  <p className="lms-secondary-text" style={{ marginTop: 'var(--space-2)', whiteSpace: 'pre-wrap' }}>{a.body}</p>
-                  {a.imageUrl && (
-                    <a href={fileSrc(a.imageUrl)} target="_blank" rel="noreferrer" className="ann-img">
-                      <img src={fileSrc(a.imageUrl)} alt={a.title} />
-                    </a>
-                  )}
-                  <div className="lms-muted" style={{ fontSize: 'var(--font-size-xs)', marginTop: 'var(--space-2)' }}>
-                    {a.author?.name ?? 'Trainer'} · {formatDate(a.createdAt)}
-                  </div>
+            <Card key={a.id} className="ann-card">
+              <div className="ann-card__head">
+                <div className="ann-card__titles">
+                  <strong className="ann-card__title">{a.title}</strong>
+                  <AnnouncementTargets a={a} />
                 </div>
                 {(isAdmin || a.author?.id === user?.id) && (
                   <Button size="sm" variant="ghost" onClick={() => remove(a.id)}>Delete</Button>
                 )}
               </div>
+              {a.imageUrl && (
+                <a href={fileSrc(a.imageUrl)} target="_blank" rel="noreferrer" className="ann-card__media">
+                  <img src={fileSrc(a.imageUrl)} alt={a.title} />
+                </a>
+              )}
+              <p className="ann-card__body">{a.body}</p>
+              <div className="ann-card__meta">{a.author?.name ?? 'Trainer'} · {formatDate(a.createdAt)}</div>
             </Card>
           ))}
         </div>

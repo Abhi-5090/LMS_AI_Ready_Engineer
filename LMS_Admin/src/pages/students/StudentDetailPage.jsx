@@ -7,7 +7,6 @@ import { useStudentProgress, useStudentSubmissions } from '@/lib/progress';
 import { useStudentAttendance } from '@/lib/attendance';
 import { useStudentCertificates } from '@/lib/certificates';
 import { levelTone, titleCase } from '@/pages/modules/moduleUi';
-import { ATT_LABEL, ATT_TONE } from '@/pages/attendance/attendanceUi';
 import { formatDate } from '@/lib/format';
 import '@/pages/modules/modules.css';
 
@@ -142,13 +141,33 @@ export function StudentDetailPage() {
           <CardHeader title="Attendance breakdown" />
           {!att ? (
             <p className="lms-muted">No attendance recorded.</p>
-          ) : (
-            <div style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
-              {Object.entries(att.byStatus).map(([k, v]) => (
-                <Badge key={k} tone={ATT_TONE[k]}>{ATT_LABEL[k]}: {v}</Badge>
-              ))}
-            </div>
-          )}
+          ) : (() => {
+            const bs = att.byStatus || {};
+            const present = bs.present || 0;
+            const late = bs.late || 0;
+            const absent = bs.absent || 0;
+            const excused = bs.excused || 0;
+            const total = present + late + absent + excused;
+            const attended = present + late; // present or late = attended
+            const pct = att.percentage ?? (total ? Math.round((attended / total) * 100) : 0);
+            return (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: 'var(--space-3)', flexWrap: 'wrap' }}>
+                  <span style={{ fontSize: 'var(--font-size-3xl)', fontWeight: 'var(--font-weight-bold)', color: 'var(--color-primary)', lineHeight: 1 }}>{pct}%</span>
+                  <span className="lms-secondary-text">Attended <b>{attended}</b> of <b>{total}</b> classes</span>
+                </div>
+                <div style={{ height: 8, borderRadius: 'var(--radius-full)', background: 'var(--color-border)', overflow: 'hidden' }}>
+                  <div style={{ height: '100%', width: `${pct}%`, borderRadius: 'var(--radius-full)', background: 'linear-gradient(90deg, var(--color-primary), var(--color-secondary))' }} />
+                </div>
+                <div style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
+                  <Badge tone="success">Present {present}</Badge>
+                  {late > 0 && <Badge tone="warning">Late {late}</Badge>}
+                  {absent > 0 && <Badge tone="error">Absent {absent}</Badge>}
+                  {excused > 0 && <Badge tone="neutral">Excused {excused}</Badge>}
+                </div>
+              </div>
+            );
+          })()}
         </Card>
         <Card>
           <CardHeader title="Certificates" />
