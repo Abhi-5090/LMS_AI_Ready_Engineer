@@ -55,3 +55,28 @@ export const TECH_STACK = [
   'TensorFlow', 'PyTorch', 'scikit-learn', 'Pandas', 'NumPy', 'OpenAI API', 'LangChain', 'Hugging Face',
   'GraphQL', 'REST API', 'WebSockets', 'Kafka', 'Figma',
 ];
+
+// ── Trainer class feedback ───────────────────────────────────────────────────
+// Students rate the trainer who took a class on these parameters (each 1–5),
+// plus a separate Overall rating. Shared by the student rating modal and the
+// admin feedback dashboard so labels never drift.
+export const FEEDBACK_PARAMETERS = [
+  { key: 'subjectKnowledge', label: 'Subject knowledge' },
+  { key: 'clarity', label: 'Clarity of explanation' },
+  { key: 'engagement', label: 'Engagement & interaction' },
+  { key: 'pace', label: 'Pace & time management' },
+  { key: 'doubtHandling', label: 'Doubt handling' },
+];
+
+// Improvement keywords a student can pick (multi-select) when the Overall
+// rating is below 5, alongside a free-text comment.
+export const FEEDBACK_KEYWORDS = [
+  'Low practical knowledge',
+  'Needs improvement in lectures',
+  'Communication / English',
+  'Poor time management',
+  'Not engaging / hard to follow',
+];
+
+// Overall ratings strictly below this open the improvement feedback (keywords + comment).
+export const FEEDBACK_LOW_THRESHOLD = 5;

@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { ClassStatus, MeetingProvider, UserRole } from '#shared';
+import { ClassStatus, FEEDBACK_KEYWORDS, MeetingProvider, UserRole } from '#shared';
 import { Batch, ClassJoin, ClassRating, ClassSchedule, Module, User } from '../models/index.js';
 import { createZoomMeeting } from '../services/meetings.js';
 import { createClassToken, livekitConfigured } from '../services/livekit.js';
@@ -231,12 +231,23 @@ export async function getLiveToken(req, res) {
 
 // ── Class ratings (student rates the trainer after attending) ─────────────────
 
+const score = z.number().int().min(1).max(5);
 export const rateClassSchema = z.object({
-  rating: z.number().int().min(1).max(5),
+  rating: score, // overall
+  parameters: z
+    .object({
+      subjectKnowledge: score,
+      clarity: score,
+      engagement: score,
+      pace: score,
+      doubtHandling: score,
+    })
+    .optional(),
+  keywords: z.array(z.string().max(80)).max(10).optional(),
   comment: z.string().max(1000).optional(),
 });
 
-/** Submit a rating + comment for a class the student attended. */
+/** Submit feedback (overall + per-parameter + keywords/comment) for a class. */
 export async function rateClass(req, res) {
   const cls = await ClassSchedule.findById(req.params.id);
   if (!cls) throw ApiError.notFound('Class not found');
@@ -248,11 +259,16 @@ export async function rateClass(req, res) {
   const exists = await ClassRating.findOne({ classSession: cls._id, student: req.auth.userId });
   if (exists) throw ApiError.badRequest('You have already rated this class');
 
+  // Keep only the recognised improvement keywords (defence against tampering).
+  const keywords = (req.body.keywords ?? []).filter((k) => FEEDBACK_KEYWORDS.includes(k));
+
   await ClassRating.create({
     classSession: cls._id,
     student: req.auth.userId,
     trainer: cls.trainer,
     rating: req.body.rating,
+    parameters: req.body.parameters,
+    keywords,
     comment: req.body.comment,
   });
   ok(res, { rated: true }, 201);

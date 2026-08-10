@@ -12,12 +12,12 @@ export function useClassRatingsPending(enabled = true) {
   });
 }
 
-/** Submit a rating + comment for a class. */
+/** Submit feedback (overall + per-parameter + keywords/comment) for a class. */
 export function useRateClass() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, rating, comment }) =>
-      unwrap(api.post(`/classes/${id}/rating`, { rating, comment })),
+    mutationFn: ({ id, rating, parameters, keywords, comment }) =>
+      unwrap(api.post(`/classes/${id}/rating`, { rating, parameters, keywords, comment })),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['class-ratings'] }),
   });
 }

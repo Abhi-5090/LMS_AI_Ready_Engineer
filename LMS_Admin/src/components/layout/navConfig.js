@@ -18,6 +18,7 @@ import {
   Activity,
   SlidersHorizontal,
   Bell,
+  Star,
 } from 'lucide-react';
 import { UserRole } from '@/shared';
 
@@ -59,6 +60,7 @@ export const NAV_BY_ROLE = {
     ] },
     { group: 'System & Insights', Icon: SlidersHorizontal, items: [
       { label: 'Analytics', to: '/app/analytics', Icon: BarChart3 },
+      { label: 'Feedback', to: '/app/feedback', Icon: Star },
       { label: 'Audit Log', to: '/app/audit', Icon: ScrollText },
       { label: 'Settings', to: '/app/settings', Icon: Settings },
     ] },
