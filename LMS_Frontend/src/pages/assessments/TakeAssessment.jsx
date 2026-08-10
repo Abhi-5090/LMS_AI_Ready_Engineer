@@ -234,8 +234,6 @@ function AnswersModal({ a, submission, onClose }) {
     body.scrollTo({ top: Math.max(0, el.offsetTop - offset), behavior: 'smooth' });
   };
 
-  const optClass = (isCorrect, isPicked) => `ans-opt${isCorrect ? ' ans-opt--correct' : ''}${isPicked && !isCorrect ? ' ans-opt--wrong' : ''}${isPicked ? ' ans-opt--picked' : ''}`;
-
   return (
     <Modal open title="Your answers vs the correct answers" size="xl" onClose={onClose}>
       <div className="ans-modal">
@@ -294,44 +292,34 @@ function AnswersModal({ a, submission, onClose }) {
                     <QuestionMedia url={q.mediaUrl} type={q.mediaType} name={q.mediaName} />
 
                     {isMcq ? (
-                  <div className="ans-cols">
-                    <div className="ans-side">
-                      <div className="ans-side__label">Your answer</div>
-                      <ul className="ans-opts">
-                        {q.options?.map((opt, oi) => (
-                          <li key={oi} className={optClass(oi === picked && oi === q.correctOption, oi === picked)}>
-                            <span>{opt}</span>
-                            {oi === picked && <span className="ans-opts__tag">you</span>}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                    <div className="ans-side">
-                      <div className="ans-side__label">Correct answer</div>
-                      <ul className="ans-opts">
-                        {q.options?.map((opt, oi) => (
-                          <li key={oi} className={optClass(oi === q.correctOption, false)}>
-                            <span>{opt}</span>
-                            {oi === q.correctOption && <Check size={14} strokeWidth={3} />}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="ans-cols">
-                    <div className="ans-side">
-                      <div className="ans-side__label">Your answer</div>
-                      <div className="ans-text">{ans?.text ? ans.text : <em className="lms-muted">Not answered</em>}</div>
-                    </div>
-                    <div className="ans-side">
-                      <div className="ans-side__label">Actual answer</div>
-                      <div className="ans-text lms-muted">
-                        {q.referenceAnswer ? q.referenceAnswer : 'Graded by the AI evaluation engine against the model answer.'}
-                      </div>
-                    </div>
+                      <div className="ans-review">
+                        <div className="ans-side__label">Your answer</div>
+                        <div className={`ans-text${picked === undefined ? '' : correct ? ' ans-text--correct' : ' ans-text--wrong'}`}>
+                          {picked === undefined ? (
+                            <em className="lms-muted">Not answered</em>
+                          ) : (
+                            <span className="ans-review__line">{q.options?.[picked]}{correct && <Check size={14} strokeWidth={3} />}</span>
+                          )}
                         </div>
-                      )}
+                        {!correct && (
+                          <>
+                            <div className="ans-side__label" style={{ marginTop: 'var(--space-3)' }}>Correct answer</div>
+                            <div className="ans-text ans-text--correct">
+                              <span className="ans-review__line">{q.options?.[q.correctOption]}<Check size={14} strokeWidth={3} /></span>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="ans-review">
+                        <div className="ans-side__label">Your answer</div>
+                        <div className="ans-text">{ans?.text ? ans.text : <em className="lms-muted">Not answered</em>}</div>
+                        <div className="ans-side__label" style={{ marginTop: 'var(--space-3)' }}>Actual answer</div>
+                        <div className="ans-text ans-text--correct">
+                          {q.referenceAnswer ? q.referenceAnswer : 'Graded by the AI evaluation engine against the model answer.'}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 );
               })}
