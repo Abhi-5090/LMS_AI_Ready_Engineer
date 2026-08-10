@@ -389,7 +389,10 @@ export async function batchOverview(batchId) {
     ]),
     Module.find({ _id: { $in: moduleIds } }).select('name code order topics').sort({ order: 1 }).lean(),
     Assessment.find({ module: { $in: moduleIds }, isTemplate: { $ne: true } }).select('title type module').populate('module', 'name code').lean(),
-    Certificate.countDocuments({ student: { $in: studentIds } }),
+    // Count certificates EARNED IN this batch (cert.batch), not by the student's
+    // current batch — a student who moved batches keeps the certificate where it
+    // was earned. This matches the certificates page's batch filter.
+    Certificate.countDocuments({ batch: toId(batchId) }),
     User.find({ _id: { $in: studentIds } }).select('name').lean(),
   ]);
 
