@@ -1,0 +1,29 @@
+/* Trainer's own feedback view. */
+.mfb-stars { display: inline-flex; gap: 2px; line-height: 0; vertical-align: middle; }
+.mfb-avg { display: inline-flex; align-items: center; gap: var(--space-2); }
+
+.mfb-comments { display: flex; flex-direction: column; gap: var(--space-3); }
+.mfb-comment {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  background: var(--color-surface-2);
+}
+.mfb-comment__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+.mfb-comment__meta { color: var(--color-text-muted); font-size: var(--font-size-xs); }
+.mfb-comment__chips { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-top: var(--space-3); }
+.mfb-chip {
+  border-radius: 999px;
+  padding: 0.25rem 0.65rem;
+  font-size: var(--font-size-xs);
+  background: color-mix(in srgb, var(--color-warning) 16%, transparent);
+  color: var(--color-warning);
+  border: 1px solid color-mix(in srgb, var(--color-warning) 35%, transparent);
+}
+.mfb-comment__text { margin: var(--space-3) 0 0; color: var(--color-text-secondary); font-style: italic; }

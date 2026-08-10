@@ -14,6 +14,9 @@ const overviewQuery = z.object({
   trainer: z.union([z.string().length(24), z.literal('all')]).optional(),
 });
 
+// A trainer's own feedback (before the admin '/' route; distinct path anyway).
+router.get('/me', requireRole(UserRole.TRAINER), asyncHandler(feedback.getMyFeedback));
+
 router.get(
   '/',
   requireRole(UserRole.ADMIN, UserRole.SUPER_ADMIN),

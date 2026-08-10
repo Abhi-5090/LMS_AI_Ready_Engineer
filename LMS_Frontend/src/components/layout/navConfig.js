@@ -22,6 +22,7 @@ import {
   ClipboardList,
   MessagesSquare,
   Bell,
+  Star,
 } from 'lucide-react';
 import { UserRole } from '@/shared';
 
@@ -70,6 +71,7 @@ export const NAV_BY_ROLE = {
     ] },
     { group: 'Insights', Icon: BarChart3, items: [
       { label: 'Analytics', to: '/app/analytics', Icon: BarChart3 },
+      { label: 'My Feedback', to: '/app/feedback', Icon: Star },
     ] },
     { label: 'Profile', to: '/app/profile', Icon: UserCircle },
   ],

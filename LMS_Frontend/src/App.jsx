@@ -21,6 +21,7 @@ import { CurriculumPage } from '@/pages/curriculum/CurriculumPage';
 import { CertificatesPage } from '@/pages/certificates/CertificatesPage';
 import { VerifyCertificatePage } from '@/pages/certificates/VerifyCertificatePage';
 import { AnalyticsPage } from '@/pages/analytics/AnalyticsPage';
+import { MyFeedbackPage } from '@/pages/feedback/MyFeedbackPage';
 import { DoubtsPage } from '@/pages/doubts/DoubtsPage';
 import { AnnouncementsPage } from '@/pages/announcements/AnnouncementsPage';
 import { NotificationsPage } from '@/pages/notifications/NotificationsPage';
@@ -83,6 +84,7 @@ export default function App() {
         <Route path="question-bank" element={<Suspense fallback={<FullPageSpinner />}><QuestionBankPage /></Suspense>} />
         <Route path="profile" element={<ProfilePage />} />
         <Route path="analytics" element={<AnalyticsPage />} />
+        <Route path="feedback" element={<MyFeedbackPage />} />
         <Route path="certificates" element={<CertificatesPage />} />
         <Route path="approvals" element={<ApprovalsPage />} />
       </Route>
