@@ -8,7 +8,7 @@ import { DonutChart } from '@/components/charts/DonutChart';
 import { StackedBarChart } from '@/components/charts/StackedBarChart';
 import { apiErrorMessage } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
-import { useAdminAnalytics, useBatchAnalytics, useTrainerAnalytics } from '@/lib/analytics';
+import { useBatchAnalytics, useTrainerAnalytics } from '@/lib/analytics';
 import { useBatches } from '@/lib/batches';
 
 export function AnalyticsPage() {
@@ -34,7 +34,7 @@ function AdminAnalytics() {
           <Select value={batchId} onChange={(e) => setBatchId(e.target.value)} options={options} aria-label="Select batch" />
         </div>
       </div>
-      {batchId ? <BatchAnalytics batchId={batchId} /> : <InstitutionAnalytics />}
+      <BatchAnalytics batchId={batchId || 'all'} />
     </>
   );
 }
@@ -44,7 +44,9 @@ function BatchAnalytics({ batchId }) {
   if (isError && !data) return <ErrorState message={apiErrorMessage(error)} onRetry={refetch} />;
   if (isLoading && !data) return <SkeletonCards count={4} height="7rem" />;
 
-  const { counts, attendance, moduleProgress, assessments, atRisk, attendanceThreshold } = data;
+  const { batch, counts, attendance, moduleProgress, assessments, atRisk, attendanceThreshold } = data;
+  const isAll = batch?.id === 'all';
+  const scope = isAll ? 'across all batches' : 'this batch';
   const half = Math.ceil(moduleProgress.length / 2);
   const mkRows = (list) => list.map((m) => ({ label: m.code || m.module, segments: [{ value: m.completed || 0 }, { value: m.inProgress || 0 }] }));
   const series = [
@@ -95,11 +97,11 @@ function BatchAnalytics({ batchId }) {
       </Card>
 
       <Card style={{ marginBottom: 'var(--space-6)' }}>
-        <CardHeader title="Assessment Performance" subtitle="Submissions, pass rate & average score — this batch" />
+        <CardHeader title="Assessment Performance" subtitle={`Submissions, pass rate & average score — ${scope}`} />
         {assessments.length === 0 ? (
-          <EmptyState icon={<ClipboardList size={26} />} title="No assessments for this batch yet." />
+          <EmptyState icon={<ClipboardList size={26} />} title={`No assessments ${scope} yet.`} />
         ) : (
-          <div className="table-wrap">
+          <div className="table-wrap" style={{ maxHeight: '28rem', overflowY: 'auto' }}>
             <table className="table">
               <thead><tr><th>Assessment</th><th>Module</th><th>Submissions</th><th>Pass rate</th><th>Avg score</th></tr></thead>
               <tbody>
@@ -131,66 +133,6 @@ function BatchAnalytics({ batchId }) {
               <tbody>{atRisk.map((s, i) => (<tr key={i}><td>{s.name}</td><td><Badge tone="error">{s.percentage}%</Badge></td></tr>))}</tbody>
             </table>
           </div>
-        )}
-      </Card>
-    </>
-  );
-}
-
-function InstitutionAnalytics() {
-  const { data, isLoading, isError, error, refetch } = useAdminAnalytics();
-
-  if (isError && !data) return <ErrorState message={apiErrorMessage(error)} onRetry={refetch} />;
-  if (isLoading && !data) return <SkeletonCards count={5} height="7rem" />;
-
-  // Defensive defaults: the /analytics/admin payload can come back partial, and
-  // destructuring without defaults would white-screen the page.
-  const counts = data.counts ?? {};
-  const lowAttendance = data.lowAttendance ?? { count: 0, threshold: 75, students: [] };
-  const batchSizes = data.batchSizes ?? [];
-  const moduleCompletion = data.moduleCompletion ?? [];
-  return (
-    <>
-      <div className="stat-grid">
-        <Stat label="Students" value={counts.students ?? 0} accent />
-        <Stat label="Trainers" value={counts.trainers ?? 0} />
-        <Stat label="Active Batches" value={counts.batches ?? 0} />
-        <Stat label="Modules" value={counts.modules ?? 0} />
-        <Stat label="Certificates Issued" value={counts.certificates ?? 0} />
-      </div>
-
-      <div className="dash-grid-2" style={{ marginBottom: 'var(--space-6)' }}>
-        <Card>
-          <CardHeader title="Module Completion" subtitle="Students who have completed each module" />
-          <BarChart data={moduleCompletion.map((m) => ({ label: m.module, value: m.completed }))} />
-        </Card>
-        <Card>
-          <CardHeader title="Batch Sizes" subtitle="Enrolled students per active batch" />
-          <BarChart data={batchSizes.map((b) => ({ label: b.batch, value: b.students }))} multicolor />
-        </Card>
-      </div>
-
-      <Card>
-        <CardHeader
-          title="Low Attendance Alerts"
-          subtitle={`${lowAttendance.count ?? 0} student(s) below the ${lowAttendance.threshold ?? 75}% minimum`}
-        />
-        {(lowAttendance.students ?? []).length === 0 ? (
-          <p className="lms-muted" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
-            <CircleCheck size={16} style={{ color: 'var(--color-success)' }} />
-            All students are meeting the attendance requirement.
-          </p>
-        ) : (
-          // One vertical bar per batch; height = number of at-risk students there.
-          <BarChart
-            column
-            multicolor
-            emptyText="No students at risk."
-            data={batchSizes.map((b) => ({
-              label: b.batch,
-              value: (lowAttendance.students ?? []).filter((s) => s.batch === b.batch).length,
-            }))}
-          />
         )}
       </Card>
     </>

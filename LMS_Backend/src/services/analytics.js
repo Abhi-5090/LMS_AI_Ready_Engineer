@@ -455,3 +455,84 @@ export async function batchOverview(batchId) {
     atRisk,
   };
 }
+
+/** Institution-wide analytics in the SAME shape as batchOverview() — so the
+ *  analytics page can render one template for "All batches" and each batch. */
+export async function institutionOverview() {
+  const settings = await getSettings();
+  const threshold = settings.minAttendance;
+
+  const [batches, moduleDocs, assessmentDocs, certificates, activeStudents] = await Promise.all([
+    Batch.find({ archived: false }).select('students modules taughtTopics').lean(),
+    Module.find({ archived: false }).select('name code order topics').sort({ order: 1 }).lean(),
+    Assessment.find({ isTemplate: { $ne: true } }).select('title type module').populate('module', 'name code').lean(),
+    Certificate.countDocuments(),
+    User.countDocuments({ role: UserRole.STUDENT, status: UserStatus.ACTIVE }),
+  ]);
+
+  const [attRows, attByStudent, progRows] = await Promise.all([
+    Attendance.aggregate([{ $group: { _id: null, ...ATT_GROUP } }]),
+    Attendance.aggregate([{ $group: { _id: '$student', ...ATT_GROUP } }]),
+    ModuleProgress.aggregate([{ $group: { _id: { module: '$module', status: '$status' }, n: { $sum: 1 } } }]),
+  ]);
+
+  const att = attRows[0] ?? { attended: 0, present: 0, late: 0, absent: 0, excused: 0, total: 0 };
+  const attendance = { percentage: pctFrom(att), present: att.present, late: att.late, absent: att.absent, excused: att.excused, total: att.total };
+
+  const topicsByModule = new Map(moduleDocs.map((m) => [String(m._id), (m.topics || []).map((t) => String(t._id))]));
+  const byModule = new Map(moduleDocs.map((m) => [String(m._id), { module: m.name, code: m.code, order: m.order ?? 0, completed: 0, inProgress: 0 }]));
+  for (const r of progRows) {
+    const e = byModule.get(String(r._id.module));
+    if (!e) continue;
+    if (r._id.status === ModuleProgressStatus.COMPLETED) e.completed += r.n;
+    else if (r._id.status === ModuleProgressStatus.IN_PROGRESS) e.inProgress += r.n;
+  }
+  const moduleProgress = [...byModule.values()].sort((a, b) => a.order - b.order);
+
+  // Curriculum delivery = module-instances fully taught across all batches ÷ total instances.
+  let modulesCompleted = 0;
+  let moduleCount = 0;
+  for (const b of batches) {
+    const taught = new Map((b.taughtTopics || []).map((tt) => [String(tt.module), new Set((tt.topics || []).map((t) => String(t)))]));
+    for (const mid of (b.modules || []).map(String)) {
+      const topics = topicsByModule.get(mid) || [];
+      if (topics.length === 0) continue;
+      moduleCount += 1;
+      const ts = taught.get(mid) || new Set();
+      if (topics.every((t) => ts.has(t))) modulesCompleted += 1;
+    }
+  }
+  const completionPct = moduleCount ? Math.round((modulesCompleted / moduleCount) * 100) : 0;
+
+  const assessIds = assessmentDocs.map((a) => a._id);
+  const subRows = assessIds.length
+    ? await Submission.aggregate([
+      { $match: { assessment: { $in: assessIds }, status: GRADED } },
+      { $group: { _id: '$assessment', submissions: { $sum: 1 }, passed: { $sum: { $cond: ['$passed', 1, 0] } }, sumScore: { $sum: '$score' } } },
+    ])
+    : [];
+  const statsById = new Map(subRows.map((r) => [String(r._id), r]));
+  const assessments = assessmentDocs.map((a) => {
+    const s = statsById.get(String(a._id));
+    const submissions = s?.submissions ?? 0;
+    return { title: a.title, type: a.type, module: a.module?.name ?? '—', submissions, passRate: submissions ? Math.round((s.passed / submissions) * 100) : 0, avgScore: submissions ? Math.round(s.sumScore / submissions) : 0 };
+  });
+
+  const riskIds = attByStudent.filter((r) => r.total > 0 && pctFrom(r) < threshold).map((r) => r._id);
+  const riskUsers = await User.find({ _id: { $in: riskIds } }).select('name').lean();
+  const nameById = new Map(riskUsers.map((u) => [String(u._id), u.name]));
+  const atRisk = attByStudent
+    .map((r) => ({ name: nameById.get(String(r._id)) ?? null, percentage: pctFrom(r), total: r.total }))
+    .filter((r) => r.name && r.total > 0 && r.percentage < threshold)
+    .sort((a, b) => a.percentage - b.percentage);
+
+  return {
+    batch: { id: 'all', name: 'All batches', code: 'ALL', students: activeStudents },
+    counts: { students: activeStudents, modules: moduleCount, assessments: assessmentDocs.length, certificates, modulesCompleted, completionPct },
+    attendanceThreshold: threshold,
+    attendance,
+    moduleProgress,
+    assessments,
+    atRisk,
+  };
+}
