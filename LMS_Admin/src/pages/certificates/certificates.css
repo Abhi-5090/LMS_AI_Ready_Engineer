@@ -175,6 +175,7 @@
   color: var(--color-text-muted);
   pointer-events: none;
 }
+.cert-toolbar__batch { min-width: 14rem; }
 .cert-toolbar__count { color: var(--color-text-secondary); font-size: var(--font-size-sm); white-space: nowrap; }
 
 /* ~10 rows visible; the rest scrolls. Header stays pinned while scrolling. */

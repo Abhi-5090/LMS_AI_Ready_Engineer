@@ -194,6 +194,7 @@ export async function listAllCertificates(_req, res) {
     .sort({ issuedAt: -1 })
     .limit(2000) // safety ceiling; add offset pagination to the UI when this grows
     .populate('student', 'name email')
-    .populate('module', 'name code');
+    .populate('module', 'name code')
+    .populate('batch', 'name code');
   ok(res, certs.map((c) => c.toJSON()));
 }
