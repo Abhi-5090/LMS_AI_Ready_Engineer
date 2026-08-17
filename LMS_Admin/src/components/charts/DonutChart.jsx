@@ -26,7 +26,7 @@ export function DonutChart({ data = [], centerValue, centerLabel, emptyText = 'N
       <div className="donut2__ring">
         <ResponsiveContainer width="100%" height={190}>
           <PieChart>
-            <Pie data={shown} dataKey="value" nameKey="label" cx="50%" cy="50%" innerRadius={62} outerRadius={86} paddingAngle={2} startAngle={90} endAngle={-270} stroke={surfaceColor()} strokeWidth={2}>
+            <Pie data={shown} dataKey="value" nameKey="label" cx="50%" cy="50%" innerRadius={62} outerRadius={86} paddingAngle={2} minAngle={3} startAngle={90} endAngle={-270} stroke={surfaceColor()} strokeWidth={2}>
               {shown.map((d, i) => <Cell key={i} fill={colorAt(d, i)} />)}
             </Pie>
             <Tooltip content={<ChartTooltip />} />

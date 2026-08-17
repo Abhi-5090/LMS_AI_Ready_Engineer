@@ -30,6 +30,11 @@
 .module-card__name {
   font-weight: var(--font-weight-semibold);
   font-size: var(--font-size-lg);
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 .module-card__meta {
   display: flex;

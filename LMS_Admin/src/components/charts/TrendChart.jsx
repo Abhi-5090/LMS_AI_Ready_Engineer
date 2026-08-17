@@ -41,7 +41,7 @@ export function TrendChart({ data = [], suffix = '', color, height = 200, emptyT
             stroke={hue}
             strokeWidth={2.5}
             fill={`url(#trend-${gid})`}
-            dot={{ r: 3, fill: hue, strokeWidth: 0 }}
+            dot={{ r: 3, fill: hue, stroke: 'var(--color-surface)', strokeWidth: 2 }}
             activeDot={{ r: 5, fill: hue, stroke: 'var(--color-surface)', strokeWidth: 2 }}
           />
         </AreaChart>

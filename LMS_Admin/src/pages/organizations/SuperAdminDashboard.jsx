@@ -52,11 +52,12 @@ export function SuperAdminDashboard() {
     { label: 'Question Banks', value: o.questionBanks ?? 0 },
     { label: 'Submissions', value: o.submissions ?? 0 },
   ] : [];
-  // No explicit colors — let the (theme-visible) chart palette fill each slice.
+  // On-brand categorical trio (orange/teal/blue) — validated CVD-distinct in both
+  // light & dark; avoids the off-theme purple the default palette produced.
   const team = o ? [
-    { label: 'Admins', value: o.admins ?? 0 },
-    { label: 'Trainers', value: o.trainers ?? 0 },
-    { label: 'Students', value: o.students ?? 0 },
+    { label: 'Admins', value: o.admins ?? 0, color: '#2563EB' },
+    { label: 'Trainers', value: o.trainers ?? 0, color: '#0D9488' },
+    { label: 'Students', value: o.students ?? 0, color: '#F15D27' },
   ] : [];
   const qData = (questionStats ?? []).map((m) => ({ label: m.code, value: m[qType] || 0 }));
 
@@ -98,7 +99,7 @@ export function SuperAdminDashboard() {
               {chart.length === 0 ? (
                 <EmptyState icon={<BarChart3 size={26} />} title="No organizations yet" description="Create your first organization to see analytics." />
               ) : (
-                <BarChart data={chart} column multicolor emptyText="No students yet." />
+                <BarChart data={chart} column emptyText="No students yet." />
               )}
             </Card>
           </div>
@@ -115,7 +116,7 @@ export function SuperAdminDashboard() {
           <div className="dash-grid-2" style={{ marginTop: 'var(--space-6)' }}>
             <Card>
               <CardHeader title="Platform Content" subtitle="Curriculum & assessment volume across all organizations" />
-              <BarChart data={content} multicolor emptyText="No content yet." />
+              <BarChart data={content} emptyText="No content yet." />
             </Card>
             <Card>
               <CardHeader title="Team Composition" subtitle="Admins, trainers & students platform-wide" />
@@ -132,7 +133,7 @@ export function SuperAdminDashboard() {
                   <Select value={qType} onChange={(e) => setQType(e.target.value)} options={QTYPES} aria-label="Question type" />
                 </div>
               </div>
-              <BarChart data={qData} column multicolor emptyText="No questions in the bank yet." />
+              <BarChart data={qData} column emptyText="No questions in the bank yet." />
             </Card>
           </div>
 

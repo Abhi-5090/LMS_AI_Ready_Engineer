@@ -122,7 +122,7 @@ export function AdminDashboard() {
             </Card>
             <Card>
               <CardHeader title="Learning Funnel" subtitle="From enrolment to certification" />
-              <BarChart data={funnel} multicolor emptyText="No progression data yet." />
+              <BarChart data={funnel} emptyText="No progression data yet." />
             </Card>
           </div>
 
@@ -149,7 +149,7 @@ export function AdminDashboard() {
           <div className="dash-grid-2">
             <Card>
               <CardHeader title="Enrolment by Batch" subtitle="Students per active batch" />
-              <BarChart data={batchPerf.map((b) => ({ label: b.batch, value: b.students }))} multicolor emptyText="No active batches yet." />
+              <BarChart data={batchPerf.map((b) => ({ label: b.batch, value: b.students }))} emptyText="No active batches yet." />
             </Card>
             <Card>
               <CardHeader title="Attendance by Batch" subtitle="Average attendance % per batch" />
@@ -169,7 +169,7 @@ export function AdminDashboard() {
                 <p className="lms-muted">No students are below the attendance threshold. 🎉</p>
               ) : (
                 // One vertical bar per batch; height = number of at-risk students there.
-                <BarChart data={riskByBatch} column multicolor emptyText="No students at risk." />
+                <BarChart data={riskByBatch} column emptyText="No students at risk." />
               )}
             </Card>
           </div>
