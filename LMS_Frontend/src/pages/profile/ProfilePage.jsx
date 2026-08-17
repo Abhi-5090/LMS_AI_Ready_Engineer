@@ -204,10 +204,17 @@ function ResumeCard({ user }) {
   }
   async function saveLinks() {
     setErr('');
-    if (portfolioUrl.trim() && !isHttpUrl(portfolioUrl.trim())) return setErr('Enter a valid portfolio URL (it should start with http:// or https://).');
-    if (videoUrl.trim() && !isHttpUrl(videoUrl.trim())) return setErr('Enter a valid video URL (it should start with http:// or https://).');
+    const p = portfolioUrl.trim();
+    const v = videoUrl.trim();
+    if (p && !isHttpUrl(p)) return setErr('Enter a valid portfolio URL (it should start with http:// or https://).');
+    if (v && !isHttpUrl(v)) return setErr('Enter a valid video URL (it should start with http:// or https://).');
+    // No-op guard: skip the API when neither link changed.
+    if (p === (user.resume?.portfolioUrl ?? '') && v === (user.resume?.videoUrl ?? '')) {
+      toast.success('No changes to save.');
+      return undefined;
+    }
     try {
-      await update.mutateAsync({ resume: { portfolioUrl: portfolioUrl.trim(), videoUrl: videoUrl.trim() } });
+      await update.mutateAsync({ resume: { portfolioUrl: p, videoUrl: v } });
       toast.success('Resume links saved.');
     } catch (e2) { setErr(apiErrorMessage(e2)); }
     return undefined;
@@ -285,12 +292,19 @@ function DetailsCard({ user }) {
     e.preventDefault();
     setErr('');
     setMsg('');
+    const next = { name: form.name.trim(), phone: form.phone.trim(), bio: form.bio.trim() };
+    if (!next.name) return setErr('Name cannot be empty.');
+    // No-op guard: don't hit the API when nothing actually changed.
+    if (next.name === (user.name ?? '') && next.phone === (user.phone ?? '') && next.bio === (user.bio ?? '')) {
+      return setMsg('No changes to save.');
+    }
     try {
-      await update.mutateAsync({ name: form.name.trim(), phone: form.phone.trim(), bio: form.bio.trim() });
+      await update.mutateAsync(next);
       setMsg('Profile saved.');
     } catch (e2) {
       setErr(apiErrorMessage(e2));
     }
+    return undefined;
   }
 
   return (
@@ -331,9 +345,16 @@ function LinksCard({ user, wide = false }) {
     setErr('');
     setMsg('');
     const trimmed = Object.fromEntries(Object.entries(links).map(([k, v]) => [k, v.trim()]));
+    const customLinks = custom.map((l) => ({ label: l.label.trim(), url: l.url.trim() })).filter((l) => l.label && l.url);
+    // No-op guard: nothing changed vs the saved profile → don't hit the API.
+    const currentLinks = Object.fromEntries(SOCIAL_PLATFORMS.map((p) => [p.key, user.links?.[p.key] ?? '']));
+    const currentCustom = (user.customLinks ?? []).map((l) => ({ label: l.label ?? '', url: l.url ?? '' }));
+    const unchanged =
+      SOCIAL_PLATFORMS.every((p) => trimmed[p.key] === currentLinks[p.key]) &&
+      JSON.stringify(customLinks) === JSON.stringify(currentCustom);
+    if (unchanged) return setMsg('No changes to save.');
     const badSocial = SOCIAL_PLATFORMS.find((p) => trimmed[p.key] && !isHttpUrl(trimmed[p.key]));
     if (badSocial) return setErr(`Enter a valid ${badSocial.label} URL (it should start with http:// or https://).`);
-    const customLinks = custom.map((l) => ({ label: l.label.trim(), url: l.url.trim() })).filter((l) => l.label && l.url);
     const badCustom = customLinks.find((l) => !isHttpUrl(l.url));
     if (badCustom) return setErr(`Enter a valid URL for “${badCustom.label}” (it should start with http:// or https://).`);
     try {

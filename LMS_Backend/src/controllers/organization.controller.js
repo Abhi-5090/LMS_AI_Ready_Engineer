@@ -54,10 +54,12 @@ export async function listOrganizations(_req, res) {
   const orgs = await Organization.find({ isTemplate: { $ne: true } }).sort({ createdAt: -1 });
   const items = await Promise.all(
     orgs.map(async (o) => {
+      // Count ACTIVE users, matching the in-org dashboard (analytics.js) so the
+      // org card and the dashboard a super-admin sees after "Enter" agree.
       const [admins, trainers, students, batches, modules] = await Promise.all([
-        User.countDocuments({ organization: o._id, role: UserRole.ADMIN }),
-        User.countDocuments({ organization: o._id, role: UserRole.TRAINER }),
-        User.countDocuments({ organization: o._id, role: UserRole.STUDENT }),
+        User.countDocuments({ organization: o._id, role: UserRole.ADMIN, status: UserStatus.ACTIVE }),
+        User.countDocuments({ organization: o._id, role: UserRole.TRAINER, status: UserStatus.ACTIVE }),
+        User.countDocuments({ organization: o._id, role: UserRole.STUDENT, status: UserStatus.ACTIVE }),
         Batch.countDocuments({ organization: o._id }),
         Module.countDocuments({ organization: o._id }),
       ]);
@@ -176,13 +178,14 @@ export async function getOverview(_req, res) {
   const [organizations, activeOrgs, admins, trainers, students, batches, modules, assessments, submissions, questionBanks] = await Promise.all([
     Organization.countDocuments({ isTemplate: { $ne: true } }),
     Organization.countDocuments({ isTemplate: { $ne: true }, status: 'active' }),
-    User.countDocuments({ role: UserRole.ADMIN }),
-    User.countDocuments({ role: UserRole.TRAINER }),
-    User.countDocuments({ role: UserRole.STUDENT }),
-    Batch.countDocuments(),
+    User.countDocuments({ role: UserRole.ADMIN, status: UserStatus.ACTIVE }),
+    User.countDocuments({ role: UserRole.TRAINER, status: UserStatus.ACTIVE }),
+    User.countDocuments({ role: UserRole.STUDENT, status: UserStatus.ACTIVE }),
+    Batch.countDocuments(notTemplate), // exclude the template's batches
     Module.countDocuments(notTemplate), // exclude the template's modules
-    Assessment.countDocuments(),
-    Submission.countDocuments(),
+    // Match the org dashboard (analytics.js): real orgs only, excluding template assessment docs.
+    Assessment.countDocuments({ ...notTemplate, isTemplate: { $ne: true } }),
+    Submission.countDocuments(notTemplate),
     QuestionBankItem.countDocuments(notTemplate), // exclude the template's bank
   ]);
 
