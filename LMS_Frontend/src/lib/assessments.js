@@ -170,16 +170,31 @@ export function useConsolidated(id) {
   });
 }
 
-/** Trainer/admin: reopen a student's test for another attempt (archives the current). */
-export function useGrantReattempt(id) {
+function useSubmissionMutation(id, build) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (submissionId) => unwrap(api.post(`/assessments/${id}/submissions/${submissionId}/reattempt`)),
+    mutationFn: build,
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: assessmentKeys.submissions(id) });
+      qc.invalidateQueries({ queryKey: ['assessments', id, 'consolidated'] });
       qc.invalidateQueries({ queryKey: assessmentKeys.all });
     },
   });
+}
+
+/** Trainer/admin: reopen a student's test for another attempt (archives the current). */
+export function useGrantReattempt(id) {
+  return useSubmissionMutation(id, (submissionId) => unwrap(api.post(`/assessments/${id}/submissions/${submissionId}/reattempt`)));
+}
+
+/** Trainer/admin: re-run AI grading for a submission. */
+export function useRegradeSubmission(id) {
+  return useSubmissionMutation(id, (submissionId) => unwrap(api.post(`/assessments/${id}/submissions/${submissionId}/regrade`)));
+}
+
+/** Trainer/admin: manually set a submission's score, overriding AI grading. */
+export function useManualGrade(id) {
+  return useSubmissionMutation(id, ({ submissionId, score, feedback }) => unwrap(api.post(`/assessments/${id}/submissions/${submissionId}/grade`, { score, feedback })));
 }
 
 /** Ranked batch leaderboard for an assessment. */

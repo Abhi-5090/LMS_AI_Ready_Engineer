@@ -11,6 +11,9 @@ import {
   useAssessment,
   useConsolidated,
   useDeleteQuestion,
+  useGrantReattempt,
+  useManualGrade,
+  useRegradeSubmission,
   useSetAllowedStudents,
   useSetAvailability,
   useUpdateAssessment,
@@ -126,7 +129,7 @@ export function AssessmentEditor() {
       {!isTemplate && <CompletionCard a={a} />}
       {!isTemplate && <ReattemptsCard a={a} />}
 
-      {!isTemplate && <SubmissionsCard id={a.id} title={a.title} />}
+      {!isTemplate && <SubmissionsCard id={a.id} title={a.title} assessment={a} />}
 
       {/* Questions last — a scrollable box showing ~4–5 at a time. */}
       <Card style={{ marginBottom: 'var(--space-6)' }}>
@@ -680,11 +683,12 @@ function ReattemptsCard({ a }) {
 
 const SUB_STATUS_LABEL = { graded: 'Graded', submitted: 'Submitted', evaluating: 'Evaluating', in_progress: 'In progress', not_started: 'Not started' };
 
-function SubmissionsCard({ id, title }) {
+function SubmissionsCard({ id, title, assessment }) {
   const toast = useToast();
   const { data, isLoading } = useConsolidated(id);
   const subs = data?.submissions ?? null;
   const [exporting, setExporting] = useState('');
+  const [review, setReview] = useState(null);
   const hasSubs = subs && subs.length > 0;
 
   // Report rows: ONE per student — their LATEST attempt only (no reattempt duplicates),
@@ -749,7 +753,7 @@ function SubmissionsCard({ id, title }) {
       ) : (
         <div className="table-wrap asmt-scroll" style={{ maxHeight: '42rem' }}>
           <table className="table">
-            <thead><tr><th>Student</th><th>Attempts</th><th>Score</th><th>Result</th><th>Proctoring</th><th>Submitted</th></tr></thead>
+            <thead><tr><th>Student</th><th>Attempts</th><th>Score</th><th>Result</th><th>Proctoring</th><th>Submitted</th><th aria-label="Actions" /></tr></thead>
             <tbody>
               {latestList.map((s) => (
                 <tr key={s.id}>
@@ -772,12 +776,117 @@ function SubmissionsCard({ id, title }) {
                   </td>
                   <td><ProctoringCell s={s} /></td>
                   <td>{formatDate(s.submittedAt)}</td>
+                  <td><Button size="sm" variant="outline" onClick={() => setReview(s)}>Review</Button></td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
       )}
+      {review && <ReviewSubmissionModal assessmentId={id} assessment={assessment} submission={review} onClose={() => setReview(null)} />}
     </Card>
+  );
+}
+
+/** Trainer drill-in: a student's answers vs the correct answers, plus grading
+ *  actions (re-run AI grading, set the score manually, grant a reattempt). */
+function ReviewSubmissionModal({ assessmentId, assessment, submission, onClose }) {
+  const toast = useToast();
+  const confirm = useConfirm();
+  const regrade = useRegradeSubmission(assessmentId);
+  const manualGrade = useManualGrade(assessmentId);
+  const reattempt = useGrantReattempt(assessmentId);
+  const [scoreInput, setScoreInput] = useState(String(submission.score ?? ''));
+  const [note, setNote] = useState('');
+  const [setting, setSetting] = useState(false);
+
+  const answerFor = new Map((submission.answers ?? []).map((an) => [String(an.question), an]));
+  const questions = assessment?.questions ?? [];
+
+  async function onRegrade() {
+    try { await regrade.mutateAsync(submission.id); toast.success('Re-grading triggered.'); }
+    catch (e) { toast.error(apiErrorMessage(e)); }
+  }
+  async function onSetScore() {
+    const n = Number(scoreInput);
+    if (!Number.isFinite(n) || n < 0 || n > 100) { toast.error('Enter a score between 0 and 100.'); return; }
+    try {
+      await manualGrade.mutateAsync({ submissionId: submission.id, score: n, feedback: note.trim() || undefined });
+      toast.success('Score updated.');
+      onClose();
+    } catch (e) { toast.error(apiErrorMessage(e)); }
+  }
+  async function onReattempt() {
+    if (!(await confirm({ title: 'Grant another attempt?', message: 'The current result is archived and the student can retake the test.', confirmLabel: 'Grant reattempt' }))) return;
+    try { await reattempt.mutateAsync(submission.id); toast.success('Reattempt granted.'); onClose(); }
+    catch (e) { toast.error(apiErrorMessage(e)); }
+  }
+
+  return (
+    <Modal open size="xl" title={`Review — ${submission.student?.name ?? 'Student'}`} onClose={onClose}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 'var(--space-3)', marginBottom: 'var(--space-4)' }}>
+        <Badge tone={submission.status === 'graded' ? (submission.passed ? 'success' : 'error') : submission.status === 'evaluating' ? 'primary' : 'warning'}>
+          {submission.status === 'graded' ? (submission.passed ? 'Passed' : 'Failed') : submission.status === 'evaluating' ? 'Evaluating' : 'Pending review'}
+        </Badge>
+        <strong>{submission.score ?? '—'}%</strong>
+        <span className="lms-muted" style={{ fontSize: 'var(--font-size-xs)' }}>pass mark {assessment?.passingScore}%</span>
+        <span style={{ marginLeft: 'auto', display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
+          <Button size="sm" variant="outline" onClick={onRegrade} loading={regrade.isPending}>Re-grade (AI)</Button>
+          <Button size="sm" variant="outline" onClick={() => setSetting((v) => !v)}>Set score</Button>
+          <Button size="sm" variant="ghost" onClick={onReattempt} loading={reattempt.isPending}>Grant reattempt</Button>
+        </span>
+      </div>
+
+      {setting && (
+        <div style={{ display: 'flex', gap: 'var(--space-2)', alignItems: 'flex-end', flexWrap: 'wrap', marginBottom: 'var(--space-4)', padding: 'var(--space-3)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)' }}>
+          <div style={{ width: '7rem' }}><Input label="Score (0–100)" type="number" min={0} max={100} value={scoreInput} onChange={(e) => setScoreInput(e.target.value)} /></div>
+          <div style={{ flex: 1, minWidth: '12rem' }}><Input label="Feedback (optional)" value={note} onChange={(e) => setNote(e.target.value)} placeholder="Why this score…" /></div>
+          <Button size="sm" onClick={onSetScore} loading={manualGrade.isPending}>Save score</Button>
+        </div>
+      )}
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+        {questions.map((q, i) => {
+          const ans = answerFor.get(String(q.id ?? q._id));
+          const isMcq = q.type === QuestionType.MCQ;
+          const picked = ans?.selectedOption;
+          const correct = isMcq && picked === q.correctOption;
+          return (
+            <div key={q.id ?? i} style={{ borderBottom: '1px solid var(--color-border)', paddingBottom: 'var(--space-3)' }}>
+              <div style={{ display: 'flex', gap: 'var(--space-2)', marginBottom: 'var(--space-2)' }}>
+                <span style={{ fontWeight: 'var(--font-weight-bold)' }}>{i + 1}.</span>
+                <span style={{ flex: 1 }}>{q.prompt}</span>
+                {isMcq && <Badge tone={correct ? 'success' : picked === undefined ? 'neutral' : 'error'}>{correct ? 'Correct' : picked === undefined ? 'Skipped' : 'Wrong'}</Badge>}
+              </div>
+              {isMcq ? (
+                <>
+                  <div className="lms-muted" style={{ fontSize: 'var(--font-size-xs)' }}>Their answer</div>
+                  <div style={{ color: picked === undefined ? 'var(--color-text-muted)' : correct ? 'var(--color-success)' : 'var(--color-error)' }}>
+                    {picked === undefined ? 'Not answered' : q.options?.[picked]}
+                  </div>
+                  {!correct && (
+                    <>
+                      <div className="lms-muted" style={{ fontSize: 'var(--font-size-xs)', marginTop: 4 }}>Correct answer</div>
+                      <div style={{ color: 'var(--color-success)' }}>{q.options?.[q.correctOption]}</div>
+                    </>
+                  )}
+                </>
+              ) : (
+                <>
+                  <div className="lms-muted" style={{ fontSize: 'var(--font-size-xs)' }}>Their answer</div>
+                  <div style={{ whiteSpace: 'pre-wrap' }}>{ans?.text ? ans.text : <em className="lms-muted">Not answered</em>}</div>
+                  {q.referenceAnswer && (
+                    <>
+                      <div className="lms-muted" style={{ fontSize: 'var(--font-size-xs)', marginTop: 4 }}>Model answer</div>
+                      <div style={{ whiteSpace: 'pre-wrap', color: 'var(--color-success)' }}>{q.referenceAnswer}</div>
+                    </>
+                  )}
+                </>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </Modal>
   );
 }

@@ -566,6 +566,7 @@ export async function consolidatedSubmissions(req, res) {
       score: s.score ?? null,
       passed: s.passed ?? null,
       status: s.status,
+      answers: s.answers ?? [], // for the trainer's submission-review drill-in
       submittedAt: s.submittedAt ?? null,
       disqualified: s.disqualified ?? false,
       disqualifiedReason: s.disqualifiedReason ?? '',
