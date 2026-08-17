@@ -1,11 +1,11 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Award, Download, Search } from 'lucide-react';
 import { UserRole } from '@/shared';
 import { Badge, Button, Card, CardHeader, EmptyState, ErrorState, Input, Modal, Select, SkeletonCards, SkeletonTable, useToast } from '@/components/ui';
 import { PageHeader } from '@/components/PageHeader';
 import { apiErrorMessage } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
-import { useAllCertificates, useMyCertificates } from '@/lib/certificates';
+import { fetchAllCertificates, useAllCertificates, useMyCertificates } from '@/lib/certificates';
 import { useBatches } from '@/lib/batches';
 import { formatDate } from '@/lib/format';
 import { Certificate } from './Certificate';
@@ -86,36 +86,40 @@ function StudentCertificates() {
 
 // ── Admin ────────────────────────────────────────────────────────────────────
 
+const CERT_PAGE_SIZE = 50;
+
 function AdminCertificates() {
-  const { data: certs, isLoading, isError, error, refetch } = useAllCertificates();
   const { data: batches } = useBatches();
   const toast = useToast();
   const [q, setQ] = useState('');
+  const [search, setSearch] = useState(''); // debounced value sent to the server
   const [batchId, setBatchId] = useState('');
+  const [page, setPage] = useState(1);
+  const [exporting, setExporting] = useState(false);
+
+  // Debounce the search box so we don't hit the server on every keystroke.
+  useEffect(() => {
+    const t = setTimeout(() => { setSearch(q.trim()); setPage(1); }, 300);
+    return () => clearTimeout(t);
+  }, [q]);
+
+  const { data, isLoading, isError, error, refetch } = useAllCertificates({ page, pageSize: CERT_PAGE_SIZE, batch: batchId, search });
+  const items = data?.items ?? [];
+  const total = data?.total ?? 0;
+  const pageCount = Math.max(1, Math.ceil(total / CERT_PAGE_SIZE));
 
   const batchOptions = [
     { value: '', label: 'All batches' },
     ...(batches ?? []).map((b) => ({ value: b.id, label: `${b.name} (${b.code})` })),
   ];
 
-  // Filter by the selected batch, then search by student name/email OR by
-  // certificate (module name + certificate ID).
-  const filtered = useMemo(() => {
-    let list = certs ?? [];
-    if (batchId) list = list.filter((c) => c.batch?.id === batchId);
-    const needle = q.trim().toLowerCase();
-    if (!needle) return list;
-    return list.filter((c) =>
-      [c.student?.name, c.student?.email, certTitle(c), batchLabel(c), c.certificateId]
-        .some((v) => String(v ?? '').toLowerCase().includes(needle)),
-    );
-  }, [certs, q, batchId]);
-
   async function exportExcel() {
-    if (filtered.length === 0) { toast.error('Nothing to export.'); return; }
+    setExporting(true);
     try {
+      const all = await fetchAllCertificates({ batch: batchId, search });
+      if (all.length === 0) { toast.error('Nothing to export.'); return; }
       const XLSX = await import('xlsx'); // load the heavy parser only on demand
-      const rows = filtered.map((c) => ({
+      const rows = all.map((c) => ({
         Student: c.student?.name ?? '',
         Email: c.student?.email ?? '',
         Batch: batchLabel(c),
@@ -131,19 +135,21 @@ function AdminCertificates() {
       XLSX.writeFile(wb, `certificates-${new Date().toISOString().slice(0, 10)}.xlsx`);
     } catch (e) {
       toast.error(apiErrorMessage(e));
+    } finally {
+      setExporting(false);
     }
   }
 
-  const hasCerts = certs && certs.length > 0;
+  const noneAtAll = total === 0 && !search && !batchId;
 
   return (
     <>
       <PageHeader title="Certificates" subtitle="All certificates issued across the institution." />
       {isError ? (
         <ErrorState message={apiErrorMessage(error)} onRetry={refetch} />
-      ) : isLoading && !certs ? (
+      ) : isLoading && !data ? (
         <SkeletonTable rows={5} cols={5} />
-      ) : !hasCerts ? (
+      ) : noneAtAll ? (
         <EmptyState
           icon={<Award size={26} />}
           title="No certificates have been issued yet"
@@ -162,10 +168,10 @@ function AdminCertificates() {
               />
             </div>
             <div className="cert-toolbar__batch">
-              <Select value={batchId} onChange={(e) => setBatchId(e.target.value)} options={batchOptions} aria-label="Filter by batch" />
+              <Select value={batchId} onChange={(e) => { setBatchId(e.target.value); setPage(1); }} options={batchOptions} aria-label="Filter by batch" />
             </div>
-            <span className="cert-toolbar__count">{filtered.length} of {certs.length}</span>
-            <Button variant="outline" onClick={exportExcel} disabled={filtered.length === 0}>
+            <span className="cert-toolbar__count">{total} total</span>
+            <Button variant="outline" onClick={exportExcel} loading={exporting} disabled={total === 0}>
               <Download size={15} style={{ marginRight: 6 }} /> Export to Excel
             </Button>
           </div>
@@ -176,10 +182,10 @@ function AdminCertificates() {
                 <tr><th>Student</th><th>Batch</th><th>Certificate</th><th>Type</th><th>Issued</th><th>ID</th></tr>
               </thead>
               <tbody>
-                {filtered.length === 0 ? (
+                {items.length === 0 ? (
                   <tr><td colSpan={6} className="lms-muted" style={{ textAlign: 'center', padding: 'var(--space-6)' }}>No certificates match your filters.</td></tr>
                 ) : (
-                  filtered.map((c) => (
+                  items.map((c) => (
                     <tr key={c.id}>
                       <td>{c.student?.name}<div className="lms-muted" style={{ fontSize: 'var(--font-size-xs)' }}>{c.student?.email}</div></td>
                       <td>{batchLabel(c)}</td>
@@ -192,6 +198,17 @@ function AdminCertificates() {
                 )}
               </tbody>
             </table>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--space-3)', marginTop: 'var(--space-3)', flexWrap: 'wrap' }}>
+            <span className="lms-muted" style={{ fontSize: 'var(--font-size-sm)' }}>
+              {total === 0 ? 'No certificates' : `Showing ${(page - 1) * CERT_PAGE_SIZE + 1}–${(page - 1) * CERT_PAGE_SIZE + items.length} of ${total}`}
+            </span>
+            <div style={{ display: 'flex', gap: 'var(--space-2)', alignItems: 'center' }}>
+              <Button size="sm" variant="outline" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>Prev</Button>
+              <span className="lms-muted" style={{ fontSize: 'var(--font-size-sm)' }}>Page {page} of {pageCount}</span>
+              <Button size="sm" variant="outline" disabled={page >= pageCount} onClick={() => setPage((p) => p + 1)}>Next</Button>
+            </div>
           </div>
         </>
       )}

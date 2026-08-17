@@ -16,13 +16,26 @@ export function useMyCertificates({ enabled = true } = {}) {
   });
 }
 
-/** Admin: all issued certificates. */
-export function useAllCertificates({ enabled = true } = {}) {
+/** Admin: issued certificates — server-side paginated ({ items, total }). */
+export function useAllCertificates(params = {}) {
+  const clean = Object.fromEntries(Object.entries(params).filter(([, v]) => v !== '' && v != null));
   return useQuery({
-    queryKey: certificateKeys.all,
-    queryFn: () => unwrap(api.get('/certificates')),
-    enabled,
+    queryKey: [...certificateKeys.all, clean],
+    queryFn: () => unwrap(api.get('/certificates', { params: clean })),
   });
+}
+
+/** Fetch ALL certificates matching a filter, page by page — for Excel export. */
+export async function fetchAllCertificates({ batch, search } = {}) {
+  const pageSize = 200;
+  const out = [];
+  for (let page = 1; page <= 100; page += 1) { // hard stop at 20k rows
+    const clean = Object.fromEntries(Object.entries({ page, pageSize, batch, search }).filter(([, v]) => v !== '' && v != null));
+    const res = await unwrap(api.get('/certificates', { params: clean }));
+    out.push(...res.items);
+    if (out.length >= res.total || res.items.length === 0) break;
+  }
+  return out;
 }
 
 /** Admin/trainer: a specific student's certificates. */

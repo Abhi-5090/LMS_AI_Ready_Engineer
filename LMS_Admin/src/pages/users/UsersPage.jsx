@@ -24,7 +24,7 @@ const ROLE_OPTS = Object.values(UserRole).map((v) => ({ value: v, label: titleCa
 const STATUS_OPTS = Object.values(UserStatus).map((v) => ({ value: v, label: titleCase(v) }));
 
 const NEW_USER = { name: '', email: '', password: '', role: UserRole.STUDENT, phone: '' };
-const PAGE_SIZE = 500; // load the full filtered set; the table scrolls instead of paginating
+const PAGE_SIZE = 50; // server-side paginated; use the pager below the table
 
 export function UsersPage() {
   const navigate = useNavigate();
@@ -173,10 +173,15 @@ export function UsersPage() {
             </table>
           </div>
 
-          <div style={{ marginTop: 'var(--space-3)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--space-3)', marginTop: 'var(--space-3)', flexWrap: 'wrap' }}>
             <span className="lms-muted" style={{ fontSize: 'var(--font-size-sm)' }}>
-              Showing {data?.items.length ?? 0} of {total} user{total === 1 ? '' : 's'} — scroll for more, or filter above.
+              {total === 0 ? 'No users' : `Showing ${(filters.page - 1) * PAGE_SIZE + 1}–${(filters.page - 1) * PAGE_SIZE + (data?.items.length ?? 0)} of ${total} user${total === 1 ? '' : 's'}`}
             </span>
+            <div style={{ display: 'flex', gap: 'var(--space-2)', alignItems: 'center' }}>
+              <Button size="sm" variant="outline" disabled={filters.page <= 1} onClick={() => setFilters((f) => ({ ...f, page: f.page - 1 }))}>Prev</Button>
+              <span className="lms-muted" style={{ fontSize: 'var(--font-size-sm)' }}>Page {filters.page} of {Math.max(1, Math.ceil(total / PAGE_SIZE))}</span>
+              <Button size="sm" variant="outline" disabled={filters.page >= Math.ceil(total / PAGE_SIZE)} onClick={() => setFilters((f) => ({ ...f, page: f.page + 1 }))}>Next</Button>
+            </div>
           </div>
         </>
       )}

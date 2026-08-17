@@ -188,13 +188,40 @@ export async function studentCertificates(req, res) {
   ok(res, { student: student.toJSON(), certificates: certs.map((c) => c.toJSON()) });
 }
 
-/** Admin: every issued certificate. */
-export async function listAllCertificates(_req, res) {
-  const certs = await Certificate.find()
+const escapeRegex = (s) => String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+export const listCertsQuery = z.object({
+  page: z.coerce.number().int().min(1).default(1),
+  pageSize: z.coerce.number().int().min(1).max(200).default(50),
+  batch: z.string().length(24).optional(),
+  search: z.string().max(120).optional(),
+});
+
+/** Admin: issued certificates — server-side paginated, batch-filtered, searchable. */
+export async function listAllCertificates(req, res) {
+  const { page, pageSize, batch, search } = req.query;
+  const filter = {};
+  if (batch) filter.batch = batch;
+  if (search?.trim()) {
+    const rx = new RegExp(escapeRegex(search.trim()), 'i');
+    // student and module are refs, so pre-resolve matching ids for the search.
+    const [users, modules] = await Promise.all([
+      User.find({ $or: [{ name: rx }, { email: rx }] }).select('_id').lean(),
+      Module.find({ name: rx }).select('_id').lean(),
+    ]);
+    filter.$or = [
+      { certificateId: rx },
+      { student: { $in: users.map((u) => u._id) } },
+      { module: { $in: modules.map((m) => m._id) } },
+    ];
+  }
+  const total = await Certificate.countDocuments(filter);
+  const items = await Certificate.find(filter)
     .sort({ issuedAt: -1 })
-    .limit(2000) // safety ceiling; add offset pagination to the UI when this grows
+    .skip((page - 1) * pageSize)
+    .limit(pageSize)
     .populate('student', 'name email')
     .populate('module', 'name code')
     .populate('batch', 'name code');
-  ok(res, certs.map((c) => c.toJSON()));
+  ok(res, { items: items.map((c) => c.toJSON()), total, page, pageSize });
 }

@@ -17,7 +17,7 @@ router.get(
 router.use(authenticate);
 
 router.get('/me', requireRole(UserRole.STUDENT), asyncHandler(certs.myCertificates));
-router.get('/', requireRole(UserRole.ADMIN), asyncHandler(certs.listAllCertificates));
+router.get('/', requireRole(UserRole.ADMIN), validate({ query: certs.listCertsQuery }), asyncHandler(certs.listAllCertificates));
 router.get(
   '/student/:studentId',
   requireRole(UserRole.ADMIN, UserRole.TRAINER),
