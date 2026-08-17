@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { MeetingProvider } from '@/shared';
 import { Award, CalendarCheck, CalendarX, Compass, GraduationCap, Percent } from 'lucide-react';
 import { Badge, Button, Card, CardHeader, EmptyState, ErrorState, SkeletonCards } from '@/components/ui';
 import { PageHeader, Stat } from '@/components/PageHeader';
@@ -20,6 +22,7 @@ const C = { success: 'var(--color-success)', primary: 'var(--color-primary)', wa
 const STATUS = { completed: { label: 'Completed', tone: 'success' }, in_progress: { label: 'In progress', tone: 'primary' }, locked: { label: 'Locked', tone: 'neutral' } };
 
 export function StudentDashboard() {
+  const navigate = useNavigate();
   const user = useAuth((s) => s.user);
   const { data: attendance, isLoading: attLoading, isError: attError, error: attErr, refetch: refetchAtt } = useMyAttendance();
   const { data: a } = useStudentAnalytics();
@@ -32,6 +35,9 @@ export function StudentDashboard() {
 
   function handleJoin(c) {
     if (mustRate) { setRateTarget(eligiblePending[0]); return; }
+    // In-app (LiveKit) classes open the immersive room; external providers open
+    // their meeting link. Mirrors SchedulePage's enterClass.
+    if (c.provider === MeetingProvider.INTERNAL) { navigate(`/app/class/${c.id}/live`); return; }
     joinClass.mutate(c.id);
     window.open(c.meetingLink, '_blank', 'noopener,noreferrer');
   }
@@ -137,7 +143,7 @@ export function StudentDashboard() {
                           {new Date(c.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })} · {c.startTime}–{c.endTime}
                         </div>
                       </span>
-                      {c.meetingLink && !classHasEnded(c) ? (
+                      {!classHasEnded(c) && (c.provider === MeetingProvider.INTERNAL || c.meetingLink) ? (
                         <button type="button" onClick={() => handleJoin(c)} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}>
                           <Badge tone="primary">{mustRate ? 'Rate to join' : 'Join'}</Badge>
                         </button>

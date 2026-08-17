@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { ChevronLeft, LogIn, Plus, ShieldCheck, Trash2 } from 'lucide-react';
@@ -22,6 +22,11 @@ export function OrganizationDetailPage() {
 
   const [name, setName] = useState('');
   const [status, setStatus] = useState('active');
+  // Seed the form from the loaded org (once per org), so editing e.g. the name
+  // doesn't ship a stale status:'active' that silently un-suspends the org.
+  useEffect(() => {
+    if (org) { setName(org.name ?? ''); setStatus(org.status ?? 'active'); }
+  }, [org?.id]); // eslint-disable-line react-hooks/exhaustive-deps
   const [addOpen, setAddOpen] = useState(false);
   const [adminForm, setAdminForm] = useState({ name: '', email: '', password: '' });
   const [delOpen, setDelOpen] = useState(false);
@@ -47,7 +52,7 @@ export function OrganizationDetailPage() {
     e.preventDefault();
     setErr('');
     try {
-      await update.mutateAsync({ id: org.id, name: (name || org.name).trim(), status: status || org.status });
+      await update.mutateAsync({ id: org.id, name: name.trim() || org.name, status });
       toast.success('Saved.');
     } catch (e2) { setErr(apiErrorMessage(e2)); }
   }
@@ -90,8 +95,8 @@ export function OrganizationDetailPage() {
       <Card style={{ maxWidth: '40rem', marginBottom: 'var(--space-6)' }}>
         <CardHeader title="Details" subtitle={`Code: ${org.code}`} />
         <form onSubmit={saveOrg} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)', marginTop: 'var(--space-3)' }}>
-          <Input label="Name" defaultValue={org.name} onChange={(e) => setName(e.target.value)} />
-          <Select label="Status" defaultValue={org.status} onChange={(e) => setStatus(e.target.value)}
+          <Input label="Name" value={name} onChange={(e) => setName(e.target.value)} />
+          <Select label="Status" value={status} onChange={(e) => setStatus(e.target.value)}
             options={[{ value: 'active', label: 'Active' }, { value: 'suspended', label: 'Suspended' }]} />
           <div><Button type="submit" loading={update.isPending}>Save</Button></div>
         </form>

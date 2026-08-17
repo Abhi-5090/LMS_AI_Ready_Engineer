@@ -93,8 +93,14 @@ api.interceptors.request.use((config) => {
   // (no-header) context, so they are never scoped — regardless of drill-in state.
   const url = config.url || '';
   const isOrgAdminApi = url.startsWith('/organizations');
+  // /settings must resolve to the GLOBAL platform doc for a managing super-admin
+  // (organization=null), so never fall back to the template org for it — only
+  // scope settings when actually drilled into a real org.
+  const isSettingsApi = url.startsWith('/settings');
   if (superAdminSession && !isOrgAdminApi) {
-    const orgId = orgViewStore.get()?.id ?? templateOrgStore.get()?.id;
+    const orgId = isSettingsApi
+      ? orgViewStore.get()?.id
+      : (orgViewStore.get()?.id ?? templateOrgStore.get()?.id);
     if (orgId) config.headers['X-Org-Id'] = orgId;
   }
   return config;

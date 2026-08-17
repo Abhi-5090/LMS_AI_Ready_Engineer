@@ -113,3 +113,31 @@ export function useSubmissions(id) {
     enabled: Boolean(id),
   });
 }
+
+/** Re-run AI grading for a submission (recovers a stuck/wrong AI grade). */
+export function useRegradeSubmission(id) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (submissionId) => unwrap(api.post(`/assessments/${id}/submissions/${submissionId}/regrade`)),
+    onSuccess: () => qc.invalidateQueries({ queryKey: assessmentKeys.submissions(id) }),
+  });
+}
+
+/** Manually set a submission's score, overriding AI grading. */
+export function useManualGrade(id) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ submissionId, score, feedback }) =>
+      unwrap(api.post(`/assessments/${id}/submissions/${submissionId}/grade`, { score, feedback })),
+    onSuccess: () => qc.invalidateQueries({ queryKey: assessmentKeys.submissions(id) }),
+  });
+}
+
+/** Reopen a student's test for another attempt. */
+export function useGrantReattempt(id) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (submissionId) => unwrap(api.post(`/assessments/${id}/submissions/${submissionId}/reattempt`)),
+    onSuccess: () => qc.invalidateQueries({ queryKey: assessmentKeys.submissions(id) }),
+  });
+}

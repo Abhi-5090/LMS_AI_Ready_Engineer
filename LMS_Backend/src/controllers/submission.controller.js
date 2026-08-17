@@ -302,6 +302,43 @@ export async function regradeSubmission(req, res) {
   ok(res, submission.toJSON());
 }
 
+export const manualGradeSchema = z.object({
+  score: z.number().min(0).max(100),
+  feedback: z.string().max(2000).optional(),
+});
+
+/**
+ * Admin/assigned-trainer: manually set a submission's score, overriding AI
+ * grading. For the (common) case where the AI mis-scored a prompt/coding answer
+ * and a human needs the final say. Recomputes pass/fail against the passing mark
+ * and (idempotently) issues a certificate if a final test now passes.
+ */
+export async function manualGradeSubmission(req, res) {
+  const assessment = await Assessment.findById(req.params.id);
+  if (!assessment) throw ApiError.notFound('Assessment not found');
+  if (req.auth.role === UserRole.TRAINER) {
+    const module = await Module.findById(assessment.module).select('assignedTrainers');
+    const assigned = module?.assignedTrainers.some((t) => t.toString() === req.auth.userId);
+    if (!assigned) throw ApiError.forbidden('You are not assigned to this module');
+  }
+  const submission = await Submission.findOne({ _id: req.params.submissionId, assessment: assessment._id });
+  if (!submission) throw ApiError.notFound('Submission not found');
+  const COMPLETED = [SubmissionStatus.SUBMITTED, SubmissionStatus.EVALUATING, SubmissionStatus.GRADED];
+  if (!COMPLETED.includes(submission.status)) throw ApiError.badRequest('This student has no completed attempt to grade.');
+
+  const score = Math.round(req.body.score);
+  submission.score = score;
+  submission.passed = score >= assessment.passingScore;
+  submission.status = SubmissionStatus.GRADED;
+  if (req.body.feedback) submission.feedback = { summary: req.body.feedback };
+  await submission.save();
+
+  const { issueEligibleCertificates } = await import('../services/certificates.js');
+  issueEligibleCertificates(submission.student).catch(() => {});
+  audit(req, 'submission.grade', { targetType: 'submission', targetId: submission.id, meta: { assessment: assessment.title, score, passed: submission.passed } });
+  ok(res, submission.toJSON());
+}
+
 /**
  * Admin/assigned-trainer: reopen a student's test for another attempt. The current
  * (completed) attempt is archived into `attempts[]` and the submission is reset to
