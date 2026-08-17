@@ -27,14 +27,16 @@ export function useModule(id) {
   });
 }
 
-/** Active trainers, for the admin "assign trainer" picker. */
-export function useTrainers() {
+/** Active trainers, for the admin "assign trainer" picker. Admin-only endpoint —
+ *  callers MUST gate with `enabled` so the student/trainer portal never fires it. */
+export function useTrainers({ enabled = true } = {}) {
   return useQuery({
     queryKey: moduleKeys.trainers,
     queryFn: async () => {
       const page = await unwrap(api.get('/users', { params: { role: 'trainer', pageSize: 100 } }));
       return page.items;
     },
+    enabled,
   });
 }
 

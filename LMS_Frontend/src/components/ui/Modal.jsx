@@ -3,7 +3,7 @@ import './extras.css';
 
 const FOCUSABLE = 'input,select,textarea,button,a[href],[tabindex]:not([tabindex="-1"])';
 
-export function Modal({ open, title, onClose, children, footer, headerAction, size = 'md' }) {
+export function Modal({ open, title, onClose, children, footer, headerAction, size = 'md', closeOnOverlayClick = true }) {
   const modalRef = useRef(null);
   // Keep the latest onClose in a ref so the focus effect does NOT depend on it.
   // (Callers pass an inline arrow, so a dependency here would re-run the effect
@@ -52,7 +52,7 @@ export function Modal({ open, title, onClose, children, footer, headerAction, si
   if (!open) return null;
 
   return (
-    <div className="modal__overlay" onMouseDown={(e) => e.target === e.currentTarget && onClose?.()}>
+    <div className="modal__overlay" onMouseDown={(e) => closeOnOverlayClick && e.target === e.currentTarget && onClose?.()}>
       <div ref={modalRef} className={`modal modal--${size}`} role="dialog" aria-modal="true" aria-label={title} tabIndex={-1}>
         <div className="modal__header">
           <span className="modal__title">{title}</span>

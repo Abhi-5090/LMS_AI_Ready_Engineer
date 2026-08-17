@@ -64,6 +64,14 @@ export function AddSyllabusModal({ module, onClose }) {
 
   const subtopicCount = (topics ?? []).reduce((n, t) => n + t.subtopics.length, 0);
 
+  // Pre-import diff: which parsed topics already exist (their concepts will be
+  // REPLACED on import) vs which are brand-new (appended). Matched case-insensitively,
+  // mirroring the backend importSyllabus logic.
+  const existingTitles = new Set((module.topics ?? []).map((t) => String(t.title).trim().toLowerCase()));
+  const willOverwrite = (t) => existingTitles.has(String(t.title).trim().toLowerCase());
+  const overwriteCount = (topics ?? []).filter(willOverwrite).length;
+  const newCount = (topics?.length ?? 0) - overwriteCount;
+
   async function onFile(e) {
     setError('');
     setResult(null);
@@ -144,17 +152,45 @@ export function AddSyllabusModal({ module, onClose }) {
 
       {topics && (
         <>
-          <div style={{ fontSize: 'var(--font-size-sm)', display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{ fontSize: 'var(--font-size-sm)', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
             <FileSpreadsheet size={16} style={{ color: 'var(--color-primary)' }} />
-            <span><strong>{topics.length}</strong> topic(s) · <strong>{subtopicCount}</strong> concept(s) ready to import.</span>
+            <span>
+              <strong>{topics.length}</strong> topic(s) · <strong>{subtopicCount}</strong> concept(s) —{' '}
+              <strong style={{ color: 'var(--color-success)' }}>{newCount} new</strong>
+              {overwriteCount > 0 && <>, <strong style={{ color: 'var(--color-warning)' }}>{overwriteCount} will be updated</strong></>}.
+            </span>
           </div>
+
+          {overwriteCount > 0 && (
+            <div className="field__error" style={{ display: 'flex', alignItems: 'flex-start', gap: 6, color: 'var(--color-warning)' }}>
+              <AlertTriangle size={15} style={{ marginTop: 2, flexShrink: 0 }} />
+              <span>
+                {overwriteCount} topic(s) already exist in this module — importing will <strong>replace their concepts</strong> with the sheet’s.
+                New concepts are added; topics not in the sheet are left untouched.
+              </span>
+            </div>
+          )}
+
           <div className="syllabus-preview">
-            {topics.slice(0, 8).map((t, i) => (
-              <div key={i} className="syllabus-preview__topic">
-                <strong>{t.title}</strong>
-                <span className="lms-muted"> — {t.subtopics.length} concept{t.subtopics.length === 1 ? '' : 's'}</span>
-              </div>
-            ))}
+            {topics.slice(0, 8).map((t, i) => {
+              const dup = willOverwrite(t);
+              return (
+                <div key={i} className="syllabus-preview__topic">
+                  <strong>{t.title}</strong>
+                  <span
+                    style={{
+                      marginLeft: 8,
+                      fontSize: 'var(--font-size-xs)',
+                      fontWeight: 'var(--font-weight-semibold)',
+                      color: dup ? 'var(--color-warning)' : 'var(--color-success)',
+                    }}
+                  >
+                    {dup ? 'Will overwrite' : 'New'}
+                  </span>
+                  <span className="lms-muted"> — {t.subtopics.length} concept{t.subtopics.length === 1 ? '' : 's'}</span>
+                </div>
+              );
+            })}
             {topics.length > 8 && <div className="lms-muted" style={{ fontSize: 'var(--font-size-sm)' }}>+{topics.length - 8} more…</div>}
           </div>
         </>

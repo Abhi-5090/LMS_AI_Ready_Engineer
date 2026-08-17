@@ -43,7 +43,12 @@ export async function listMine(req, res) {
 /** Add an external certificate — a link OR an uploaded file (PDF/image). */
 export async function create(req, res) {
   const parsed = createSchema.safeParse(req.body);
-  if (!parsed.success) throw ApiError.badRequest('Validation failed', parsed.error.flatten());
+  if (!parsed.success) {
+    // Surface the first field-level message (e.g. "Title must be at least 2
+    // characters") rather than a generic "Validation failed".
+    const first = parsed.error.issues[0];
+    throw ApiError.badRequest(first?.message ?? 'Validation failed', parsed.error.flatten());
+  }
   const { title, issuer, url } = parsed.data;
 
   let finalUrl = url;

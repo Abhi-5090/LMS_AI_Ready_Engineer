@@ -175,6 +175,7 @@ export function DoubtsPage() {
         open={creating}
         title="Ask a Doubt"
         onClose={() => setCreating(false)}
+        closeOnOverlayClick={false}
         footer={
           <>
             <Button variant="outline" onClick={() => setCreating(false)}>Cancel</Button>

@@ -311,8 +311,8 @@ function ExternalCertificates() {
         <Input label="Issuer (optional)" value={form.issuer} onChange={(e) => setForm({ ...form, issuer: e.target.value })} placeholder="e.g. Amazon, Coursera" />
 
         <div className="ext-cert-add__toggle">
-          <button type="button" className={form.mode === 'link' ? 'is-active' : ''} onClick={() => setForm({ ...form, mode: 'link' })}>Paste link</button>
-          <button type="button" className={form.mode === 'file' ? 'is-active' : ''} onClick={() => setForm({ ...form, mode: 'file' })}>Upload file</button>
+          <button type="button" className={form.mode === 'link' ? 'is-active' : ''} onClick={() => { setErr(''); setForm({ ...form, mode: 'link' }); }}>Paste link</button>
+          <button type="button" className={form.mode === 'file' ? 'is-active' : ''} onClick={() => { setErr(''); setForm({ ...form, mode: 'file' }); }}>Upload file</button>
         </div>
 
         {form.mode === 'link' ? (

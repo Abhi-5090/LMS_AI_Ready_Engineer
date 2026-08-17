@@ -273,7 +273,9 @@ function ObjectivesEditor({ module, canEdit }) {
 
 function TrainersPanel({ module, isAdmin }) {
   const assigned = module.assignedTrainers ?? [];
-  const { data: trainers } = useTrainers();
+  // Only admins can call the (admin-only) /users endpoint that backs the picker;
+  // for students/trainers we still show the assigned list from the module itself.
+  const { data: trainers } = useTrainers({ enabled: isAdmin });
   const [pick, setPick] = useState('');
   const assign = useAssignTrainer();
   const remove = useRemoveTrainer();

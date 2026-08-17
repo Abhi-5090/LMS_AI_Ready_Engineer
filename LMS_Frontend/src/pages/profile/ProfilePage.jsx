@@ -204,10 +204,13 @@ function ResumeCard({ user }) {
   }
   async function saveLinks() {
     setErr('');
+    if (portfolioUrl.trim() && !isHttpUrl(portfolioUrl.trim())) return setErr('Enter a valid portfolio URL (it should start with http:// or https://).');
+    if (videoUrl.trim() && !isHttpUrl(videoUrl.trim())) return setErr('Enter a valid video URL (it should start with http:// or https://).');
     try {
       await update.mutateAsync({ resume: { portfolioUrl: portfolioUrl.trim(), videoUrl: videoUrl.trim() } });
       toast.success('Resume links saved.');
     } catch (e2) { setErr(apiErrorMessage(e2)); }
+    return undefined;
   }
 
   return (
@@ -328,7 +331,11 @@ function LinksCard({ user, wide = false }) {
     setErr('');
     setMsg('');
     const trimmed = Object.fromEntries(Object.entries(links).map(([k, v]) => [k, v.trim()]));
+    const badSocial = SOCIAL_PLATFORMS.find((p) => trimmed[p.key] && !isHttpUrl(trimmed[p.key]));
+    if (badSocial) return setErr(`Enter a valid ${badSocial.label} URL (it should start with http:// or https://).`);
     const customLinks = custom.map((l) => ({ label: l.label.trim(), url: l.url.trim() })).filter((l) => l.label && l.url);
+    const badCustom = customLinks.find((l) => !isHttpUrl(l.url));
+    if (badCustom) return setErr(`Enter a valid URL for “${badCustom.label}” (it should start with http:// or https://).`);
     try {
       await update.mutateAsync({ links: trimmed, customLinks });
       setCustom(customLinks);
@@ -336,6 +343,7 @@ function LinksCard({ user, wide = false }) {
     } catch (e2) {
       setErr(apiErrorMessage(e2));
     }
+    return undefined;
   }
 
   return (
@@ -448,6 +456,17 @@ function ProjectsCard() {
   );
 }
 
+/** True for an http/https URL — used to validate link fields before submit so
+ *  users see a clear message instead of a server-side "links.x: Enter a valid URL". */
+function isHttpUrl(value) {
+  try {
+    const u = new URL(value);
+    return u.protocol === 'http:' || u.protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
+
 const STATUS_LABEL = { pending: 'Pending', approved: 'Approved', rejected: 'Rejected' };
 const STATUS_TONE = { pending: 'warning', approved: 'success', rejected: 'error' };
 
@@ -505,6 +524,8 @@ function AddProjectModal({ onClose }) {
     setErr('');
     if (form.title.trim().length < 2) return setErr('Enter a project title.');
     if (!form.repoUrl.trim()) return setErr('Add your GitHub repository link.');
+    if (!isHttpUrl(form.repoUrl.trim())) return setErr('Enter a valid GitHub repository URL (it should start with http:// or https://).');
+    if (form.videoUrl.trim() && !isHttpUrl(form.videoUrl.trim())) return setErr('Enter a valid demo video URL (it should start with http:// or https://).');
     if (form.description.trim().length < 10) return setErr('Add a short description (at least 10 characters).');
     if (!doc) return setErr('Upload the project document (PDF, max 10 MB).');
     const fd = new FormData();
@@ -530,6 +551,7 @@ function AddProjectModal({ onClose }) {
       title="Add a project"
       size="lg"
       onClose={onClose}
+      closeOnOverlayClick={false}
       footer={
         <>
           <Button variant="outline" onClick={onClose}>Cancel</Button>
