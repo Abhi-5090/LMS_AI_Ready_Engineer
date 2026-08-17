@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { UserRole } from '@/shared';
-import { BookOpen, ChevronDown, ChevronUp, LayoutGrid, List, Trash2 } from 'lucide-react';
+import { BookOpen, ChevronDown, ChevronUp, LayoutGrid, List, Search, Trash2 } from 'lucide-react';
 import { Badge, Button, Card, EmptyState, ErrorState, Input, Modal, Select, SkeletonCards, Textarea, useConfirm, useToast } from '@/components/ui';
 import { PageHeader } from '@/components/PageHeader';
 import { apiErrorMessage } from '@/lib/api';
@@ -23,6 +23,7 @@ export function ModulesPage() {
   // Cards vs. table view (remembered across visits).
   const [view, setView] = useState(() => localStorage.getItem('lms.modulesView') || 'cards');
   const chooseView = (v) => { setView(v); localStorage.setItem('lms.modulesView', v); };
+  const [q, setQ] = useState('');
   const { data: modules, isLoading, isError, error, refetch } = useModules({ archived: showArchived });
 
   const [creating, setCreating] = useState(false);
@@ -101,11 +102,18 @@ export function ModulesPage() {
     }
   }
 
+  const term = q.trim().toLowerCase();
+  const filtered = (modules ?? []).filter((m) => !term || `${m.name} ${m.code}`.toLowerCase().includes(term));
+
   return (
     <>
       <PageHeader title={isSuper ? 'Master Curriculum' : isAdmin ? 'Modules' : 'My Modules'} subtitle={subtitle} />
 
       <div className="toolbar">
+        <div style={{ position: 'relative', flex: 1, minWidth: '14rem', maxWidth: '22rem' }}>
+          <Search size={16} style={{ position: 'absolute', left: '0.7rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)', pointerEvents: 'none' }} aria-hidden />
+          <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search modules by name or code…" aria-label="Search modules" style={{ paddingLeft: '2.2rem' }} />
+        </div>
         {isAdmin && (
           <label className="lms-secondary-text" style={{ display: 'flex', gap: 'var(--space-2)', alignItems: 'center' }}>
             <input
@@ -144,6 +152,8 @@ export function ModulesPage() {
           }
           action={isAdmin ? <Button onClick={() => setCreating(true)}>+ New Module</Button> : undefined}
         />
+      ) : filtered.length === 0 ? (
+        <p className="lms-muted" style={{ padding: 'var(--space-4)' }}>No modules match “{q}”.</p>
       ) : view === 'table' ? (
         <div className="table-wrap">
           <table className="table">
@@ -151,9 +161,9 @@ export function ModulesPage() {
               <tr><th>#</th><th>Module</th><th>Level</th><th>Syllabus</th>{isAdmin && <th aria-label="Actions" />}</tr>
             </thead>
             <tbody>
-              {modules?.map((m, i) => {
+              {filtered.map((m, i) => {
                 const { done, total, pct } = topicProgress(m.topics);
-                const canReorder = isAdmin && !showArchived && !m.archived;
+                const canReorder = isAdmin && !showArchived && !m.archived && !term;
                 return (
                   <tr key={m.id} className="row-click" onClick={() => navigate(`/app/modules/${m.id}`)}>
                     <td>
@@ -194,9 +204,9 @@ export function ModulesPage() {
         </div>
       ) : (
         <div className="module-grid">
-          {modules?.map((m, i) => {
+          {filtered.map((m, i) => {
             const { done, total, pct } = topicProgress(m.topics);
-            const canReorder = isAdmin && !showArchived && !m.archived;
+            const canReorder = isAdmin && !showArchived && !m.archived && !term;
             return (
               <Card key={m.id} hover className="module-card" onClick={() => navigate(`/app/modules/${m.id}`)}>
                 <div className="module-card__top">

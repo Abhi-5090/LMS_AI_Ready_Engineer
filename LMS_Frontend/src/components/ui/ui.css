@@ -212,3 +212,25 @@
     transform: rotate(360deg);
   }
 }
+
+/* Password show/hide reveal toggle (Input type="password"). */
+.input-wrap { position: relative; display: block; }
+.input--reveal { padding-right: 2.4rem; width: 100%; }
+.input-reveal {
+  position: absolute;
+  right: 0.5rem;
+  top: 50%;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  padding: 4px;
+  cursor: pointer;
+  color: var(--color-text-muted);
+  line-height: 0;
+  border-radius: var(--radius-sm);
+  transition: color 150ms ease;
+}
+.input-reveal:hover { color: var(--color-text-secondary); }

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import * as XLSX from 'xlsx';
-import { AlertTriangle, ArrowDown, ArrowDownUp, ArrowUp, Boxes, CheckCircle2, ChevronLeft, Copy, Download, FileQuestion, FileText, FolderOpen, LayoutGrid, Library, List, Lock, Pencil, Plus, Trash2, UploadCloud, X } from 'lucide-react';
+import { AlertTriangle, ArrowDown, ArrowDownUp, ArrowUp, Boxes, CheckCircle2, ChevronLeft, Copy, Download, FileQuestion, FileText, FolderOpen, LayoutGrid, Library, List, Lock, Pencil, Plus, Search, Trash2, UploadCloud, X } from 'lucide-react';
 import { QuestionType, QuestionComplexity, UserRole } from '@/shared';
 import { Badge, Button, Card, CardHeader, EmptyState, Input, Modal, Select, SkeletonTable, useConfirm, useToast } from '@/components/ui';
 import { PageHeader } from '@/components/PageHeader';
@@ -59,6 +59,7 @@ export function QuestionBankPage() {
   const choosePickerView = (v) => { setPickerView(v); localStorage.setItem('lms.qbankView', v); };
   const [topicFilter, setTopicFilter] = useState(''); // '' = all topics, or a topicId
   const [typeFilter, setTypeFilter] = useState(''); // '' = all types, or a QuestionType
+  const [search, setSearch] = useState(''); // free-text prompt search
   const [sort, setSort] = useState(null); // null | { key:'type'|'complexity'|'topic', dir:'asc'|'desc' }
   const { data: items, isLoading } = useQuestionBank({ module: moduleId });
   // One sortable column at a time; each header cycles off → ascending → descending → off.
@@ -93,9 +94,11 @@ export function QuestionBankPage() {
     );
   }
 
+  const term = search.trim().toLowerCase();
   const filtered = (items ?? []).filter((q) => {
     if (topicFilter && q.topic !== topicFilter) return false; // "All topics" = everything
     if (typeFilter && q.type !== typeFilter) return false; // "All types" = everything
+    if (term && !String(q.prompt ?? '').toLowerCase().includes(term)) return false;
     return true;
   });
   // Sort by the active column (stable — equal ranks keep their original order).
@@ -130,12 +133,18 @@ export function QuestionBankPage() {
           </div>
         )}
         {moduleId && (
-          <Button variant="outline" onClick={() => { setModuleId(''); setTopicFilter(''); setTypeFilter(''); }}>
+          <Button variant="outline" onClick={() => { setModuleId(''); setTopicFilter(''); setTypeFilter(''); setSearch(''); }}>
             <ChevronLeft size={15} style={{ marginRight: 4 }} /> Modules
           </Button>
         )}
         {moduleId && moduleObj && (
           <span style={{ fontWeight: 'var(--font-weight-semibold)' }}>{moduleObj.name} <span className="lms-muted" style={{ fontSize: 'var(--font-size-xs)' }}>· {moduleObj.code}</span></span>
+        )}
+        {moduleId && (
+          <div style={{ position: 'relative', flex: '1 1 12rem', minWidth: '10rem', maxWidth: '18rem' }}>
+            <Search size={16} style={{ position: 'absolute', left: '0.7rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)', pointerEvents: 'none' }} aria-hidden />
+            <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search questions…" aria-label="Search questions" style={{ paddingLeft: '2.2rem' }} />
+          </div>
         )}
         {moduleId && (
           <div style={{ flex: '0 0 12rem', minWidth: 0 }}>

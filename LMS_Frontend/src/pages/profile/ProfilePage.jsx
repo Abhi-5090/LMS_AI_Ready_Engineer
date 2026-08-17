@@ -130,7 +130,8 @@ function ProfileHero({ user, isStudent }) {
             <Badge tone={isStudent ? 'primary' : 'success'}>{isStudent ? 'Student' : 'Trainer'}</Badge>
           </div>
           <div className="profile-hero__handle">
-            <Mail size={13} /> {user.email}{user.phone ? ` · ${user.phone}` : ''}
+            <Mail size={13} /> <a className="profile-hero__contact" href={`mailto:${user.email}`}>{user.email}</a>
+            {user.phone ? <> · <a className="profile-hero__contact" href={`tel:${user.phone}`}>{user.phone}</a></> : null}
           </div>
           {user.bio && <p className="profile-hero__bio">{user.bio}</p>}
           {links.length > 0 && (

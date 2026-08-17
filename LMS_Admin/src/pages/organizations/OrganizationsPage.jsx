@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
-import { Building2, LogIn, Plus, Settings2, Trash2, Users } from 'lucide-react';
+import { Building2, LogIn, Plus, Search, Settings2, Trash2, Users } from 'lucide-react';
 import { Badge, Button, Card, EmptyState, ErrorState, Input, Modal, SkeletonCards, useToast } from '@/components/ui';
 import { PageHeader } from '@/components/PageHeader';
 import { apiErrorMessage } from '@/lib/api';
@@ -21,6 +21,7 @@ export function OrganizationsPage() {
   const [err, setErr] = useState('');
   const [deleting, setDeleting] = useState(null); // org pending delete
   const [confirmText, setConfirmText] = useState('');
+  const [q, setQ] = useState('');
   const create = useCreateOrganization();
   const del = useDeleteOrganization();
   const toast = useToast();
@@ -62,11 +63,18 @@ export function OrganizationsPage() {
     }
   }
 
+  const term = q.trim().toLowerCase();
+  const filtered = (orgs ?? []).filter((o) => !term || `${o.name} ${o.code}`.toLowerCase().includes(term));
+
   return (
     <>
       <PageHeader title="Organizations" subtitle="Each organization is an isolated tenant with its own admins, trainers, students, and curriculum." />
 
       <div className="toolbar">
+        <div style={{ position: 'relative', flex: 1, minWidth: '15rem', maxWidth: '22rem' }}>
+          <Search size={16} style={{ position: 'absolute', left: '0.7rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)', pointerEvents: 'none' }} aria-hidden />
+          <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search by name or code…" aria-label="Search organizations" style={{ paddingLeft: '2.2rem' }} />
+        </div>
         <span style={{ marginLeft: 'auto' }} />
         <Button onClick={() => setCreating(true)}><Plus size={15} style={{ marginRight: 6 }} /> New organization</Button>
       </div>
@@ -77,9 +85,11 @@ export function OrganizationsPage() {
         <ErrorState message={apiErrorMessage(error)} onRetry={refetch} />
       ) : orgs && orgs.length === 0 ? (
         <EmptyState icon={<Building2 size={26} />} title="No organizations yet" description="Create the first organization and its admin." action={<Button onClick={() => setCreating(true)}><Plus size={15} style={{ marginRight: 6 }} /> New organization</Button>} />
+      ) : filtered.length === 0 ? (
+        <p className="lms-muted" style={{ padding: 'var(--space-4)' }}>No organizations match “{q}”.</p>
       ) : (
         <div className="module-grid">
-          {orgs?.map((o) => (
+          {filtered.map((o) => (
             <Card key={o.id} className="module-card">
               <div className="module-card__top">
                 <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
