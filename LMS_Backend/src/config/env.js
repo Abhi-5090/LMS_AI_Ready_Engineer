@@ -1,4 +1,5 @@
 import 'dotenv/config';
+import crypto from 'node:crypto';
 
 /** Read a required env var, failing fast at boot if it is missing in production. */
 function required(key, fallback) {
@@ -13,6 +14,23 @@ function required(key, fallback) {
     return fallback ?? `dev-${key.toLowerCase()}`;
   }
   return value;
+}
+
+/**
+ * Resolve a signing secret. In production a missing secret is fatal (never fall
+ * back to a guessable value — that would let anyone forge tokens). In dev/test
+ * we mint an EPHEMERAL random secret per boot: no config needed, but no known
+ * hardcoded default either (so forged tokens can't be crafted from source).
+ */
+function requiredSecret(key) {
+  const value = process.env[key];
+  if (value) return value;
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error(`Missing required environment variable: ${key}`);
+  }
+  // eslint-disable-next-line no-console
+  console.warn(`[env] ${key} is not set; using an ephemeral random development secret.`);
+  return crypto.randomBytes(48).toString('hex');
 }
 
 export const env = {
@@ -31,8 +49,8 @@ export const env = {
   sebBaseUrl: process.env.SEB_BASE_URL ?? '',
   mongoUri: required('MONGO_URI', 'mongodb://localhost:27017/lms_ai_ready'),
   jwt: {
-    accessSecret: required('JWT_ACCESS_SECRET', 'dev-access-secret'),
-    refreshSecret: required('JWT_REFRESH_SECRET', 'dev-refresh-secret'),
+    accessSecret: requiredSecret('JWT_ACCESS_SECRET'),
+    refreshSecret: requiredSecret('JWT_REFRESH_SECRET'),
   },
   // Log level: 'debug' | 'info' | 'warn' | 'error'. Logs emit structured JSON in
   // production (one line per event) and a readable form in development.

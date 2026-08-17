@@ -295,7 +295,7 @@ function TrainersPanel({ module, isAdmin }) {
           <span style={{ flex: 1 }}>
             {t.name}
             <div className="lms-muted" style={{ fontSize: 'var(--font-size-xs)' }}>
-              {t.email}
+              <a href={`mailto:${t.email}`} style={{ color: 'inherit', textDecoration: 'none' }}>{t.email}</a>
             </div>
           </span>
           {isAdmin && (

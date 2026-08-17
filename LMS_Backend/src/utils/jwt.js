@@ -10,12 +10,16 @@ export function signRefreshToken(payload) {
   return jwt.sign(payload, env.jwt.refreshSecret, { expiresIn: REFRESH_TOKEN_TTL });
 }
 
+// Pin verification to HS256 (the algorithm we sign with) so a token can't be
+// slipped through with `alg:none` or an asymmetric-key confusion trick.
+const VERIFY_OPTS = { algorithms: ['HS256'] };
+
 export function verifyAccessToken(token) {
-  return jwt.verify(token, env.jwt.accessSecret);
+  return jwt.verify(token, env.jwt.accessSecret, VERIFY_OPTS);
 }
 
 export function verifyRefreshToken(token) {
-  return jwt.verify(token, env.jwt.refreshSecret);
+  return jwt.verify(token, env.jwt.refreshSecret, VERIFY_OPTS);
 }
 
 // File-access token (typ:'file'). Embedded in media URLs as `?t=...` so that
@@ -28,7 +32,7 @@ export function signFileToken({ sub, tv }) {
 }
 
 export function verifyFileToken(token) {
-  const payload = jwt.verify(token, env.jwt.accessSecret);
+  const payload = jwt.verify(token, env.jwt.accessSecret, VERIFY_OPTS);
   if (payload.typ !== 'file') throw new Error('Not a file token');
   return payload;
 }
@@ -40,7 +44,7 @@ export function signResetToken(userId) {
 }
 
 export function verifyResetToken(token) {
-  const payload = jwt.verify(token, env.jwt.accessSecret);
+  const payload = jwt.verify(token, env.jwt.accessSecret, VERIFY_OPTS);
   if (payload.typ !== 'pwd_reset') throw new Error('Not a password-reset token');
   return payload;
 }
