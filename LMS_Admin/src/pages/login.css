@@ -60,6 +60,19 @@
   margin-top: var(--space-6);
   text-align: center;
 }
+.login__link {
+  display: inline-block;
+  margin-top: var(--space-4);
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  color: var(--color-primary);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+}
+.login__link:hover { text-decoration: underline; }
+.login__link:disabled { opacity: 0.6; cursor: default; text-decoration: none; }
 
 @media (max-width: 860px) {
   .login {
