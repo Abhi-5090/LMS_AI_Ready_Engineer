@@ -176,3 +176,35 @@
 @media (prefers-reduced-motion: reduce) {
   .res-acc__panel, .res-acc__panel-content, .res-acc__chevron { transition: none; }
 }
+
+/* ── Cards ↔ list view toggle (segmented control) ──────────────────────────── */
+.view-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 3px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-2);
+}
+.view-toggle__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 30px;
+  border: none;
+  background: transparent;
+  color: var(--color-text-secondary);
+  border-radius: calc(var(--radius-md) - 3px);
+  cursor: pointer;
+  transition: background 150ms var(--ease-out, ease), color 150ms var(--ease-out, ease), transform 120ms var(--ease-out, ease);
+}
+.view-toggle__btn:hover { color: var(--color-text-primary); }
+.view-toggle__btn:active { transform: scale(0.94); }
+.view-toggle__btn.is-on {
+  background: var(--color-primary);
+  color: #fff;
+  box-shadow: 0 1px 3px color-mix(in srgb, var(--color-primary) 38%, transparent);
+}
+.view-toggle__btn:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--color-primary-light); }
