@@ -1,81 +1,38 @@
 /**
- * A small, dependency-free, XSS-safe Markdown → HTML renderer for article content.
+ * Article markdown helpers. Rendering is done by `react-markdown` + `remark-gfm`
+ * (see components/Markdown.jsx) — full GitHub-Flavored Markdown: headings, bold/
+ * italic/strikethrough, links & autolinks, images, inline & fenced code, bullet/
+ * numbered/task lists, blockquotes, tables, and dividers. Raw HTML is NOT rendered
+ * (safe by default) and link URLs are sanitised by react-markdown.
  *
- * Safety model: every piece of user text is HTML-escaped BEFORE any markup is added,
- * and only a fixed whitelist of tags is ever emitted (headings, p, strong, em, code,
- * pre, ul/ol/li, blockquote, hr, a, br). Link hrefs are protocol-sanitised, so
- * `javascript:`/`data:` URLs can never execute. The output is safe to inject via
- * dangerouslySetInnerHTML.
- *
- * Supported syntax (kept in sync with the on-screen formatting guide):
- *   # / ## / ###      headings
- *   **bold**  __bold__
- *   *italic*  _italic_
- *   `code`             inline code
- *   ``` fenced ```     code block
- *   - item / * item    bullet list
- *   1. item            numbered list
- *   > quote            blockquote
- *   [text](https://…)  link
- *   ---                divider
+ * This module only provides the "Contents" outline (heading ids match the ones
+ * rehype-slug emits, via the same github-slugger) and the author cheat-sheet.
  */
+import GithubSlugger from 'github-slugger';
 
-function escapeHtml(s) {
-  return String(s)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
-}
-
-/** Only allow safe link protocols; anything else becomes an inert anchor. */
-function sanitizeUrl(url) {
-  const u = String(url).trim();
-  return /^(https?:\/\/|mailto:|\/|#)/i.test(u) ? u : '#';
-}
-
-/** Strip markdown inline markers to plain text (for heading ids + the contents list). */
+/** Strip inline markdown markers to plain text (for the contents list + slugging). */
 function plainText(s) {
   return String(s)
     .replace(/`([^`]+)`/g, '$1')
-    .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
+    .replace(/!?\[([^\]]+)\]\([^)]*\)/g, '$1')
     .replace(/\*\*([^*]+)\*\*/g, '$1')
     .replace(/__([^_]+)__/g, '$1')
+    .replace(/~~([^~]+)~~/g, '$1')
     .replace(/\*([^*]+)\*/g, '$1')
     .replace(/_([^_]+)_/g, '$1')
     .trim();
 }
 
-/** A URL-safe slug for a heading. */
-function slugify(s) {
-  return (
-    plainText(s).toLowerCase()
-      .replace(/[^\w\s-]/g, '')
-      .replace(/\s+/g, '-')
-      .replace(/-+/g, '-')
-      .replace(/^-|-$/g, '') || 'section'
-  );
-}
-
-/** De-duplicate a slug against a Set (Heading, Heading-2, Heading-3, …). */
-function uniqueId(base, used) {
-  let id = base;
-  let n = 2;
-  while (used.has(id)) id = `${base}-${n++}`;
-  used.add(id);
-  return id;
-}
-
 /**
  * Extract the heading outline for a "Contents" navigation. Returns
- * [{ level, text, id }] in document order, with ids that MATCH the ones
- * renderMarkdown emits (same slug + de-dup order), so a click can jump to them.
- * Headings inside fenced code blocks are ignored (as in the renderer).
+ * [{ level, text, id }] in document order. Ids are produced with github-slugger,
+ * exactly matching the ids rehype-slug adds to the rendered headings, so a click
+ * can jump to them. Headings inside fenced code blocks are ignored.
  */
 export function tocFromMarkdown(md) {
   if (!md) return [];
   const lines = String(md).replace(/\r\n/g, '\n').split('\n');
-  const used = new Set();
+  const slugger = new GithubSlugger();
   const toc = [];
   let inFence = false;
   for (const line of lines) {
@@ -85,95 +42,26 @@ export function tocFromMarkdown(md) {
     const h = trimmed.match(/^(#{1,6})\s+(.*)$/);
     if (h) {
       const text = plainText(h[2]);
-      toc.push({ level: h[1].length, text, id: uniqueId(slugify(h[2]), used) });
+      toc.push({ level: h[1].length, text, id: slugger.slug(text) });
     }
   }
   return toc;
 }
 
-/** Inline formatting. Input is RAW text; we escape first, then add whitelisted tags. */
-function inline(text) {
-  let t = escapeHtml(text);
-  // inline code first, so markers inside it aren't treated as formatting
-  t = t.replace(/`([^`]+)`/g, (_m, c) => `<code>${c}</code>`);
-  // links [text](url)
-  t = t.replace(/\[([^\]]+)\]\(([^)\s]+)\)/g,
-    (_m, label, url) => `<a href="${sanitizeUrl(url)}" target="_blank" rel="noreferrer noopener">${label}</a>`);
-  // bold
-  t = t.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
-  t = t.replace(/__([^_]+)__/g, '<strong>$1</strong>');
-  // italic (avoid matching inside ** by requiring a non-* neighbour)
-  t = t.replace(/(^|[^*])\*([^*\n]+)\*(?!\*)/g, '$1<em>$2</em>');
-  t = t.replace(/(^|[^_\w])_([^_\n]+)_(?![\w_])/g, '$1<em>$2</em>');
-  return t;
-}
-
-export function renderMarkdown(md) {
-  if (!md) return '';
-  const lines = String(md).replace(/\r\n/g, '\n').split('\n');
-  const out = [];
-  const usedIds = new Set(); // heading ids (kept in sync with tocFromMarkdown)
-  let listType = null; // 'ul' | 'ol' | null
-  let para = [];
-  const flushPara = () => { if (para.length) { out.push(`<p>${inline(para.join(' '))}</p>`); para = []; } };
-  const closeList = () => { if (listType) { out.push(`</${listType}>`); listType = null; } };
-
-  let i = 0;
-  while (i < lines.length) {
-    const line = lines[i];
-    const trimmed = line.trim();
-
-    // fenced code block ``` … ```
-    if (/^```/.test(trimmed)) {
-      flushPara(); closeList();
-      const code = [];
-      i += 1;
-      while (i < lines.length && !/^```/.test(lines[i].trim())) { code.push(lines[i]); i += 1; }
-      i += 1; // skip closing fence
-      out.push(`<pre><code>${escapeHtml(code.join('\n'))}</code></pre>`);
-      continue;
-    }
-
-    if (trimmed === '') { flushPara(); closeList(); i += 1; continue; }
-
-    if (/^(---|\*\*\*|___)$/.test(trimmed)) { flushPara(); closeList(); out.push('<hr />'); i += 1; continue; }
-
-    const h = trimmed.match(/^(#{1,6})\s+(.*)$/);
-    if (h) { flushPara(); closeList(); const lvl = h[1].length; const id = uniqueId(slugify(h[2]), usedIds); out.push(`<h${lvl} id="${id}">${inline(h[2])}</h${lvl}>`); i += 1; continue; }
-
-    if (/^>\s?/.test(trimmed)) {
-      flushPara(); closeList();
-      const quote = [];
-      while (i < lines.length && /^>\s?/.test(lines[i].trim())) { quote.push(lines[i].trim().replace(/^>\s?/, '')); i += 1; }
-      out.push(`<blockquote>${inline(quote.join(' '))}</blockquote>`);
-      continue;
-    }
-
-    const ul = trimmed.match(/^[-*]\s+(.*)$/);
-    if (ul) { flushPara(); if (listType !== 'ul') { closeList(); out.push('<ul>'); listType = 'ul'; } out.push(`<li>${inline(ul[1])}</li>`); i += 1; continue; }
-
-    const ol = trimmed.match(/^\d+\.\s+(.*)$/);
-    if (ol) { flushPara(); if (listType !== 'ol') { closeList(); out.push('<ol>'); listType = 'ol'; } out.push(`<li>${inline(ol[1])}</li>`); i += 1; continue; }
-
-    // plain paragraph line
-    closeList();
-    para.push(trimmed);
-    i += 1;
-  }
-  flushPara(); closeList();
-  return out.join('\n');
-}
-
 /** The formatting cheat-sheet shown to authors (syntax → what it does). */
 export const MARKDOWN_HELP = [
   { syntax: '# Heading', does: 'Large heading' },
-  { syntax: '## Subheading', does: 'Smaller heading' },
   { syntax: '**bold text**', does: 'Bold text' },
   { syntax: '*italic text*', does: 'Italic text' },
+  { syntax: '~~strikethrough~~', does: 'Struck-through text' },
   { syntax: '- item', does: 'Bullet list' },
   { syntax: '1. item', does: 'Numbered list' },
+  { syntax: '- [ ] task', does: 'Checklist' },
   { syntax: '> quote', does: 'Quote block' },
   { syntax: '`code`', does: 'Inline code' },
+  { syntax: '```\\ncode\\n```', does: 'Code block' },
+  { syntax: '| a | b |', does: 'Table' },
+  { syntax: '![alt](image-url)', does: 'Image' },
   { syntax: '[text](https://link)', does: 'Link' },
   { syntax: '---', does: 'Divider line' },
 ];
