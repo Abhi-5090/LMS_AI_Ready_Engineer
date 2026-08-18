@@ -23,6 +23,7 @@ import {
   MessagesSquare,
   Bell,
   Star,
+  Library,
 } from 'lucide-react';
 import { UserRole } from '@/shared';
 
@@ -37,6 +38,7 @@ export const NAV_BY_ROLE = {
     { label: 'Dashboard', to: '/app', Icon: LayoutDashboard },
     { group: 'Learn', Icon: GraduationCap, items: [
       { label: 'My Curriculum', to: '/app/curriculum', Icon: Compass },
+      { label: 'Resources', to: '/app/resources', Icon: Library },
       { label: 'Class Schedule', to: '/app/schedule', Icon: CalendarDays },
       { label: 'Assessments', to: '/app/assessments', Icon: FileText },
     ] },
@@ -55,6 +57,7 @@ export const NAV_BY_ROLE = {
     { label: 'Dashboard', to: '/app', Icon: LayoutDashboard },
     { group: 'Teaching', Icon: Presentation, items: [
       { label: 'My Modules', to: '/app/modules', Icon: BookOpen },
+      { label: 'Resources', to: '/app/resources', Icon: Library },
       { label: 'My Batches', to: '/app/batches', Icon: UsersRound },
       { label: 'Class Schedule', to: '/app/schedule', Icon: CalendarDays },
       { label: 'Attendance Entry', to: '/app/attendance', Icon: CalendarClock },

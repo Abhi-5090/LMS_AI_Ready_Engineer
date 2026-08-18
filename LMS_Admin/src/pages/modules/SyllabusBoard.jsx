@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { BookOpen, Check, ChevronRight, FileSpreadsheet, Layers, Library, ListChecks, Pencil, Trash2 } from 'lucide-react';
+import { BookOpen, Check, ChevronRight, FileSpreadsheet, Library, ListChecks, Pencil, Trash2 } from 'lucide-react';
 import { Button, Card, CardHeader, ErrorState, Input, Modal, SkeletonText, Textarea, useConfirm, useToast } from '@/components/ui';
 import { apiErrorMessage } from '@/lib/api';
 import {
@@ -10,8 +10,6 @@ import {
   useRequestMasterSyllabus,
   useUpdateTopic,
 } from '@/lib/modules';
-import { useResources } from '@/lib/resources';
-import { TopicResources } from './TopicResources';
 import { SubtopicsTable, SubtopicsHeader } from './SubtopicsTable';
 import { AddSyllabusModal } from './AddSyllabusModal';
 
@@ -32,7 +30,6 @@ export function SyllabusBoard({ module, canEdit, canImportFromMaster = false, ca
   const updateTopic = useUpdateTopic();
   const deleteTopic = useDeleteTopic();
   const confirm = useConfirm();
-  const { data: resources } = useResources(module.id);
 
   async function onDeleteTopic(topicId) {
     if (await confirm({ title: 'Delete this topic?', message: 'Its concepts and resource links will be removed.', confirmLabel: 'Delete', tone: 'danger' })) {
@@ -42,7 +39,6 @@ export function SyllabusBoard({ module, canEdit, canImportFromMaster = false, ca
 
   // Derive the open topic from the live module so it stays fresh after edits.
   const openTopic = module.topics.find((t) => t.id === openTopicId) ?? null;
-  const countFor = (topicId) => (resources ?? []).filter((r) => (r.topic ?? null) === topicId).length;
 
   async function add(e) {
     e.preventDefault();
@@ -112,7 +108,6 @@ export function SyllabusBoard({ module, canEdit, canImportFromMaster = false, ca
       ) : (
         <div className="topic-board">
           {module.topics.map((t) => {
-            const count = countFor(t.id);
             const subs = t.subtopics?.length ?? 0;
             return (
               <div
@@ -134,13 +129,11 @@ export function SyllabusBoard({ module, canEdit, canImportFromMaster = false, ca
                     <ListChecks size={13} /> {subs} concept{subs === 1 ? '' : 's'}
                   </span>
                 </div>
-                {/* Row 3 — materials count + actions */}
+                {/* Row 3 — topic actions (edit / delete) */}
+                {canEdit && (
                 <div className="topic-card__row topic-card__row--last">
-                  <span className="topic-card__count">
-                    <Layers size={13} /> {count} material{count === 1 ? '' : 's'}
-                  </span>
-                  {canEdit && (
-                    <span className="topic-card__actions" onClick={(e) => e.stopPropagation()}>
+                  <span />
+                  <span className="topic-card__actions" onClick={(e) => e.stopPropagation()}>
                       <button
                         type="button"
                         className="icon-btn"
@@ -157,16 +150,16 @@ export function SyllabusBoard({ module, canEdit, canImportFromMaster = false, ca
                       >
                         <Trash2 size={14} />
                       </button>
-                    </span>
-                  )}
+                  </span>
                 </div>
+                )}
               </div>
             );
           })}
         </div>
       )}
 
-      {/* Per-topic concepts + resources */}
+      {/* Per-topic concepts */}
       <Modal
         open={Boolean(openTopic)}
         title={openTopic ? openTopic.title : ''}
@@ -174,20 +167,15 @@ export function SyllabusBoard({ module, canEdit, canImportFromMaster = false, ca
         onClose={() => setOpenTopicId(null)}
       >
         {openTopic && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-5)' }}>
-            <section>
-              <SubtopicsHeader count={openTopic.subtopics?.length ?? 0} />
-              <SubtopicsTable
-                subtopics={openTopic.subtopics ?? []}
-                canEdit={canEdit}
-                onSave={saveSubtopics}
-                saving={updateTopic.isPending}
-              />
-            </section>
-            <section>
-              <TopicResources module={module} topic={openTopic} canEdit={canEdit} />
-            </section>
-          </div>
+          <section>
+            <SubtopicsHeader count={openTopic.subtopics?.length ?? 0} />
+            <SubtopicsTable
+              subtopics={openTopic.subtopics ?? []}
+              canEdit={canEdit}
+              onSave={saveSubtopics}
+              saving={updateTopic.isPending}
+            />
+          </section>
         )}
       </Modal>
 

@@ -30,6 +30,8 @@ import { CertificatesPage } from '@/pages/certificates/CertificatesPage';
 import { ApprovalsPage } from '@/pages/approvals/ApprovalsPage';
 import { AnalyticsPage } from '@/pages/analytics/AnalyticsPage';
 import { FeedbackPage } from '@/pages/feedback/FeedbackPage';
+import { ResourcesHomePage } from '@/pages/resources/ResourcesHomePage';
+import { ModuleResourcesPage } from '@/pages/resources/ModuleResourcesPage';
 import { AnnouncementsPage } from '@/pages/announcements/AnnouncementsPage';
 import { NotificationsPage } from '@/pages/notifications/NotificationsPage';
 import { ProtectedRoute } from '@/routes/ProtectedRoute';
@@ -92,6 +94,8 @@ export default function App() {
         <Route path="students/:id" element={<StudentDetailPage />} />
         <Route path="modules" element={<ModulesPage />} />
         <Route path="modules/:id" element={<ModuleDetailPage />} />
+        <Route path="resources" element={<ResourcesHomePage />} />
+        <Route path="resources/:code" element={<ModuleResourcesPage />} />
         <Route path="batches" element={<BatchesPage />} />
         <Route path="batches/:id" element={<BatchDetailPage />} />
         <Route path="attendance" element={<AttendancePage />} />

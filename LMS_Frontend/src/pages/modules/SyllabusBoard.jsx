@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { BookOpen, Check, FileSpreadsheet, Layers, LayoutGrid, ListChecks, Pencil, Table2, Trash2 } from 'lucide-react';
+import { BookOpen, Check, FileSpreadsheet, ListChecks, Pencil, Trash2 } from 'lucide-react';
 import { Button, Card, CardHeader, Input, Modal, Textarea, useConfirm } from '@/components/ui';
 import {
   useAddTopic,
@@ -7,15 +7,13 @@ import {
   useSetTopicCompletion,
   useUpdateTopic,
 } from '@/lib/modules';
-import { useResources } from '@/lib/resources';
-import { TopicResources } from './TopicResources';
 import { SubtopicsTable, SubtopicsHeader } from './SubtopicsTable';
 import { AddSyllabusModal } from './AddSyllabusModal';
 
 /**
- * Syllabus as a board of topic cards. Each card opens that topic's learning
- * resources (videos/docs/presentations/assignments/links) in a modal — so
- * resources are added per topic, not per whole module.
+ * Syllabus as a board of topic cards. Each card opens that topic's concepts.
+ * Learning materials (videos/articles/links) live in the dedicated Resources
+ * section, not here.
  */
 export function SyllabusBoard({ module, canEdit, canMarkTaught = true }) {
   const confirm = useConfirm();
@@ -23,16 +21,13 @@ export function SyllabusBoard({ module, canEdit, canMarkTaught = true }) {
   const [editing, setEditing] = useState(null); // { topicId, title, description }
   const [openTopicId, setOpenTopicId] = useState(null);
   const [addSyllabusOpen, setAddSyllabusOpen] = useState(false);
-  const [resView, setResView] = useState('grid'); // 'grid' | 'table'
   const addTopic = useAddTopic();
   const updateTopic = useUpdateTopic();
   const deleteTopic = useDeleteTopic();
   const setCompletion = useSetTopicCompletion();
-  const { data: resources } = useResources(module.id);
 
   // Derive the open topic from the live module so it stays fresh after edits.
   const openTopic = module.topics.find((t) => t.id === openTopicId) ?? null;
-  const countFor = (topicId) => (resources ?? []).filter((r) => (r.topic ?? null) === topicId).length;
   const saveSubtopics = ({ subtopics, contentDeliverables }) =>
     updateTopic.mutateAsync({ id: module.id, topicId: openTopicId, subtopics, contentDeliverables });
 
@@ -59,7 +54,7 @@ export function SyllabusBoard({ module, canEdit, canMarkTaught = true }) {
       <div className="panel-head">
         <CardHeader
           title="Syllabus"
-          subtitle="Click a topic to add its videos, documents, presentations, assignments & links"
+          subtitle="Topics & concepts for this module. Add learning materials in the Resources section."
         />
         {canEdit && (
           <Button onClick={() => setAddSyllabusOpen(true)} style={{ marginLeft: 'auto' }}>
@@ -80,7 +75,6 @@ export function SyllabusBoard({ module, canEdit, canMarkTaught = true }) {
       ) : (
         <div className="topic-board">
           {module.topics.map((t) => {
-            const count = countFor(t.id);
             const subs = t.subtopics?.length ?? 0;
             return (
               <div
@@ -105,13 +99,11 @@ export function SyllabusBoard({ module, canEdit, canMarkTaught = true }) {
                     <span className="topic-card__done"><Check size={12} strokeWidth={3} /> Taught</span>
                   )}
                 </div>
-                {/* Row 3 — materials count + actions */}
+                {/* Row 3 — topic actions (edit / mark taught / delete) */}
+                {canEdit && (
                 <div className="topic-card__row topic-card__row--last">
-                  <span className="topic-card__count">
-                    <Layers size={13} /> {count} material{count === 1 ? '' : 's'}
-                  </span>
-                  {canEdit && (
-                    <span className="topic-card__actions" onClick={(e) => e.stopPropagation()}>
+                  <span />
+                  <span className="topic-card__actions" onClick={(e) => e.stopPropagation()}>
                       {canMarkTaught && (
                         <button
                           type="button"
@@ -138,49 +130,33 @@ export function SyllabusBoard({ module, canEdit, canMarkTaught = true }) {
                       >
                         <Trash2 size={14} />
                       </button>
-                    </span>
-                  )}
+                  </span>
                 </div>
+                )}
               </div>
             );
           })}
         </div>
       )}
 
-      {/* Per-topic concepts + resources */}
+      {/* Per-topic concepts */}
       <Modal
         open={Boolean(openTopic)}
         size="xl"
         title={openTopic ? openTopic.title : ''}
         onClose={() => setOpenTopicId(null)}
-        headerAction={
-          <button
-            type="button"
-            className="modal__action"
-            title={resView === 'grid' ? 'Switch to table view' : 'Switch to grid view'}
-            aria-label="Toggle view"
-            onClick={() => setResView((v) => (v === 'grid' ? 'table' : 'grid'))}
-          >
-            {resView === 'grid' ? <Table2 size={16} /> : <LayoutGrid size={16} />}
-          </button>
-        }
       >
         {openTopic && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-5)' }}>
-            <section>
-              <SubtopicsHeader count={openTopic.subtopics?.length ?? 0} />
-              <SubtopicsTable
-                subtopics={openTopic.subtopics ?? []}
-                contentDeliverables={openTopic.contentDeliverables ?? ''}
-                canEdit={canEdit}
-                onSave={saveSubtopics}
-                saving={updateTopic.isPending}
-              />
-            </section>
-            <section>
-              <TopicResources module={module} topic={openTopic} canEdit={canEdit} view={resView} />
-            </section>
-          </div>
+          <section>
+            <SubtopicsHeader count={openTopic.subtopics?.length ?? 0} />
+            <SubtopicsTable
+              subtopics={openTopic.subtopics ?? []}
+              contentDeliverables={openTopic.contentDeliverables ?? ''}
+              canEdit={canEdit}
+              onSave={saveSubtopics}
+              saving={updateTopic.isPending}
+            />
+          </section>
         )}
       </Modal>
 

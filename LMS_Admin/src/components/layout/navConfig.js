@@ -19,6 +19,7 @@ import {
   SlidersHorizontal,
   Bell,
   Star,
+  FolderOpen,
 } from 'lucide-react';
 import { UserRole } from '@/shared';
 
@@ -49,6 +50,7 @@ export const NAV_BY_ROLE = {
     ] },
     { group: 'Curriculum', Icon: Library, items: [
       { label: 'Modules', to: '/app/modules', Icon: BookOpen },
+      { label: 'Resources', to: '/app/resources', Icon: FolderOpen },
       { label: 'Question Bank', to: '/app/question-bank', Icon: Database },
       { label: 'Assessments', to: '/app/assessments', Icon: FileText },
       { label: 'Certificates', to: '/app/certificates', Icon: Award },

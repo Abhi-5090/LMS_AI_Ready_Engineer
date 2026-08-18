@@ -23,6 +23,8 @@ import { CertificatesPage } from '@/pages/certificates/CertificatesPage';
 import { VerifyCertificatePage } from '@/pages/certificates/VerifyCertificatePage';
 import { AnalyticsPage } from '@/pages/analytics/AnalyticsPage';
 import { MyFeedbackPage } from '@/pages/feedback/MyFeedbackPage';
+import { ResourcesHomePage } from '@/pages/resources/ResourcesHomePage';
+import { ModuleResourcesPage } from '@/pages/resources/ModuleResourcesPage';
 import { DoubtsPage } from '@/pages/doubts/DoubtsPage';
 import { AnnouncementsPage } from '@/pages/announcements/AnnouncementsPage';
 import { NotificationsPage } from '@/pages/notifications/NotificationsPage';
@@ -82,6 +84,8 @@ export default function App() {
         <Route path="feedback" element={<ProtectedRoute roles={[UserRole.TRAINER]}><MyFeedbackPage /></ProtectedRoute>} />
         <Route path="approvals" element={<ProtectedRoute roles={[UserRole.TRAINER]}><ApprovalsPage /></ProtectedRoute>} />
         {/* Shared (student + trainer) */}
+        <Route path="resources" element={<ResourcesHomePage />} />
+        <Route path="resources/:code" element={<ModuleResourcesPage />} />
         <Route path="modules/:id" element={<ModuleDetailPage />} />
         <Route path="schedule" element={<SchedulePage />} />
         <Route path="attendance" element={<AttendancePage />} />
