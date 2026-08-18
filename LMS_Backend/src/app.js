@@ -21,6 +21,10 @@ export function createApp() {
   // attacker could spoof X-Forwarded-For to dodge rate limits.
   if (env.isProd) app.set('trust proxy', 1);
   app.disable('x-powered-by');
+  // No ETag on API responses: this is a dynamic, per-user, authenticated API, so
+  // conditional GETs (304 Not Modified) add confusion without a real caching win.
+  // Every request returns a fresh 200 with the current body.
+  app.set('etag', false);
 
   // Correlation id first, so it's available to every downstream log + error.
   app.use(requestId);
