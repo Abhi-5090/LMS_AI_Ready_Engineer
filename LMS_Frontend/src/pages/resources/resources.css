@@ -45,11 +45,11 @@
 .res-card__hit { flex: 1; text-align: left; background: none; border: none; padding: 0; cursor: pointer; color: inherit; display: flex; flex-direction: column; }
 .res-card__thumb {
   aspect-ratio: 16 / 9; display: grid; place-items: center;
-  background: var(--color-surface-2); color: var(--color-text-muted); border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface-2); color: var(--color-primary); border-bottom: 1px solid var(--color-border);
 }
 .res-card--video .res-card__thumb { background: color-mix(in srgb, var(--color-primary) 10%, var(--color-surface-2)); }
 .res-card__play {
-  width: 46px; height: 46px; border-radius: 50%; display: grid; place-items: center;
+  width: 64px; height: 64px; border-radius: 50%; display: grid; place-items: center;
   background: var(--color-primary); color: #fff; padding-left: 3px;
   box-shadow: 0 4px 14px color-mix(in srgb, var(--color-primary) 40%, transparent);
 }

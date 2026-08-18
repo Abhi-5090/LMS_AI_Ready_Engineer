@@ -173,7 +173,7 @@ function ResourceCard({ r, canManage, onOpen, onEdit, onDelete }) {
     <div className={`res-card res-card--${r.type}`}>
       <button type="button" className="res-card__hit" onClick={() => onOpen(r)} aria-label={`Open ${r.title}`}>
         <div className="res-card__thumb">
-          {isVideo ? <span className="res-card__play"><Play size={22} fill="currentColor" /></span> : <meta.Icon size={26} />}
+          {isVideo ? <span className="res-card__play"><Play size={30} fill="currentColor" /></span> : <meta.Icon size={42} />}
         </div>
         <div className="res-card__title">{r.title}</div>
       </button>
