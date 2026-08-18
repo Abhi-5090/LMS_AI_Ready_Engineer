@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ChevronDown, ChevronLeft, Download, LayoutGrid, List, PencilLine, Play, Plus, Trash2, X } from 'lucide-react';
+import { ChevronDown, ChevronLeft, ChevronRight, Download, LayoutGrid, List, PencilLine, Play, Plus, Trash2, X } from 'lucide-react';
 import { ResourceType, UserRole } from '@/shared';
 import { Badge, Button, Card, CardHeader, EmptyState, ErrorState, Input, Modal, Select, SkeletonText, useConfirm, useToast } from '@/components/ui';
 import { PageHeader } from '@/components/PageHeader';
@@ -193,12 +193,16 @@ function ResourceCard({ r, canManage, onOpen, onEdit, onDelete }) {
 /** Resource row (list view). */
 function ResourceRow({ r, canManage, onOpen, onEdit, onDelete }) {
   const meta = resTypeMeta(r.type);
+  const isVideo = r.type === ResourceType.VIDEO;
   return (
-    <div className="res-row">
-      <button type="button" className="res-row__main" onClick={() => onOpen(r)}>
-        <span className="res-row__icon">{r.type === ResourceType.VIDEO ? <Play size={15} fill="currentColor" /> : <meta.Icon size={15} />}</span>
-        <span className="res-row__title">{r.title}</span>
-        <span className="res-row__type">{meta.single}</span>
+    <div className={`res-row res-row--${r.type}`}>
+      <button type="button" className="res-row__main" onClick={() => onOpen(r)} aria-label={`Open ${r.title}`}>
+        <span className="res-row__icon">{isVideo ? <Play size={18} fill="currentColor" /> : <meta.Icon size={18} />}</span>
+        <span className="res-row__text">
+          <span className="res-row__title">{r.title}</span>
+          <span className="res-row__meta"><meta.Icon size={12} /> {meta.single}</span>
+        </span>
+        <ChevronRight className="res-row__go" size={18} aria-hidden />
       </button>
       {canManage && (
         <span className="res-row__actions">
