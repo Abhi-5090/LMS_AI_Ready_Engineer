@@ -95,25 +95,25 @@ export function AnnouncementsPage() {
         <EmptyState icon={<Megaphone size={26} />} title="No announcements yet" description="No announcements yet."
           action={canPost ? <Button onClick={() => { reset(); setOpen(true); }}>+ New Announcement</Button> : undefined} />
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
+        <div className="ann-grid">
           {items?.map((a) => (
-            <Card key={a.id} className="ann-card">
-              <div className="ann-card__head">
-                <div className="ann-card__titles">
-                  <strong className="ann-card__title">{a.title}</strong>
-                  <AnnouncementTargets a={a} />
-                </div>
-                {(isAdmin || a.author?.id === user?.id) && (
-                  <Button size="sm" variant="ghost" onClick={() => remove(a.id)}>Delete</Button>
-                )}
-              </div>
+            <Card key={a.id} pad={false} className="ann-card">
               {a.imageUrl && (
                 <a href={fileSrc(a.imageUrl)} target="_blank" rel="noreferrer" className="ann-card__media">
                   <img src={fileSrc(a.imageUrl)} alt={a.title} />
                 </a>
               )}
-              <p className="ann-card__body">{a.body}</p>
-              <div className="ann-card__meta">{a.author?.name ?? 'Trainer'} · {formatDate(a.createdAt)}</div>
+              <div className="ann-card__content">
+                <div className="ann-card__head">
+                  <strong className="ann-card__title">{a.title}</strong>
+                  {(isAdmin || a.author?.id === user?.id) && (
+                    <button type="button" className="ann-card__del" aria-label="Delete announcement" onClick={() => remove(a.id)}><X size={15} /></button>
+                  )}
+                </div>
+                <AnnouncementTargets a={a} />
+                <p className="ann-card__body">{a.body}</p>
+                <div className="ann-card__meta">{a.author?.name ?? 'Trainer'} · {formatDate(a.createdAt)}</div>
+              </div>
             </Card>
           ))}
         </div>
