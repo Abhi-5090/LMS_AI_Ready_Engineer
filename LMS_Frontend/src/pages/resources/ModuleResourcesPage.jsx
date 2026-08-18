@@ -9,6 +9,7 @@ import { useAuth } from '@/lib/auth';
 import { useModule } from '@/lib/modules';
 import { useAddResource, useDeleteResource, useResources, useUpdateResource } from '@/lib/resources';
 import { ArticleEditor } from '@/components/ArticleEditor';
+import { ArticleReader } from '@/components/ArticleReader';
 import { RES_TYPES, resTypeMeta, embedUrl } from './resourceUi';
 import './resources.css';
 
@@ -124,11 +125,11 @@ export function ModuleResourcesPage() {
       {adding && <AddResourceModal module={module} onClose={() => setAdding(false)} />}
       {editing && <EditArticleModal resource={editing} moduleId={module.id} onClose={() => setEditing(null)} />}
 
-      {/* In-app article reading space — the server-rendered page framed inline, so
-          markdown (tables, lists, code) always renders regardless of the client. */}
+      {/* In-app article reading space — a contents side-nav (jump to any heading)
+          beside a comfortable reading column. "Open ↗" opens the standalone page. */}
       <Modal open={Boolean(reading)} title={reading?.title ?? 'Article'} size="xl" onClose={() => setReading(null)}
         headerAction={reading && <a className="res-open-ext" href={articleViewUrl(reading.id)} target="_blank" rel="noreferrer" title="Open in new tab">Open ↗</a>}>
-        {reading && <iframe className="res-article-frame" src={articleViewUrl(reading.id)} title={reading.title} />}
+        {reading && <ArticleReader source={reading.content} />}
       </Modal>
 
       {/* In-app video player */}

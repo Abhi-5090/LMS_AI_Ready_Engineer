@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Download, List, X } from 'lucide-react';
 import { Markdown } from './Markdown';
 import { MdErrorBoundary } from './MdErrorBoundary';
@@ -6,21 +6,47 @@ import { tocFromMarkdown } from '@/lib/markdown';
 import './articleReader.css';
 
 /**
- * Reads a markdown article with a toggleable "Contents" navigation. Full GFM is
- * rendered (tables, task lists, etc.); if rendering ever fails, the raw markdown
- * is shown instead so the article is never blank. A download button always makes
- * the original text available.
+ * A focused reading experience for a markdown article: a persistent "Contents"
+ * side-nav (headings + subheadings, indented by level) beside a comfortable
+ * reading column. Clicking a heading scrolls the article to that exact heading,
+ * and a scroll-spy highlights whichever heading you're currently reading. Full
+ * GFM is rendered (tables, task lists, code, images); if rendering ever fails the
+ * raw markdown is shown so the article is never blank, and a download button
+ * always makes the original text available.
  */
 export function ArticleReader({ source }) {
   const md = source || '';
   const toc = useMemo(() => tocFromMarkdown(md), [md]);
-  const [showToc, setShowToc] = useState(false);
+  const hasToc = toc.length > 0;
+  const [activeId, setActiveId] = useState('');
+  const [tocOpen, setTocOpen] = useState(false); // narrow-screen drawer
   const bodyRef = useRef(null);
+
+  // Scroll-spy: highlight the heading currently at the top of the reading column.
+  useEffect(() => {
+    const root = bodyRef.current;
+    if (!root || !hasToc) return undefined;
+    const headings = toc.map((h) => root.querySelector(`#${CSS.escape(h.id)}`)).filter(Boolean);
+    if (!headings.length) return undefined;
+    setActiveId(headings[0].id);
+    const obs = new IntersectionObserver(
+      (entries) => {
+        const visible = entries
+          .filter((e) => e.isIntersecting)
+          .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
+        if (visible[0]) setActiveId(visible[0].target.id);
+      },
+      { root, rootMargin: '0px 0px -72% 0px', threshold: 0 },
+    );
+    headings.forEach((h) => obs.observe(h));
+    return () => obs.disconnect();
+  }, [toc, hasToc]);
 
   function jump(id) {
     const el = bodyRef.current?.querySelector(`#${CSS.escape(id)}`);
     if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    if (window.innerWidth < 720) setShowToc(false); // collapse the overlay on mobile
+    setActiveId(id);
+    setTocOpen(false); // close the drawer after choosing on mobile
   }
 
   function download() {
@@ -36,49 +62,57 @@ export function ArticleReader({ source }) {
   }
 
   return (
-    <div className="article-reader">
-      <div className="article-reader__actions">
-        {toc.length > 0 && (
-          <button
-            type="button"
-            className="article-reader__toggle"
-            onClick={() => setShowToc((v) => !v)}
-            aria-label={showToc ? 'Hide contents' : 'Show contents'}
-            aria-expanded={showToc}
-            title="Contents"
-          >
-            {showToc ? <X size={18} /> : <List size={18} />}
-          </button>
-        )}
-        <button type="button" className="article-reader__toggle" onClick={download} aria-label="Download markdown" title="Download .md">
-          <Download size={17} />
-        </button>
-      </div>
-
-      {showToc && toc.length > 0 && (
-        <nav className="article-reader__toc" aria-label="Article contents">
-          <div className="article-reader__toc-title">Contents</div>
-          {toc.map((h, i) => (
-            <button
-              type="button"
-              key={`${h.id}-${i}`}
-              className={`article-toc__link article-toc__link--h${Math.min(h.level, 3)}`}
-              onClick={() => jump(h.id)}
-            >
-              {h.text}
-            </button>
-          ))}
-        </nav>
+    <div className={`article-reader${hasToc ? '' : ' article-reader--solo'}`}>
+      {hasToc && (
+        <>
+          <aside className={`article-reader__toc${tocOpen ? ' is-open' : ''}`} aria-label="Article contents">
+            <div className="article-reader__toc-title">On this page</div>
+            <nav className="article-reader__toc-list">
+              {toc.map((h, i) => (
+                <button
+                  type="button"
+                  key={`${h.id}-${i}`}
+                  className={`article-toc__link article-toc__link--h${Math.min(h.level, 3)}${activeId === h.id ? ' is-active' : ''}`}
+                  onClick={() => jump(h.id)}
+                  title={h.text}
+                >
+                  {h.text}
+                </button>
+              ))}
+            </nav>
+          </aside>
+          {tocOpen && <div className="article-reader__scrim" onClick={() => setTocOpen(false)} aria-hidden />}
+        </>
       )}
 
-      <div className="article-reader__body" ref={bodyRef}>
-        {md.trim() ? (
-          <MdErrorBoundary fallback={<pre className="article-reader__raw">{md}</pre>}>
-            <Markdown source={md} />
-          </MdErrorBoundary>
-        ) : (
-          <p className="lms-muted">This article has no content.</p>
-        )}
+      <div className="article-reader__main" ref={bodyRef}>
+        <div className="article-reader__toolbar">
+          {hasToc && (
+            <button
+              type="button"
+              className="article-reader__pill article-reader__pill--toc"
+              onClick={() => setTocOpen((v) => !v)}
+              aria-label={tocOpen ? 'Hide contents' : 'Show contents'}
+              aria-expanded={tocOpen}
+            >
+              {tocOpen ? <X size={16} /> : <List size={16} />}
+              <span>Contents</span>
+            </button>
+          )}
+          <button type="button" className="article-reader__pill" onClick={download} aria-label="Download markdown" title="Download .md">
+            <Download size={15} />
+          </button>
+        </div>
+
+        <div className="article-reader__doc">
+          {md.trim() ? (
+            <MdErrorBoundary fallback={<pre className="article-reader__raw">{md}</pre>}>
+              <Markdown source={md} />
+            </MdErrorBoundary>
+          ) : (
+            <p className="lms-muted">This article has no content.</p>
+          )}
+        </div>
       </div>
     </div>
   );
