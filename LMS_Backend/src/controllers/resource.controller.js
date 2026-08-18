@@ -30,7 +30,7 @@ const BLOCKED_MIME = /(text\/html|application\/x-msdownload|application\/x-sh|ap
 
 export const uploadResourceFile = multer({
   storage: gridfsStorage('resource'),
-  limits: { fileSize: 100 * 1024 * 1024, files: 1 }, // 100 MB, single file
+  limits: { fileSize: 500 * 1024 * 1024, files: 1 }, // 500 MB, single file — lecture videos routinely exceed 100 MB
   fileFilter: (_req, file, cb) => {
     const ext = path.extname(file.originalname).toLowerCase();
     if (!ALLOWED_EXT.has(ext) || BLOCKED_MIME.test(file.mimetype)) {

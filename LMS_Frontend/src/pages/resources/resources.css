@@ -78,3 +78,16 @@
 /* Type filter dropdown + framed article page */
 .res-toolbar__filter { min-width: 13rem; }
 .res-article-frame { width: 100%; height: min(74vh, 840px); border: none; border-radius: var(--radius-md); background: var(--color-surface); display: block; }
+
+/* Clean back chip (module resources → all resources) */
+.res-back {
+  display: inline-flex; align-items: center; gap: 5px;
+  margin-bottom: var(--space-3);
+  padding: 5px 13px 5px 10px;
+  border: 1px solid var(--color-border); border-radius: 999px;
+  background: var(--color-surface); color: var(--color-text-secondary);
+  font-size: var(--font-size-sm); font-weight: var(--font-weight-medium); cursor: pointer;
+  transition: color 140ms var(--ease-out, ease), border-color 140ms var(--ease-out, ease), background 140ms var(--ease-out, ease), transform 140ms var(--ease-out, ease);
+}
+.res-back:hover { color: var(--color-primary); border-color: color-mix(in srgb, var(--color-primary) 45%, var(--color-border)); background: color-mix(in srgb, var(--color-primary) 6%, var(--color-surface)); }
+.res-back:active { transform: scale(0.97); }

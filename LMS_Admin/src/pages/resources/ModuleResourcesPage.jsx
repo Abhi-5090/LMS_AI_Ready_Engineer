@@ -36,16 +36,16 @@ export function ModuleResourcesPage() {
   const canManage = user?.role === UserRole.ADMIN || user?.role === UserRole.SUPER_ADMIN;
 
   const back = (
-    <button type="button" className="page-back" onClick={() => navigate('/app/resources')}>
-      <ChevronLeft size={15} /> All resources
+    <button type="button" className="res-back" onClick={() => navigate('/app/resources')}>
+      <ChevronLeft size={16} /> All resources
     </button>
   );
 
   if (isError || (!isLoading && !module)) {
-    return (<><PageHeader title="Resources" subtitle={back} /><ErrorState message={apiErrorMessage(error) || 'Module not found'} onRetry={refetch} /></>);
+    return (<>{back}<PageHeader title="Resources" /><ErrorState message={apiErrorMessage(error) || 'Module not found'} onRetry={refetch} /></>);
   }
   if (isLoading && !module) {
-    return (<><PageHeader title="Resources" subtitle={back} /><Card><SkeletonText lines={5} /></Card></>);
+    return (<>{back}<PageHeader title="Resources" /><Card><SkeletonText lines={5} /></Card></>);
   }
 
   const resources = (all ?? []).filter((r) => !typeFilter || r.type === typeFilter);
@@ -70,7 +70,8 @@ export function ModuleResourcesPage() {
 
   return (
     <>
-      <PageHeader title={module.name} subtitle={back} />
+      {back}
+      <PageHeader title={module.name} />
 
       <div className="res-toolbar">
         <div className="res-toolbar__filter">
@@ -256,7 +257,12 @@ function AddResourceModal({ module, onClose }) {
         ) : (
           <label className="field">
             <span className="field__label">File</span>
-            <input type="file" className="input" style={{ paddingTop: 6 }} onChange={(e) => setForm({ ...form, file: e.target.files?.[0] ?? null })} />
+            <input type="file" className="input" style={{ paddingTop: 6 }}
+              accept={form.type === ResourceType.VIDEO ? 'video/*' : undefined}
+              onChange={(e) => setForm({ ...form, file: e.target.files?.[0] ?? null })} />
+            <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-muted)', marginTop: 4 }}>
+              {form.type === ResourceType.VIDEO ? 'MP4, WebM or MOV — up to 500 MB.' : 'Up to 500 MB.'}
+            </span>
           </label>
         )}
         {err && <span className="field__error">{err}</span>}
