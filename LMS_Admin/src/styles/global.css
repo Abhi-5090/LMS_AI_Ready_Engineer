@@ -78,6 +78,30 @@ pre {
   color: var(--color-primary-hover);
 }
 
+/* ── Smooth data reveal ──────────────────────────────────────────────────────
+   Data fades/rises in instead of hard-flickering when it first mounts or when a
+   filter/tab swaps it out. Put `data-reveal` on a container to fade the whole
+   block in, or `data-reveal-stagger` on a grid/list/table body so its rows
+   cascade in. To REPLAY on a filter change, give the element a React `key` that
+   includes the filter value, so React remounts it and the animation runs again.
+   Honoured app-wide; the reduced-motion rule below makes it instant on request. */
+@keyframes data-reveal {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: none; }
+}
+.data-reveal { animation: data-reveal 320ms var(--ease-out, cubic-bezier(0.23, 1, 0.32, 1)) both; }
+.data-reveal-stagger > * { animation: data-reveal 340ms var(--ease-out, cubic-bezier(0.23, 1, 0.32, 1)) both; }
+.data-reveal-stagger > *:nth-child(1)  { animation-delay: 0ms; }
+.data-reveal-stagger > *:nth-child(2)  { animation-delay: 35ms; }
+.data-reveal-stagger > *:nth-child(3)  { animation-delay: 70ms; }
+.data-reveal-stagger > *:nth-child(4)  { animation-delay: 105ms; }
+.data-reveal-stagger > *:nth-child(5)  { animation-delay: 140ms; }
+.data-reveal-stagger > *:nth-child(6)  { animation-delay: 175ms; }
+.data-reveal-stagger > *:nth-child(7)  { animation-delay: 210ms; }
+.data-reveal-stagger > *:nth-child(8)  { animation-delay: 245ms; }
+.data-reveal-stagger > *:nth-child(9)  { animation-delay: 280ms; }
+.data-reveal-stagger > *:nth-child(n+10) { animation-delay: 300ms; }
+
 /* Respect users who prefer reduced motion — collapse movement to near-instant. */
 @media (prefers-reduced-motion: reduce) {
   *,

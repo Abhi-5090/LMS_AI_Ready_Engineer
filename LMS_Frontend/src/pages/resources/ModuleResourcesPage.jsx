@@ -130,11 +130,11 @@ export function ModuleResourcesPage() {
                   <div className="res-acc__panel-inner">
                     <div className="res-acc__panel-content">
                       {view === 'cards' ? (
-                        <div className="res-card-grid">
+                        <div className="res-card-grid data-reveal-stagger" key={`cards-${typeFilter}`}>
                           {g.items.map((r) => <ResourceCard key={r.id} r={r} canManage={canManage} onOpen={openResource} onEdit={setEditing} onDelete={onDelete} />)}
                         </div>
                       ) : (
-                        <div className="res-list">
+                        <div className="res-list data-reveal-stagger" key={`list-${typeFilter}`}>
                           {g.items.map((r) => <ResourceRow key={r.id} r={r} canManage={canManage} onOpen={openResource} onEdit={setEditing} onDelete={onDelete} />)}
                         </div>
                       )}
