@@ -60,6 +60,17 @@ export function createApp() {
     }),
   );
 
+  // Never let the browser cache API JSON. Without this, responses have no
+  // Cache-Control, so browsers apply HEURISTIC caching and can serve a stale
+  // list (e.g. an empty resources list from before you added an article) on the
+  // next fetch — making freshly-added items look like they never uploaded.
+  // File downloads set their own Cache-Control later in the handler, so this
+  // only governs JSON responses.
+  app.use('/api', (_req, res, next) => {
+    res.set('Cache-Control', 'no-store');
+    next();
+  });
+
   app.use('/api', apiRoutes);
 
   app.use(notFoundHandler);
