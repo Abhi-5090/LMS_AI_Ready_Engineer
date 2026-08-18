@@ -110,7 +110,7 @@ export function AnnouncementsPage() {
                     <button type="button" className="ann-card__del" aria-label="Delete announcement" onClick={() => remove(a.id)}><X size={15} /></button>
                   )}
                 </div>
-                <AnnouncementTargets a={a} />
+                <div className="ann-card__targets"><AnnouncementTargets a={a} /></div>
                 <p className="ann-card__body">{a.body}</p>
                 <div className="ann-card__meta">{a.author?.name ?? 'Trainer'} · {formatDate(a.createdAt)}</div>
               </div>

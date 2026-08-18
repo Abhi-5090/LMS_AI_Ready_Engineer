@@ -40,11 +40,9 @@
 /* ── Announcements: 2-per-row grid of square-image cards, newest first ───────── */
 .ann-grid {
   display: grid;
-  /* Two per row, but each capped small so the 1:1 poster stays compact and
-     several announcements fit one screen (not one giant square per half-width). */
-  grid-template-columns: repeat(2, minmax(0, 300px));
-  justify-content: start;
-  gap: var(--space-4);
+  /* Three per row with comfortable spacing; collapses to 2 then 1 on smaller screens. */
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-5);
   align-items: start;
 }
 .ann-card { display: flex; flex-direction: column; overflow: hidden; }
@@ -66,6 +64,7 @@
 .ann-card:hover .ann-card__media img { transform: scale(1.04); }
 .ann-card__content { display: flex; flex-direction: column; gap: var(--space-1); padding: var(--space-3); flex: 1; }
 .ann-card__head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-2); }
+.ann-card__targets { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
 .ann-card__title {
   font-size: var(--font-size-base);
   font-weight: var(--font-weight-bold);
@@ -89,6 +88,9 @@
 .ann-card__del:hover { background: color-mix(in srgb, var(--color-error) 12%, transparent); color: var(--color-error); }
 .ann-card__body { margin: 0; color: var(--color-text-secondary); white-space: pre-wrap; line-height: 1.55; }
 .ann-card__meta { color: var(--color-text-muted); font-size: var(--font-size-xs); margin-top: auto; padding-top: var(--space-1); }
-@media (max-width: 720px) {
+@media (max-width: 1024px) {
+  .ann-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 640px) {
   .ann-grid { grid-template-columns: 1fr; }
 }
