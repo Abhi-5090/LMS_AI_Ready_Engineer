@@ -990,9 +990,9 @@ function BankExcelImport({ moduleId, topics, onClose }) {
 
       <p className="lms-muted" style={{ fontSize: 'var(--font-size-sm)', margin: 0 }}>
         {isMcq ? (
-          <>Columns: <strong>question</strong>, <strong>complexity</strong> (easy / medium / hard), <strong>option 1–4</strong>, <strong>correct answer</strong> (option text, or 1–4, or A–D), optional <strong>points</strong>.</>
+          <>Columns: <strong>question</strong>, <strong>complexity</strong> (easy / medium / hard), <strong>option 1–4</strong>, <strong>correct answer</strong> (option text, or 1–4, or A–D). Points are set automatically from complexity.</>
         ) : (
-          <>Columns: a <strong>question</strong> column (the scenario / prompt / repo task), <strong>complexity</strong> (easy / medium / hard), an optional <strong>expected answer</strong> (model answer or rubric — improves grading accuracy, never shown to students), and optional <strong>points</strong>.</>
+          <>Columns: a <strong>question</strong> column (the scenario / prompt / repo task), <strong>complexity</strong> (easy / medium / hard), and an optional <strong>expected answer</strong> (model answer or rubric — improves grading accuracy, never shown to students). Points are set automatically from complexity.</>
         )}
       </p>
 

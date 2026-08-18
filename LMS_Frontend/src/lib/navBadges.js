@@ -5,7 +5,7 @@ import { useAuth } from './auth';
 import { getAnnouncementsSeenAt, markAnnouncementsSeen, useAnnouncements } from './announcements';
 import { getDoubtsSeenAt, markDoubtsSeen, useDoubts } from './doubts';
 import { useCertReviews } from './externalCertificates';
-import { useProjectReviews } from './projects';
+import { useProjectReviews, usePendingTechTags } from './projects';
 import { useAssessments } from './assessments';
 
 /**
@@ -24,6 +24,7 @@ export function useNavBadges() {
   // Pending certificate + project approvals — only trainers review them.
   const { data: certReviews } = useCertReviews(role === UserRole.TRAINER);
   const { data: projectReviews } = useProjectReviews(role === UserRole.TRAINER);
+  const { data: techTagReviews } = usePendingTechTags(role === UserRole.TRAINER);
   // Live assessments a student can take right now (unlocked + not yet submitted).
   const { data: assessments } = useAssessments();
   const [annSeen, setAnnSeen] = useState(getAnnouncementsSeenAt());
@@ -57,7 +58,8 @@ export function useNavBadges() {
 
   const approvalsCount =
     (certReviews ?? []).filter((c) => c.status === 'pending').length +
-    (projectReviews ?? []).filter((p) => p.status === 'pending').length;
+    (projectReviews ?? []).filter((p) => p.status === 'pending').length +
+    (techTagReviews ?? []).length; // /tech-tags/pending already returns only pending
 
   // Students: how many assessments are live now and still need taking.
   const liveAssessments =

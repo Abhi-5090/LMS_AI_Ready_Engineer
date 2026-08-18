@@ -42,7 +42,7 @@ export function ProjectDetailModal({ project, onClose, onApprove, onReject, busy
         {project.images?.length > 0 && (
           <div className="project-detail__images">
             {project.images.map((src, i) => (
-              <a key={i} href={src} target="_blank" rel="noreferrer">
+              <a key={i} href={fileSrc(src)} target="_blank" rel="noreferrer">
                 <img src={fileSrc(src)} alt={`${project.title} screenshot ${i + 1}`} />
               </a>
             ))}

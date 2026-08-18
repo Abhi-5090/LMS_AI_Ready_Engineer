@@ -3,6 +3,7 @@ import { Navigate, Route, Routes } from 'react-router-dom';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { FullPageSpinner } from '@/components/ui';
 import { useAuth } from '@/lib/auth';
+import { UserRole } from '@/shared';
 import { LoginPage } from '@/pages/LoginPage';
 import { NotFound } from '@/pages/NotFound';
 import { DashboardRouter } from '@/pages/dashboards/DashboardRouter';
@@ -32,7 +33,7 @@ import { ProtectedRoute } from '@/routes/ProtectedRoute';
 
 /** Student & Trainer application. Administrators use the separate Admin portal. */
 export default function App() {
-  const { status, bootstrap } = useAuth();
+  const { status, user, bootstrap } = useAuth();
 
   useEffect(() => {
     void bootstrap();
@@ -42,7 +43,7 @@ export default function App() {
 
   return (
     <Routes>
-      <Route path="/login" element={<LoginPage />} />
+      <Route path="/login" element={user ? <Navigate to="/app" replace /> : <LoginPage />} />
       {/* Self-registration is disabled — org admins create all accounts. Any old
           /register link redirects to login. */}
       <Route path="/register" element={<Navigate to="/login" replace />} />
@@ -69,11 +70,19 @@ export default function App() {
         }
       >
         <Route index element={<DashboardRouter />} />
-        <Route path="curriculum" element={<CurriculumPage />} />
-        <Route path="modules" element={<ModulesPage />} />
+        {/* Student-only pages */}
+        <Route path="curriculum" element={<ProtectedRoute roles={[UserRole.STUDENT]}><CurriculumPage /></ProtectedRoute>} />
+        <Route path="certificates" element={<ProtectedRoute roles={[UserRole.STUDENT]}><CertificatesPage /></ProtectedRoute>} />
+        {/* Trainer-only pages */}
+        <Route path="modules" element={<ProtectedRoute roles={[UserRole.TRAINER]}><ModulesPage /></ProtectedRoute>} />
+        <Route path="batches" element={<ProtectedRoute roles={[UserRole.TRAINER]}><BatchesPage /></ProtectedRoute>} />
+        <Route path="batches/:id" element={<ProtectedRoute roles={[UserRole.TRAINER]}><BatchDetailPage /></ProtectedRoute>} />
+        <Route path="question-bank" element={<ProtectedRoute roles={[UserRole.TRAINER]}><Suspense fallback={<FullPageSpinner />}><QuestionBankPage /></Suspense></ProtectedRoute>} />
+        <Route path="analytics" element={<ProtectedRoute roles={[UserRole.TRAINER]}><AnalyticsPage /></ProtectedRoute>} />
+        <Route path="feedback" element={<ProtectedRoute roles={[UserRole.TRAINER]}><MyFeedbackPage /></ProtectedRoute>} />
+        <Route path="approvals" element={<ProtectedRoute roles={[UserRole.TRAINER]}><ApprovalsPage /></ProtectedRoute>} />
+        {/* Shared (student + trainer) */}
         <Route path="modules/:id" element={<ModuleDetailPage />} />
-        <Route path="batches" element={<BatchesPage />} />
-        <Route path="batches/:id" element={<BatchDetailPage />} />
         <Route path="schedule" element={<SchedulePage />} />
         <Route path="attendance" element={<AttendancePage />} />
         <Route path="doubts" element={<DoubtsPage />} />
@@ -81,12 +90,7 @@ export default function App() {
         <Route path="notifications" element={<NotificationsPage />} />
         <Route path="assessments" element={<AssessmentsPage />} />
         <Route path="assessments/:id" element={<AssessmentDetail />} />
-        <Route path="question-bank" element={<Suspense fallback={<FullPageSpinner />}><QuestionBankPage /></Suspense>} />
         <Route path="profile" element={<ProfilePage />} />
-        <Route path="analytics" element={<AnalyticsPage />} />
-        <Route path="feedback" element={<MyFeedbackPage />} />
-        <Route path="certificates" element={<CertificatesPage />} />
-        <Route path="approvals" element={<ApprovalsPage />} />
       </Route>
 
       <Route path="/" element={<Navigate to="/app" replace />} />

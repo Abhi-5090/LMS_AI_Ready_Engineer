@@ -96,7 +96,7 @@ export function ModulesPage() {
       ) : (
         <div className="module-grid">
           {modules?.map((m) => {
-            const { done, total, pct } = topicProgress(m.topics);
+            const { total } = topicProgress(m.topics);
             return (
               <Card key={m.id} hover className="module-card" onClick={() => navigate(`/app/modules/${m.id}`)}>
                 <div className="module-card__top">
@@ -113,14 +113,8 @@ export function ModulesPage() {
                   </div>
                 </div>
                 <div>
-                  <div
-                    className="lms-secondary-text"
-                    style={{ fontSize: 'var(--font-size-xs)', marginBottom: 4 }}
-                  >
-                    Syllabus {done}/{total} sections complete
-                  </div>
-                  <div className="module-card__progress-track">
-                    <div className="module-card__progress-fill" style={{ width: `${pct}%` }} />
+                  <div className="lms-secondary-text" style={{ fontSize: 'var(--font-size-xs)' }}>
+                    {total} syllabus section{total === 1 ? '' : 's'}
                   </div>
                 </div>
                 {isAdmin && (

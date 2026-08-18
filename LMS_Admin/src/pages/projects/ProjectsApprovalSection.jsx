@@ -52,7 +52,7 @@ export function ProjectsApprovalSection() {
   }
 
   const card = (p) => (
-    <div key={p.id} className="project-card" onClick={() => setViewing(p)}>
+    <div key={p.id} className="project-card" role="button" tabIndex={0} onClick={() => setViewing(p)} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setViewing(p); } }}>
       <div className="project-card__cover" style={{ position: 'relative' }}>
         {p.images?.length > 1 && <span className="project-card__count">{p.images.length} images</span>}
         {p.images?.[0] ? <img src={fileSrc(p.images[0])} alt={p.title} /> : <Github size={28} />}
