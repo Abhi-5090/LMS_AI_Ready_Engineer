@@ -8,7 +8,6 @@ import { apiErrorMessage, articleViewUrl, fileSrc } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { useModule } from '@/lib/modules';
 import { useAddResource, useDeleteResource, useResources, useUpdateResource } from '@/lib/resources';
-import { ArticleReader } from '@/components/ArticleReader';
 import { ArticleEditor } from '@/components/ArticleEditor';
 import { RES_TYPES, resTypeMeta, embedUrl } from './resourceUi';
 import './resources.css';
@@ -74,16 +73,16 @@ export function ModuleResourcesPage() {
       <PageHeader title={module.name} subtitle={back} />
 
       <div className="res-toolbar">
-        <div className="res-tabs" role="tablist" aria-label="Resource type">
-          <button type="button" className={`res-tab${!typeFilter ? ' is-on' : ''}`} onClick={() => setTypeFilter('')}>All <span className="res-tab__n">{all?.length ?? 0}</span></button>
-          {RES_TYPES.map((t) => {
-            const n = (all ?? []).filter((r) => r.type === t.value).length;
-            return (
-              <button key={t.value} type="button" className={`res-tab${typeFilter === t.value ? ' is-on' : ''}`} onClick={() => setTypeFilter(t.value)}>
-                <t.Icon size={14} /> {t.label} <span className="res-tab__n">{n}</span>
-              </button>
-            );
-          })}
+        <div className="res-toolbar__filter">
+          <Select
+            value={typeFilter}
+            onChange={(e) => setTypeFilter(e.target.value)}
+            aria-label="Filter by resource type"
+            options={[
+              { value: '', label: `All types (${all?.length ?? 0})` },
+              ...RES_TYPES.map((t) => ({ value: t.value, label: `${t.label} (${(all ?? []).filter((r) => r.type === t.value).length})` })),
+            ]}
+          />
         </div>
         <div className="res-toolbar__right">
           <div className="view-toggle" role="group" aria-label="View">
@@ -120,10 +119,11 @@ export function ModuleResourcesPage() {
       {adding && <AddResourceModal module={module} onClose={() => setAdding(false)} />}
       {editing && <EditArticleModal resource={editing} moduleId={module.id} onClose={() => setEditing(null)} />}
 
-      {/* In-app article reading space */}
+      {/* In-app article reading space — the server-rendered page framed inline, so
+          markdown (tables, lists, code) always renders regardless of the client. */}
       <Modal open={Boolean(reading)} title={reading?.title ?? 'Article'} size="xl" onClose={() => setReading(null)}
         headerAction={reading && <a className="res-open-ext" href={articleViewUrl(reading.id)} target="_blank" rel="noreferrer" title="Open in new tab">Open ↗</a>}>
-        {reading && <ArticleReader source={reading.content} />}
+        {reading && <iframe className="res-article-frame" src={articleViewUrl(reading.id)} title={reading.title} />}
       </Modal>
 
       {/* In-app video player */}
