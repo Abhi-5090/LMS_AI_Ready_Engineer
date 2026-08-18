@@ -4,16 +4,30 @@ import { ok } from '../utils/http.js';
 
 export const listAuditQuery = z.object({
   action: z.string().max(80).optional(),
-  limit: z.coerce.number().int().min(1).max(500).optional(),
+  from: z.string().max(40).optional(), // YYYY-MM-DD (inclusive)
+  to: z.string().max(40).optional(), // YYYY-MM-DD (inclusive, to end of day)
+  page: z.coerce.number().int().min(1).default(1),
+  pageSize: z.coerce.number().int().min(1).max(200).default(50),
 });
 
-/** Admin: recent audit-log entries (optionally filtered by action). */
+/** Admin: audit-log entries — server-side paginated, filterable by action + date range. */
 export async function listAudit(req, res) {
+  const { action, from, to, page, pageSize } = req.query;
   const filter = {};
-  if (req.query.action) filter.action = req.query.action;
+  if (action) filter.action = action;
+
+  const range = {};
+  const fromDate = from ? new Date(from) : null;
+  if (fromDate && !Number.isNaN(fromDate.getTime())) range.$gte = fromDate;
+  const toDate = to ? new Date(to) : null;
+  if (toDate && !Number.isNaN(toDate.getTime())) { toDate.setHours(23, 59, 59, 999); range.$lte = toDate; }
+  if (Object.keys(range).length) filter.createdAt = range;
+
+  const total = await AuditLog.countDocuments(filter);
   const entries = await AuditLog.find(filter)
     .sort({ createdAt: -1 })
-    .limit(req.query.limit ?? 200)
+    .skip((page - 1) * pageSize)
+    .limit(pageSize)
     .populate('actor', 'name email role');
-  ok(res, entries.map((e) => e.toJSON()));
+  ok(res, { items: entries.map((e) => e.toJSON()), total, page, pageSize });
 }

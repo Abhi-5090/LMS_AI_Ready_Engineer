@@ -51,8 +51,8 @@ test('assigning a ready-made test writes an audit entry the admin can see', asyn
   assert.equal(asg.status, 201);
   const log = await req('GET', '/audit?action=assessment.assign', admin);
   assert.equal(log.status, 200);
-  assert.ok(log.data.length >= 1);
-  assert.equal(log.data[0].action, 'assessment.assign');
+  assert.ok(log.data.items.length >= 1);
+  assert.equal(log.data.items[0].action, 'assessment.assign');
 });
 
 test('audit log is admin-only', async () => {
