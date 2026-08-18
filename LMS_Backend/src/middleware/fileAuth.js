@@ -33,7 +33,7 @@ export async function authenticateFile(req, _res, next) {
       throw ApiError.unauthorized('A valid file-access token is required');
     }
 
-    const user = await User.findById(payload.sub).select('tokenVersion status');
+    const user = await User.findById(payload.sub).select('tokenVersion status role organization');
     if (!user) throw ApiError.unauthorized('Account no longer exists');
     if ((payload.tv ?? 0) !== (user.tokenVersion ?? 0)) {
       throw ApiError.unauthorized('File session expired — please sign in again');
@@ -42,7 +42,10 @@ export async function authenticateFile(req, _res, next) {
       throw ApiError.forbidden('Your account is not active.');
     }
 
-    req.auth = { userId: user.id };
+    // Carry role + organization so any org-scoped DB lookup in the handler
+    // (e.g. viewResource → Resource.findById) resolves in the right tenant. Without
+    // these, the tenant plugin would DENY the query (no org on a non-super caller).
+    req.auth = { userId: user.id, role: user.role, organization: user.organization ? String(user.organization) : null };
     next();
   } catch (err) {
     next(err);
