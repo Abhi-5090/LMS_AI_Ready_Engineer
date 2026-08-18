@@ -40,7 +40,10 @@
 /* ── Announcements: 2-per-row grid of square-image cards, newest first ───────── */
 .ann-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  /* Two per row, but each capped small so the 1:1 poster stays compact and
+     several announcements fit one screen (not one giant square per half-width). */
+  grid-template-columns: repeat(2, minmax(0, 300px));
+  justify-content: start;
   gap: var(--space-4);
   align-items: start;
 }
@@ -61,12 +64,12 @@
   transition: transform 400ms var(--ease-out, cubic-bezier(0.23, 1, 0.32, 1));
 }
 .ann-card:hover .ann-card__media img { transform: scale(1.04); }
-.ann-card__content { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-4); flex: 1; }
+.ann-card__content { display: flex; flex-direction: column; gap: var(--space-1); padding: var(--space-3); flex: 1; }
 .ann-card__head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-2); }
 .ann-card__title {
-  font-size: var(--font-size-lg);
+  font-size: var(--font-size-base);
   font-weight: var(--font-weight-bold);
-  line-height: 1.25;
+  line-height: 1.3;
   color: var(--color-text-primary); /* bold + readable (white in dark themes) */
 }
 .ann-card__del {
