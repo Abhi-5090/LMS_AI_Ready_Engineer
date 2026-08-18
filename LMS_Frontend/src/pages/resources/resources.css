@@ -49,7 +49,7 @@
 }
 .res-card--video .res-card__thumb { background: color-mix(in srgb, var(--color-primary) 10%, var(--color-surface-2)); }
 .res-card__play {
-  width: 64px; height: 64px; border-radius: 50%; display: grid; place-items: center;
+  width: 46px; height: 46px; border-radius: 50%; display: grid; place-items: center;
   background: var(--color-primary); color: #fff; padding-left: 3px;
   box-shadow: 0 4px 14px color-mix(in srgb, var(--color-primary) 40%, transparent);
 }
