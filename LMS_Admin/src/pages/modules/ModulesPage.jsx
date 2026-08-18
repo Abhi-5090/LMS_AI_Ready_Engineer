@@ -54,7 +54,7 @@ export function ModulesPage() {
       });
       setCreating(false);
       setForm(EMPTY);
-      navigate(`/app/modules/${created.id}`);
+      navigate(`/app/modules/${created.code}`);
     } catch (err) {
       setFormError(apiErrorMessage(err));
     }
@@ -165,7 +165,7 @@ export function ModulesPage() {
                 const { done, total, pct } = topicProgress(m.topics);
                 const canReorder = isAdmin && !showArchived && !m.archived && !term;
                 return (
-                  <tr key={m.id} className="row-click" onClick={() => navigate(`/app/modules/${m.id}`)}>
+                  <tr key={m.id} className="row-click" onClick={() => navigate(`/app/modules/${m.code}`)}>
                     <td>
                       <div className="module-card__order-ctl">
                         {canReorder && (
@@ -186,7 +186,7 @@ export function ModulesPage() {
                     {isAdmin && (
                       <td>
                         <div className="list-actions">
-                          <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); navigate(`/app/modules/${m.id}`); }}>Manage</Button>
+                          <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); navigate(`/app/modules/${m.code}`); }}>Manage</Button>
                           {m.archived ? (
                             <Button size="sm" variant="ghost" onClick={(e) => onUnarchive(e, m.id)}>Unarchive</Button>
                           ) : (
@@ -208,7 +208,7 @@ export function ModulesPage() {
             const { done, total, pct } = topicProgress(m.topics);
             const canReorder = isAdmin && !showArchived && !m.archived && !term;
             return (
-              <Card key={m.id} hover className="module-card" onClick={() => navigate(`/app/modules/${m.id}`)}>
+              <Card key={m.id} hover className="module-card" onClick={() => navigate(`/app/modules/${m.code}`)}>
                 <div className="module-card__top">
                   <div className="module-card__order-ctl">
                     {canReorder && (
@@ -259,7 +259,7 @@ export function ModulesPage() {
                 </div>
                 {isAdmin && (
                   <div className="list-actions">
-                    <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); navigate(`/app/modules/${m.id}`); }}>
+                    <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); navigate(`/app/modules/${m.code}`); }}>
                       Manage
                     </Button>
                     {m.archived ? (

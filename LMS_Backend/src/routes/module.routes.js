@@ -29,7 +29,7 @@ router.get('/master-syllabus-requests', adminOnly, asyncHandler(modules.listSyll
 router.post('/master-syllabus-requests/approve-all', adminOnly, validate({ body: modules.approveAllSchema }), asyncHandler(modules.approveAllSyllabusRequests));
 router.patch('/master-syllabus-requests/:reqId', adminOnly, validate({ params: modules.requestIdParam, body: modules.decideRequestSchema }), asyncHandler(modules.decideSyllabusRequest));
 
-router.get('/:id', validate({ params: modules.moduleIdParam }), asyncHandler(modules.getModule));
+router.get('/:id', validate({ params: modules.moduleKeyParam }), asyncHandler(modules.getModule));
 // Super admin only (enforced in the handler): preview, then copy, the master
 // syllabus onto this org's module. adminOnly lets a drilled-in super admin through.
 router.get('/:id/master-syllabus-preview', adminOnly, validate({ params: modules.moduleIdParam }), asyncHandler(modules.getMasterSyllabusPreview));

@@ -43,7 +43,7 @@ export function ModulesPage() {
       });
       setCreating(false);
       setForm(EMPTY);
-      navigate(`/app/modules/${created.id}`);
+      navigate(`/app/modules/${created.code}`);
     } catch (err) {
       setFormError(apiErrorMessage(err));
     }
@@ -98,7 +98,7 @@ export function ModulesPage() {
           {modules?.map((m) => {
             const { total } = topicProgress(m.topics);
             return (
-              <Card key={m.id} hover className="module-card" onClick={() => navigate(`/app/modules/${m.id}`)}>
+              <Card key={m.id} hover className="module-card" onClick={() => navigate(`/app/modules/${m.code}`)}>
                 <div className="module-card__top">
                   <span className="module-card__order">{m.order}</span>
                   <div className="module-card__meta">
@@ -119,7 +119,7 @@ export function ModulesPage() {
                 </div>
                 {isAdmin && (
                   <div className="list-actions">
-                    <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); navigate(`/app/modules/${m.id}`); }}>
+                    <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); navigate(`/app/modules/${m.code}`); }}>
                       Manage
                     </Button>
                     {!m.archived && (

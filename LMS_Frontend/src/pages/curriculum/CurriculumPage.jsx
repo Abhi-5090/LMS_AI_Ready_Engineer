@@ -136,7 +136,7 @@ export function CurriculumPage() {
                       Unlocks when your trainer finishes the previous module's syllabus
                     </span>
                   ) : (
-                    <Link to={`/app/modules/${m.module.id}`}>
+                    <Link to={`/app/modules/${m.module.code}`}>
                       <Button size="sm" variant={m.completed ? 'outline' : 'primary'}>
                         {m.completed ? 'Review' : 'Continue'}
                       </Button>

@@ -21,6 +21,9 @@ import { ok } from '../utils/http.js';
 const objectId = z.string().length(24);
 
 export const moduleIdParam = z.object({ id: objectId });
+// The module GET accepts EITHER a 24-char id or a human-readable code (e.g.
+// "LLMFOUND") so URLs can read /modules/LLMFOUND instead of /modules/<objectId>.
+export const moduleKeyParam = z.object({ id: z.string().min(1).max(60) });
 export const topicParam = z.object({ id: objectId, topicId: objectId });
 export const trainerParam = z.object({ id: objectId, trainerId: objectId });
 
@@ -130,10 +133,11 @@ export async function listModules(req, res) {
 }
 
 export async function getModule(req, res) {
-  const module = await Module.findById(req.params.id).populate(
-    'assignedTrainers',
-    'name email',
-  );
+  const key = String(req.params.id || '');
+  // Look up by ObjectId when it looks like one, else by code (codes are stored
+  // uppercase and unique per org — the tenant plugin scopes the query).
+  const query = /^[a-f0-9]{24}$/i.test(key) ? { _id: key } : { code: key.toUpperCase() };
+  const module = await Module.findOne(query).populate('assignedTrainers', 'name email');
   if (!module) throw ApiError.notFound('Module not found');
   ok(res, module.toJSON());
 }
