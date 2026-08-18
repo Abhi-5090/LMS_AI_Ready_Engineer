@@ -2,9 +2,8 @@ import { useEffect, useState } from 'react';
 import { BookOpen, Film, Link2, Lock, Plus, PencilLine, Trash2 } from 'lucide-react';
 import { ResourceType, UserRole } from '@/shared';
 import { Button, Input, Modal, Select, SkeletonText, useConfirm } from '@/components/ui';
-import { apiErrorMessage, fileSrc } from '@/lib/api';
+import { apiErrorMessage, articleViewUrl, fileSrc } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
-import { ArticleReader } from '@/components/ArticleReader';
 import { ArticleEditor } from '@/components/ArticleEditor';
 import { useAddResource, useDeleteResource, useResources, useUpdateResource } from '@/lib/resources';
 
@@ -30,7 +29,6 @@ export function TopicResources({ module, topic, canEdit, view = 'grid' }) {
   const del = useDeleteResource();
   const [form, setForm] = useState(BLANK);
   const [err, setErr] = useState('');
-  const [viewing, setViewing] = useState(null); // article being read
   const [editing, setEditing] = useState(null); // article being edited
 
   const resources = (all ?? []).filter((r) => (r.topic ?? null) === topic.id);
@@ -58,16 +56,11 @@ export function TopicResources({ module, topic, canEdit, view = 'grid' }) {
   const isLink = form.type === ResourceType.LINK;
   const useUrl = isLink || form.source === 'link';
 
-  /** A resource's clickable title — articles open a reader; others open the file/link. */
+  /** A resource's clickable title. Articles open a server-rendered page in a new
+   *  tab (reliable — same mechanism as videos/links); files/links open directly. */
   function ResTitle({ r, className }) {
-    if (r.type === ResourceType.ARTICLE) {
-      return (
-        <button type="button" className={className} style={{ background: 'none', border: 'none', textAlign: 'left', cursor: 'pointer', padding: 0, color: 'inherit', font: 'inherit' }} onClick={() => setViewing(r)}>
-          {r.title}
-        </button>
-      );
-    }
-    return <a href={fileSrc(r.url)} target="_blank" rel="noreferrer" className={className}>{r.title}</a>;
+    const href = r.type === ResourceType.ARTICLE ? articleViewUrl(r.id) : fileSrc(r.url);
+    return <a href={href} target="_blank" rel="noreferrer" className={className}>{r.title}</a>;
   }
 
   async function submit(e) {
@@ -217,11 +210,6 @@ export function TopicResources({ module, topic, canEdit, view = 'grid' }) {
           </div>
         </form>
       )}
-
-      {/* Read an article (exactly how it renders for students), with a contents nav. */}
-      <Modal open={Boolean(viewing)} title={viewing?.title ?? 'Article'} size="lg" onClose={() => setViewing(null)}>
-        {viewing && <ArticleReader source={viewing.content} />}
-      </Modal>
 
       {editing && <EditArticleModal resource={editing} moduleId={module.id} onClose={() => setEditing(null)} />}
     </div>

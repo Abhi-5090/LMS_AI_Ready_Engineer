@@ -78,6 +78,14 @@ export function fileSrc(url) {
   return t ? `${url}${url.includes('?') ? '&' : '?'}t=${encodeURIComponent(t)}` : url;
 }
 
+/** URL for the standalone rendered-article page (opens in a new tab). File-token
+ *  authed via ?t= so a new-tab navigation authenticates like a file download. */
+export function articleViewUrl(id) {
+  const t = tokenStore.file;
+  const base = `/api/resources/${id}/view`;
+  return t ? `${base}?t=${encodeURIComponent(t)}` : base;
+}
+
 export const api = axios.create({
   baseURL: '/api',
   headers: { 'Content-Type': 'application/json' },

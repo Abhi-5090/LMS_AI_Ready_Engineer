@@ -2,8 +2,7 @@ import { useEffect, useState } from 'react';
 import { BookOpen, Film, Link2, PencilLine, Plus, Trash2 } from 'lucide-react';
 import { ResourceType } from '@/shared';
 import { Button, Input, Modal, Select, useConfirm } from '@/components/ui';
-import { apiErrorMessage, fileSrc } from '@/lib/api';
-import { ArticleReader } from '@/components/ArticleReader';
+import { apiErrorMessage, articleViewUrl, fileSrc } from '@/lib/api';
 import { ArticleEditor } from '@/components/ArticleEditor';
 import { useAddResource, useDeleteResource, useResources, useUpdateResource } from '@/lib/resources';
 
@@ -27,7 +26,6 @@ export function TopicResources({ module, topic, canEdit }) {
   const confirm = useConfirm();
   const [form, setForm] = useState(BLANK);
   const [err, setErr] = useState('');
-  const [viewing, setViewing] = useState(null); // article being read
   const [editing, setEditing] = useState(null); // article being edited
 
   async function onDelete(r) {
@@ -93,13 +91,7 @@ export function TopicResources({ module, topic, canEdit }) {
                 ) : (
                   items.map((r) => (
                     <div className="res-item" key={r.id}>
-                      {article ? (
-                        <button type="button" className="res-item__title" style={{ background: 'none', border: 'none', textAlign: 'left', cursor: 'pointer', padding: 0 }} onClick={() => setViewing(r)}>
-                          {r.title}
-                        </button>
-                      ) : (
-                        <a href={fileSrc(r.url)} target="_blank" rel="noreferrer" className="res-item__title">{r.title}</a>
-                      )}
+                      <a href={article ? articleViewUrl(r.id) : fileSrc(r.url)} target="_blank" rel="noreferrer" className="res-item__title">{r.title}</a>
                       {canEdit && article && (
                         <button type="button" className="icon-btn" aria-label={`Edit ${r.title}`} onClick={() => setEditing(r)}>
                           <PencilLine size={13} />
@@ -151,11 +143,6 @@ export function TopicResources({ module, topic, canEdit }) {
           </div>
         </form>
       )}
-
-      {/* Read an article (rendered exactly as students see it). */}
-      <Modal open={Boolean(viewing)} title={viewing?.title ?? 'Article'} size="lg" onClose={() => setViewing(null)}>
-        {viewing && <ArticleReader source={viewing.content} />}
-      </Modal>
 
       {/* Edit an article. */}
       {editing && <EditArticleModal resource={editing} moduleId={module.id} onClose={() => setEditing(null)} />}

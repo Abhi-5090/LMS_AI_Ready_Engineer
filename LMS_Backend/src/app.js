@@ -6,6 +6,7 @@ import morgan from 'morgan';
 import { env } from './config/env.js';
 import { UPLOADS_URL_PREFIX } from './config/storage.js';
 import { serveUpload } from './services/fileStore.js';
+import { viewResource } from './controllers/resource.controller.js';
 import { errorHandler, notFoundHandler } from './middleware/error.js';
 import { requestId } from './middleware/requestId.js';
 import { authenticateFile } from './middleware/fileAuth.js';
@@ -49,6 +50,11 @@ export function createApp() {
   // personal data (proctor snapshots, certificates) is never world-readable. The
   // handler streams with HTTP Range support and re-applies the hardening headers.
   app.get(`${UPLOADS_URL_PREFIX}/:filename`, authenticateFile, asyncHandler(serveUpload));
+
+  // Standalone rendered article page (opens in a new tab). File-token authed so a
+  // new-tab navigation works, like the uploads route. Registered before the /api
+  // router so it isn't shadowed by the resources CRUD routes.
+  app.get('/api/resources/:id/view', authenticateFile, asyncHandler(viewResource));
 
   // Basic abuse protection on the API surface. Relaxed outside production so
   // local dev / load tests aren't throttled (auth-route limiters do the same).
