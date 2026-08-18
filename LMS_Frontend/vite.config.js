@@ -36,4 +36,10 @@ export default defineConfig({
       '/uploads': { target: 'http://localhost:5050', changeOrigin: true },
     },
   },
+  test: {
+    globals: true,
+    environment: 'jsdom',
+    setupFiles: ['./src/test/setup.js'],
+    pool: 'vmThreads',
+  },
 });
