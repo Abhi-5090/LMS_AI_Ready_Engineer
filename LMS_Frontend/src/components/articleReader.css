@@ -3,11 +3,25 @@
   display: flex;
   gap: var(--space-4);
 }
-.article-reader__toggle {
+.article-reader__actions {
   position: absolute;
   top: 0;
   right: 0;
   z-index: 2;
+  display: flex;
+  gap: 6px;
+}
+.article-reader__raw {
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: var(--font-mono, monospace);
+  font-size: var(--font-size-sm);
+  background: var(--color-surface-2);
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+}
+.article-reader__toggle {
   display: inline-flex;
   align-items: center;
   justify-content: center;

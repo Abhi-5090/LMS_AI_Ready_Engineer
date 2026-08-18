@@ -1,16 +1,19 @@
 import { useMemo, useRef, useState } from 'react';
-import { List, X } from 'lucide-react';
+import { Download, List, X } from 'lucide-react';
 import { Markdown } from './Markdown';
+import { MdErrorBoundary } from './MdErrorBoundary';
 import { tocFromMarkdown } from '@/lib/markdown';
 import './articleReader.css';
 
 /**
- * Reads a markdown article with a toggleable "Contents" navigation. The list icon
- * reveals the outline — larger headings for top level, smaller/indented for
- * sub-headings — and clicking an entry scrolls the article to that heading.
+ * Reads a markdown article with a toggleable "Contents" navigation. Full GFM is
+ * rendered (tables, task lists, etc.); if rendering ever fails, the raw markdown
+ * is shown instead so the article is never blank. A download button always makes
+ * the original text available.
  */
 export function ArticleReader({ source }) {
-  const toc = useMemo(() => tocFromMarkdown(source), [source]);
+  const md = source || '';
+  const toc = useMemo(() => tocFromMarkdown(md), [md]);
   const [showToc, setShowToc] = useState(false);
   const bodyRef = useRef(null);
 
@@ -20,20 +23,37 @@ export function ArticleReader({ source }) {
     if (window.innerWidth < 720) setShowToc(false); // collapse the overlay on mobile
   }
 
+  function download() {
+    const blob = new Blob([md], { type: 'text/markdown' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'article.md';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }
+
   return (
     <div className="article-reader">
-      {toc.length > 0 && (
-        <button
-          type="button"
-          className="article-reader__toggle"
-          onClick={() => setShowToc((v) => !v)}
-          aria-label={showToc ? 'Hide contents' : 'Show contents'}
-          aria-expanded={showToc}
-          title="Contents"
-        >
-          {showToc ? <X size={18} /> : <List size={18} />}
+      <div className="article-reader__actions">
+        {toc.length > 0 && (
+          <button
+            type="button"
+            className="article-reader__toggle"
+            onClick={() => setShowToc((v) => !v)}
+            aria-label={showToc ? 'Hide contents' : 'Show contents'}
+            aria-expanded={showToc}
+            title="Contents"
+          >
+            {showToc ? <X size={18} /> : <List size={18} />}
+          </button>
+        )}
+        <button type="button" className="article-reader__toggle" onClick={download} aria-label="Download markdown" title="Download .md">
+          <Download size={17} />
         </button>
-      )}
+      </div>
 
       {showToc && toc.length > 0 && (
         <nav className="article-reader__toc" aria-label="Article contents">
@@ -52,7 +72,13 @@ export function ArticleReader({ source }) {
       )}
 
       <div className="article-reader__body" ref={bodyRef}>
-        <Markdown source={source} />
+        {md.trim() ? (
+          <MdErrorBoundary fallback={<pre className="article-reader__raw">{md}</pre>}>
+            <Markdown source={md} />
+          </MdErrorBoundary>
+        ) : (
+          <p className="lms-muted">This article has no content.</p>
+        )}
       </div>
     </div>
   );
