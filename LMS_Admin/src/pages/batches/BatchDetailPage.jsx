@@ -15,6 +15,7 @@ import {
   Select,
   Skeleton,
   SkeletonText,
+  useConfirm,
   useToast,
 } from '@/components/ui';
 import { PageHeader } from '@/components/PageHeader';
@@ -113,6 +114,7 @@ function StudentsPanel({ batch, isAdmin }) {
   const remove = useRemoveStudent();
   const qc = useQueryClient();
   const toast = useToast();
+  const confirm = useConfirm();
   const [bulk, setBulk] = useState(false);
 
   const enrolled = batch.students ?? [];
@@ -166,7 +168,7 @@ function StudentsPanel({ batch, isAdmin }) {
                     <td className="lms-muted">{s.email}</td>
                     {isAdmin && (
                       <td className="member-table__no">
-                        <button type="button" className="chip__x member-table__x" aria-label={`Remove ${s.name}`} onClick={() => remove.mutateAsync({ id: batch.id, memberId: s.id })}>
+                        <button type="button" className="chip__x member-table__x" aria-label={`Remove ${s.name}`} onClick={async () => { if (await confirm({ title: `Remove ${s.name} from this batch?`, message: 'They lose access to this batch’s classes and assessments. Their records are kept.', confirmLabel: 'Remove', tone: 'danger' })) remove.mutateAsync({ id: batch.id, memberId: s.id }); }}>
                           <X size={14} strokeWidth={2.5} />
                         </button>
                       </td>
@@ -267,6 +269,7 @@ function ModuleRow({ batch, module, assignedTrainers, isAdmin }) {
   const setTrainers = useSetModuleTrainers();
   const removeModule = useRemoveModule();
   const toast = useToast();
+  const confirm = useConfirm();
 
   // Assigned trainers can arrive as populated objects or bare ids, and an
   // anonymized/removed account can surface without a usable id. Normalize to real
@@ -305,7 +308,7 @@ function ModuleRow({ batch, module, assignedTrainers, isAdmin }) {
             className="tile-remove"
             title="Remove module"
             aria-label={`Remove ${module.name}`}
-            onClick={() => removeModule.mutateAsync({ id: batch.id, memberId: module.id })}
+            onClick={async () => { if (await confirm({ title: `Remove ${module.name} from this batch?`, message: 'This unassigns the module (and its trainer mapping) from this batch.', confirmLabel: 'Remove', tone: 'danger' })) removeModule.mutateAsync({ id: batch.id, memberId: module.id }); }}
           >
             <Trash2 size={15} strokeWidth={2} />
           </button>

@@ -27,7 +27,7 @@ import {
   useUpdateObjectives,
 } from '@/lib/modules';
 import { useCertTemplate, useIssueModuleCertificates } from '@/lib/certificateTemplates';
-import { useToast } from '@/components/ui';
+import { useConfirm, useToast } from '@/components/ui';
 import { CertificateDesignerModal } from './CertificateDesignerModal';
 import { SyllabusBoard } from './SyllabusBoard';
 import { LEVEL_OPTIONS, levelTone, titleCase, topicProgress } from './moduleUi';
@@ -300,6 +300,7 @@ function TrainersPanel({ module, isAdmin }) {
   const [pick, setPick] = useState('');
   const assign = useAssignTrainer();
   const remove = useRemoveTrainer();
+  const confirm = useConfirm();
 
   const assignedIds = new Set(assigned.map((t) => t.id));
   const available = (trainers ?? []).filter((t) => !assignedIds.has(t.id));
@@ -321,7 +322,7 @@ function TrainersPanel({ module, isAdmin }) {
             <Button
               size="sm"
               variant="ghost"
-              onClick={() => remove.mutate({ id: module.id, trainerId: t.id })}
+              onClick={async () => { if (await confirm({ title: `Remove ${t.name} from this module?`, message: 'They lose access to manage this module’s content.', confirmLabel: 'Remove', tone: 'danger' })) remove.mutate({ id: module.id, trainerId: t.id }); }}
             >
               Remove
             </Button>

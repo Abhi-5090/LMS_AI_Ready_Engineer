@@ -2,13 +2,12 @@ import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowRight, Bell } from 'lucide-react';
 import { useToast } from '@/components/ui';
-import { useNotifications, useMarkAllNotificationsRead } from '@/lib/notifications';
+import { useNotifications } from '@/lib/notifications';
 import { formatDate } from '@/lib/format';
 import './notifications-bell.css';
 
 export function NotificationsBell() {
   const { data: items } = useNotifications();
-  const markAll = useMarkAllNotificationsRead();
   const toast = useToast();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
@@ -44,9 +43,10 @@ export function NotificationsBell() {
   }, [open]);
 
   function toggle() {
-    const next = !open;
-    if (next && unread > 0) markAll.mutate(); // opening marks everything read
-    setOpen(next);
+    // Peeking the bell shows the 3 most recent but does NOT mark everything read —
+    // that would discard unread markers for older items the user never saw. Marking
+    // read happens when they open the full list ("See all" → NotificationsPage).
+    setOpen((v) => !v);
   }
 
   return (

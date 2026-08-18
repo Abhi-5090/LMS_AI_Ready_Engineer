@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { AlignCenter, AlignLeft, AlignRight, Bold, Eye, Italic, Trash2, UploadCloud } from 'lucide-react';
-import { Badge, Button, Input, Modal, Select, useToast } from '@/components/ui';
+import { Badge, Button, Input, Modal, Select, useConfirm, useToast } from '@/components/ui';
 import { apiErrorMessage, fileSrc } from '@/lib/api';
 import { openCertPreview, useDeleteCertTemplate, usePutCertTemplate } from '@/lib/certificateTemplates';
 
@@ -110,6 +110,7 @@ export function CertificateDesignerModal({ open, onClose, moduleId, moduleName, 
   const put = usePutCertTemplate();
   const del = useDeleteCertTemplate();
   const toast = useToast();
+  const confirm = useConfirm();
   const [form, setForm] = useState(DEFAULTS);
   const [file, setFile] = useState(null);
   const fileRef = useRef(null);
@@ -160,6 +161,7 @@ export function CertificateDesignerModal({ open, onClose, moduleId, moduleName, 
     catch (e) { toast.error(apiErrorMessage(e)); }
   }
   async function remove() {
+    if (!(await confirm({ title: 'Remove this certificate template?', message: 'This deletes the uploaded template and all its placement styling. New certificates will fall back to the default design.', confirmLabel: 'Remove', tone: 'danger' }))) return;
     try { await del.mutateAsync(moduleId); toast.success('Template removed.'); onClose(); }
     catch (e) { toast.error(apiErrorMessage(e)); }
   }

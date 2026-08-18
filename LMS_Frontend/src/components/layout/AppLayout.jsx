@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
 import { ChevronRight, GraduationCap, LogOut, Menu, X } from 'lucide-react';
 import { Button } from '@/components/ui';
@@ -49,9 +50,13 @@ function SidebarLink({ item, badge, onNavigate, nested }) {
 
 export function AppLayout() {
   const { user, logout } = useAuth();
+  const qc = useQueryClient();
   const location = useLocation();
   const badges = useNavBadges();
   const [navOpen, setNavOpen] = useState(false);
+  // Clear cached data on logout so the next user on a shared device never sees
+  // the previous user's dashboard/notifications/profile flash before refetch.
+  const signOut = () => { qc.clear(); logout(); };
   // Single-open accordion: at most one group is expanded at a time.
   const [openGroup, setOpenGroup] = useState(null);
 
@@ -157,7 +162,7 @@ export function AppLayout() {
                 <div className="user-chip__role">{ROLE_LABEL[user.role]}</div>
               </div>
             </Link>
-            <Button variant="outline" size="sm" className="topbar__signout" onClick={logout}>
+            <Button variant="outline" size="sm" className="topbar__signout" onClick={signOut}>
               <LogOut size={15} strokeWidth={2} />
               <span className="topbar__signout-label">Sign out</span>
             </Button>

@@ -127,8 +127,12 @@ export function BatchDetailPage() {
         {modules.length === 0 ? (
           <EmptyState
             icon={<BookOpen size={26} />}
-            title="No modules"
-            description="No modules assigned to this batch yet."
+            title={user?.role === UserRole.TRAINER && allModules.length > 0 ? 'No modules mapped to you' : 'No modules'}
+            description={
+              user?.role === UserRole.TRAINER && allModules.length > 0
+                ? "You're not assigned to teach any module in this batch yet — ask an admin to map you to a module here so you can mark topics taught."
+                : 'No modules assigned to this batch yet.'
+            }
           />
         ) : (
           <div className="module-list">

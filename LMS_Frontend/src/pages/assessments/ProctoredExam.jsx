@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { AlertTriangle, Camera, Clock, Copy, Download, Expand, ListChecks, Lock, Maximize, ShieldCheck } from 'lucide-react';
 import { QuestionType } from '@/shared';
-import { Badge, Button, Card, CardHeader } from '@/components/ui';
+import { Badge, Button, Card, CardHeader, useConfirm } from '@/components/ui';
 import { apiErrorMessage } from '@/lib/api';
 import { useProctorShot, useRecordWarning, useSaveProgress, useStartAttempt, useSubmitAssessment } from '@/lib/assessments';
 import { assessmentLabel, groupQuestionsByType, isGithubRepoUrl, QUESTION_TYPE_HINT, QUESTION_TYPE_LABEL } from './assessmentsUi';
@@ -244,6 +244,7 @@ function TimedExam({ assessment, questions, endsAt, serverNow, initialStream }) 
     exitFullscreen();
   }, [assessment.id, buildPayload, releaseStream]);
   const doSubmitRef = useRef(doSubmit); doSubmitRef.current = doSubmit;
+  const confirm = useConfirm();
 
   // Admin-set violation cap: after this many warnings the exam auto-submits. 0 = off.
   const violationLimit = Number(assessment.violationLimit) || 0;
@@ -387,6 +388,16 @@ function TimedExam({ assessment, questions, endsAt, serverNow, initialStream }) 
   const [current, setCurrent] = useState(0);
   const [visited, setVisited] = useState(() => new Set());
   const isAnswered = (q) => { const ans = answers[q.id]; return Boolean(ans && (ans.selectedOption !== undefined || ans.text?.trim())); };
+  // User-initiated submit confirms first (a timed exam can't be reopened). The
+  // automatic paths (timeout / violation cap) still call doSubmit directly.
+  const confirmSubmit = async () => {
+    const left = questions.length - answeredCount;
+    if (await confirm({
+      title: 'Submit your exam?',
+      message: left > 0 ? `${left} question${left === 1 ? '' : 's'} still unanswered. You can't change your answers after submitting.` : "You can't change your answers after submitting.",
+      confirmLabel: 'Submit',
+    })) doSubmit();
+  };
   const go = (i) => setCurrent(Math.max(0, Math.min(ordered.length - 1, i)));
   // Mark the question on screen as "seen" — a seen-but-unanswered one shows for review.
   useEffect(() => {
@@ -406,7 +417,7 @@ function TimedExam({ assessment, questions, endsAt, serverNow, initialStream }) 
         <span className={`exam-timer${lowTime ? ' exam-timer--danger' : midTime ? ' exam-timer--warn' : ''}`}>
           <Clock size={18} /> {fmtClock(remaining)}
         </span>
-        <Button size="sm" loading={submitMut.isPending} onClick={doSubmit}>Submit</Button>
+        <Button size="sm" loading={submitMut.isPending} onClick={confirmSubmit}>Submit</Button>
       </div>
 
       <div className="exam-body">
@@ -479,7 +490,7 @@ function TimedExam({ assessment, questions, endsAt, serverNow, initialStream }) 
             {current < ordered.length - 1 ? (
               <Button onClick={() => go(current + 1)}>Next</Button>
             ) : (
-              <Button loading={submitMut.isPending} onClick={doSubmit}>Submit test</Button>
+              <Button loading={submitMut.isPending} onClick={confirmSubmit}>Submit test</Button>
             )}
           </div>
         </main>
