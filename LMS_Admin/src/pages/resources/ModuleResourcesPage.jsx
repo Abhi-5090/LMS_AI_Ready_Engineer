@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ChevronLeft, Download, LayoutGrid, List, PencilLine, Play, Plus, Trash2, X } from 'lucide-react';
+import { ChevronDown, ChevronLeft, Download, LayoutGrid, List, PencilLine, Play, Plus, Trash2, X } from 'lucide-react';
 import { ResourceType, UserRole } from '@/shared';
 import { Badge, Button, Card, CardHeader, EmptyState, ErrorState, Input, Modal, Select, SkeletonText, useConfirm, useToast } from '@/components/ui';
 import { PageHeader } from '@/components/PageHeader';
@@ -32,6 +32,8 @@ export function ModuleResourcesPage() {
   const [editing, setEditing] = useState(null); // article being edited
   const [reading, setReading] = useState(null); // article being read (modal)
   const [playing, setPlaying] = useState(null); // video being played (modal)
+  const [openTopic, setOpenTopic] = useState(null); // single-open topic accordion
+  const toggleTopic = (id) => setOpenTopic((cur) => (cur === id ? null : id));
 
   // In the admin portal, admins (and a super-admin drilled into an org) manage resources.
   const canManage = user?.role === UserRole.ADMIN || user?.role === UserRole.SUPER_ADMIN;
@@ -100,21 +102,44 @@ export function ModuleResourcesPage() {
       ) : total === 0 ? (
         <EmptyState icon={<LayoutGrid size={26} />} title="No resources yet" description={canManage ? 'Add videos, articles or links for this module’s topics.' : 'Your trainer hasn’t added materials for this module yet.'} action={canManage ? <Button onClick={() => setAdding(true)}>+ Add resource</Button> : undefined} />
       ) : (
-        <div className="res-groups">
-          {byTopic.filter((g) => g.items.length > 0).map((g) => (
-            <section key={g.topic.id} className="res-group">
-              <h3 className="res-group__title">{g.topic.title}<span className="res-group__n">{g.items.length}</span></h3>
-              {view === 'cards' ? (
-                <div className="res-card-grid">
-                  {g.items.map((r) => <ResourceCard key={r.id} r={r} canManage={canManage} onOpen={openResource} onEdit={setEditing} onDelete={onDelete} />)}
+        <div className="res-acc">
+          {byTopic.filter((g) => g.items.length > 0).map((g) => {
+            const open = openTopic === g.topic.id;
+            return (
+              <section key={g.topic.id} className={`res-acc__item${open ? ' is-open' : ''}`}>
+                <button type="button" className="res-acc__head" aria-expanded={open} onClick={() => toggleTopic(g.topic.id)}>
+                  <span className="res-acc__head-text">
+                    <span className="res-acc__title">{g.topic.title}</span>
+                    <span className="res-acc__counts">
+                      {RES_TYPES.map((t) => {
+                        const n = g.items.filter((r) => r.type === t.value).length;
+                        if (!n) return null;
+                        const M = resTypeMeta(t.value);
+                        return <span key={t.value} className="res-acc__chip"><M.Icon size={13} /> {n} {(n === 1 ? t.single : t.label).toLowerCase()}</span>;
+                      })}
+                      <span className="res-acc__total">{g.items.length} total</span>
+                    </span>
+                  </span>
+                  <ChevronDown className="res-acc__chevron" size={20} aria-hidden />
+                </button>
+                <div className="res-acc__panel">
+                  <div className="res-acc__panel-inner">
+                    <div className="res-acc__panel-content">
+                      {view === 'cards' ? (
+                        <div className="res-card-grid">
+                          {g.items.map((r) => <ResourceCard key={r.id} r={r} canManage={canManage} onOpen={openResource} onEdit={setEditing} onDelete={onDelete} />)}
+                        </div>
+                      ) : (
+                        <div className="res-list">
+                          {g.items.map((r) => <ResourceRow key={r.id} r={r} canManage={canManage} onOpen={openResource} onEdit={setEditing} onDelete={onDelete} />)}
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
-              ) : (
-                <div className="res-list">
-                  {g.items.map((r) => <ResourceRow key={r.id} r={r} canManage={canManage} onOpen={openResource} onEdit={setEditing} onDelete={onDelete} />)}
-                </div>
-              )}
-            </section>
-          ))}
+              </section>
+            );
+          })}
         </div>
       )}
 
